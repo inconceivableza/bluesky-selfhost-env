@@ -335,7 +335,8 @@ services:
       - caddy
 
   social-app:
-    image: inconceivableza/bluesky-social-app:${asof}
+    # image: inconceivableza/bluesky-social-app:${asof}
+    image: inconceivableza/bluesky-social-app:${asof}${DOMAIN}
     ports:
       - 8100:8100
     command: /usr/bin/bskyweb serve
