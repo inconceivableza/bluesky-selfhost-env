@@ -1,7 +1,7 @@
 # variable to specify branch to apply patch. as below, <empty> then apply patch to current branch.
 branch2patch=
 
-#patch-dockerbuild: ${rDir}/feed-generator/.dockerbuild  ${rDir}/indigo/.dockerbuild  ${rDir}/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild
+patch-dockerbuild: ${rDir}/feed-generator/.dockerbuild
 patch-dockerbuild:  ${rDir}/indigo/.dockerbuild  ${rDir}/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild ${rDir}/social-app/.dockerbuild ${rDir}/jetstream/.dockerbuild
 
 ${rDir}/feed-generator/.dockerbuild:
