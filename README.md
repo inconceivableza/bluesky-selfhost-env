@@ -65,6 +65,10 @@ test results with 'asof-2024-06-02' and later:<BR>
 below, it assumes self-hosting domain is <strong>mysky.local.com</strong> (defined in Makefile).<br>
 you can change the domain name by environment variable as below:
 
+## <a id="scripting" />Scripting
+
+This uses the modern docker v2 calling approach `docker compose`; to use `docker-compose`, change the `dockerCompose` variable used in `ops/docker.mk`
+
 ### <a id="ops0-configparams"/>0) configure params and install tools for ops
 
 ```bash
