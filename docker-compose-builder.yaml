@@ -95,7 +95,7 @@ services:
 # debug for caddy <<<
 # debug for bluesky with indigo subcmds >>>
   test-indigo:
-    image: inconceivableza/bluesky-indigo-tools:${asof}
+    image: itaru2622/bluesky-indigo-tools:${asof}
     build:
        context: ./repos/indigo/
        dockerfile: Dockerfile
@@ -159,7 +159,7 @@ services:
     restart: always
 
   opensearch:
-    image: inconceivableza/bluesky-indigo-opensearch:${asof}
+    image: itaru2622/bluesky-indigo-opensearch:${asof}
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
@@ -193,8 +193,8 @@ services:
     restart: always
 
   plc:
-    image: inconceivableza/bluesky-did-method-plc:latest
-#   image: inconceivableza/bluesky-did-method-plc:${asof}
+    image: itaru2622/bluesky-did-method-plc:latest
+#   image: itaru2622/bluesky-did-method-plc:${asof}
 #   build:
 #     context: ./repos/did-method-plc/
 #     dockerfile: packages/server/Dockerfile
@@ -228,7 +228,7 @@ services:
       - caddy
       
   pds:
-    image: inconceivableza/bluesky-atproto-pds:${asof}
+    image: itaru2622/bluesky-atproto-pds:${asof}
     build:
       context: ./repos/atproto/
       dockerfile: services/pds/Dockerfile
@@ -288,7 +288,7 @@ services:
       - caddy
 
   bgs:
-    image: inconceivableza/bluesky-indigo-bgs:${asof}
+    image: itaru2622/bluesky-indigo-bgs:${asof}
     build:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
@@ -328,7 +328,7 @@ services:
 
   bsky:
     # appview(api)
-    image: inconceivableza/bluesky-atproto-bsky:${asof}
+    image: itaru2622/bluesky-atproto-bsky:${asof}
     build:
       context: ./repos/atproto/
       dockerfile: services/bsky/Dockerfile
@@ -389,8 +389,8 @@ services:
       - caddy
 
   social-app:
-    image: inconceivableza/bluesky-social-app:${asof}
-    #image: inconceivableza/bluesky-social-app:${asof}${DOMAIN}
+    #image: inconceivableza/bluesky-social-app:${asof}
+    image: inconceivableza/bluesky-social-app:${asof}${DOMAIN}
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile
@@ -420,7 +420,7 @@ services:
 
 
   palomar:
-    image: inconceivableza/bluesky-indigo-palomar:${asof}
+    image: itaru2622/bluesky-indigo-palomar:${asof}
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile
@@ -456,7 +456,7 @@ services:
       - caddy
 
   jetstream:
-    image: inconceivableza/bluesky-jetstream:${asof}
+    image: itaru2622/bluesky-jetstream:${asof}
     build:
       context: ./repos/jetstream/
       dockerfile: Dockerfile
@@ -484,7 +484,7 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: inconceivableza/bluesky-ozone:${asof}
+    image: itaru2622/bluesky-ozone:${asof}
     build:
       context: ./repos/ozone/
       dockerfile: Dockerfile
@@ -540,7 +540,7 @@ services:
 
   ozone:
     # moderation-api:
-    image: inconceivableza/bluesky-atproto-ozone:${asof}
+    image: itaru2622/bluesky-atproto-ozone:${asof}
     build:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -589,7 +589,7 @@ services:
       - caddy
 
   ozone-daemon:
-    image: inconceivableza/bluesky-atproto-ozone:${asof}
+    image: itaru2622/bluesky-atproto-ozone:${asof}
     build:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -636,8 +636,8 @@ services:
       - caddy
 
   feed-generator:
-    image: inconceivableza/bluesky-feed-generator:latest
-   #image: inconceivableza/bluesky-feed-generator:${asof}
+    image: itaru2622/bluesky-feed-generator:latest
+   #image: itaru2622/bluesky-feed-generator:${asof}
    #build:
    #  context: ./repos/feed-generator/
    #  dockerfile: Dockerfile
