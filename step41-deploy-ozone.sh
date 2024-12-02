@@ -28,7 +28,7 @@ show_heading "Sign Ozone DidDoc" for ozone admin account
 make api_ozone_reqPlcSign handle=$OZONE_ADMIN_HANDLE password=$OZONE_ADMIN_PASSWORD
 # FIXME: get the plc token from the user somehow
 #    update didDoc with above sign
-make api_ozone_updateDidDoc plcSignToken=$OZONE_PLC_TOKEN handle=$OZONE_ADMIN_HANDLE ozoneURL=https://ozone.$DOMAIN/
+make api_ozone_updateDidDoc plcSignToken=$OZONE_PLC_TOKEN handle=$OZONE_ADMIN_HANDLE ozoneURL=https://ozone.${DOMAIN}/
 
 # 5) [optional] add member to the ozone team (i.e: add role to user):
 #    valid roles are: tools.ozone.team.defs#roleAdmin | tools.ozone.team.defs#roleModerator | tools.ozone.team.defs#roleTriage
