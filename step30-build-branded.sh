@@ -19,7 +19,9 @@ for repoDir in $repoDirs
     (
       cd $repoDir
       echo "$blue_color$clear_bold`basename ${repoDir}`$reset_color"
-      $script_dir/autobranch.sh work origin/main dockerbuild local-rebranding-$REBRANDING_NAME
+      src_branch=origin/main
+      [ "`basename $repoDir`" == "social-app" ] && src_branch=2024-12-02
+      $script_dir/autobranch.sh work $src_branch dockerbuild local-rebranding-$REBRANDING_NAME $src_branch
     ) || { show_error "Error updating to latest branch:" "inspect $repoDir and adjust as necessary" ; exit 1 ; }
   done
 
