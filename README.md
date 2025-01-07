@@ -364,6 +364,8 @@ make exec under=./repos/justOneRepo cmd='git push fork something'
 [back to top](#top)
 ### <a id="hack-EnvVars-Compose"/>check Env Vars in docker-compose
 
+*Scripted:* There's a version of these scripts in `./check-env-vars.sh`
+
 1) get all env vars in docker-compose
 
 ```bash
@@ -473,6 +475,8 @@ cat /tmp/envs.txt  | grep -e URL -e ENDPOINT -e DID -e HOST -e PORT -e ADDRESS
 
 3) find {URL | DID | bsky } near env names in sources
 
+*Scripted:* There's a version of these scripts in `./check-find-envs-in-sources.sh`
+
 ```bash
 find repos -type f | grep -v -e /.git  -e __ -e .json$ \
   | xargs grep -R -n -A3 -B3 -f /tmp/envs.txt \
@@ -493,7 +497,7 @@ this hask uses the result(/tmp/envs.txt) of [the above](#hack-EnvVars-Sources) a
 
 ```bash
 # create table showing { env x container => value } with ops-helper script.
-cat ./docker-compose-builder.yaml | ./ops-helper/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-val.xlsx
+cat ./docker-compose-builder.yaml | ./ops-helper/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
 ```
 
 [back to top](#top)
