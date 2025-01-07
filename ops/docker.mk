@@ -61,18 +61,22 @@ docker-start::      _applySdep _dockerUp
 ifeq ($(auto_watchlog),true)
 docker-start::      docker-watchlog
 endif
+
 docker-start-bsky:: _applySbsky _dockerUp
 ifeq ($(auto_watchlog),true)
 docker-start-bsky:: docker-watchlog
 endif
+
 docker-start-bsky-feedgen:: _applySfeed _dockerUp
 ifeq ($(auto_watchlog),true)
 docker-start-bsky-feedgen:: docker-watchlog
 endif
+
 docker-start-bsky-ozone:: _applySozone _dockerUp
 ifeq ($(auto_watchlog),true)
 docker-start-bsky-ozone:: docker-watchlog
 endif
+
 docker-start-bsky-jetstream:: _applySjetstream _dockerUp
 ifeq ($(auto_watchlog),true)
 docker-start-bsky-jetstream:: docker-watchlog
