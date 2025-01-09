@@ -252,12 +252,12 @@ jetstream.{$DOMAIN} {
         reverse_proxy  @robots      http://pds:2583
 
 #---------------
-#     (.*).DOMAIN/(.*) => http://social-app:8100/profile/$$1/$$2
+#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
         @others {
             header_regexp host Host ^(.*)\.{$pdsFQDN}$
             path_regexp   path      ^(.*)
         }
-        rewrite        @others      /profile/{http.regexp.host.1}{http.regexp.path.1}
+        redir          @others      https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
         reverse_proxy  @others      http://social-app:8100
 }
 # ends: *.pdsFQDN <<<<<<<<<<<
