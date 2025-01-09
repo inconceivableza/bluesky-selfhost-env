@@ -10,8 +10,6 @@ _dockerUp: _load_vars _dockerUP_network
 _load_vars:
 	$(eval _envs=$(shell cat ${passfile} | sed '1i\
 DOMAIN=${DOMAIN} \
-SOCIAL_DOMAIN=${SOCIAL_DOMAIN} \
-PDS_DOMAIN=${PDS_DOMAIN} \
 bgsFQDN=${bgsFQDN} \
 bskyFQDN=${bskyFQDN} \
 feedgenFQDN=${feedgenFQDN} \

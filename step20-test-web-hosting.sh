@@ -56,17 +56,17 @@ test_curl_url test-wss.${DOMAIN}/ test-wss
 echo test successful | websocat "wss://test-wss.${DOMAIN}/ws" || { show_warning "Error testing wss" "to test-wss.${DOMAIN}" ; failures="$failures wss://test-wss" ; }
 
 # test on the social-app domain
-test_curl_url ${SOCIAL_DOMAIN}/ social-app
+test_curl_url ${socialappFQDN}/ social-app
 
 # test reverse proxy mapping if it works as expected for bluesky
 #  those should be redirect to PDS
-test_curl_url ${PDS_DOMAIN}/xrpc/any-request pds/xrpc
+test_curl_url ${pdsFQDN}/xrpc/any-request pds/xrpc
 random_name=`pwgen 6`
-test_curl_url random-${random_name}.${PDS_DOMAIN}/xrpc/any-request random/xrpc
+test_curl_url random-${random_name}.${pdsFQDN}/xrpc/any-request random/xrpc
 
 #  those should be redirect to social-app
-test_curl_url ${PDS_DOMAIN}/others pds/others
-test_curl_url random-${random_name}.${PDS_DOMAIN}/others random/others
+test_curl_url ${pdsFQDN}/others pds/others
+test_curl_url random-${random_name}.${pdsFQDN}/others random/others
 
 if [ "$failures" = "" ]
   then
