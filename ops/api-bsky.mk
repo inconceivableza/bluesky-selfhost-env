@@ -53,7 +53,7 @@ _sendMsg:
 ifeq (${PDS_INVITE_REQUIRED}, true)
 _mkmsg_createAccount::
 	@echo PDS invite required: requesting invite code from server
-	$(eval invite_code=$(shell curl --fail --silent --show-error --request POST --user "admin:${PDS_ADMIN_PASSWORD}" --header "Content-Type: application/json" --data '{"useCount": 1}' https://${PDS_DOMAIN}/xrpc/com.atproto.server.createInviteCode | jq --raw-output '.code'))
+	$(eval invite_code=$(shell curl --fail --silent --show-error --request POST --user "admin:${PDS_ADMIN_PASSWORD}" --header "Content-Type: application/json" --data '{"useCount": 1}' https://${pdsFQDN}/xrpc/com.atproto.server.createInviteCode | jq --raw-output '.code'))
 endif
 
 _mkmsg_createAccount::
