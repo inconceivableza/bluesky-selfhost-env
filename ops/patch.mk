@@ -8,7 +8,7 @@ commitargs ?=
 
 # generate targets for patch-dockerbuild from variables like above sample;   items=${_nrepo}-${nopatch},  with prefix=${rDir}  and  suffix=/.dockerbuild
 # _nopatch=did-method-plc pds
-_nopatch=
+_nopatch ?=
 _prepo=$(filter-out ${_nopatch},${_nrepo})
 patch-dockerbuild:  $(addprefix ${rDir}/, $(addsuffix /.dockerbuild, ${_prepo}))
 
