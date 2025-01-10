@@ -25,6 +25,8 @@ volumes:
     name: redis
   jetstream:
     name: jetstream
+  backup-staging:
+    name: backup-staging
 # ozone:
 # ozone-daemon:
 # plc:
@@ -570,3 +572,27 @@ services:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
       - feed-generator:/data/
+
+  backup:
+    image: rclone/rclone:latest
+    volumes:
+      - ./ops-helper/backup-scripts:/scripts:ro
+      - ./config/backup/:/config/rclone/:rw
+      - pds:/data/pds:ro
+      - feed-generator:/data/feed-generator:ro
+      - opensearch:/data/opensearch:ro
+      - bgs:/data/bgs:ro
+      - bsky:/data/bsky:ro
+      - backup-staging:/staging
+    environment:
+      - BACKUP_SCHEDULE=0 2 * * *  # Run at 2 AM daily
+      - BACKUP_PATHS=/data/pds/ /data/bgs/ /data/bsky/ /data/opensearch/
+      - SQLITE_PATHS=/data/pds/*.sqlite /data/feed-generator/*.sqlite  # Glob pattern for SQLite files
+      - POSTGRES_HOST=database
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - RCLONE_PATH=foodios-vabl-dev-backup
+    entrypoint: ["/scripts/install.sh"]
+    restart: unless-stopped
+
