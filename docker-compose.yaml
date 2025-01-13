@@ -577,12 +577,11 @@ services:
     image: rclone/rclone:latest
     volumes:
       - ./ops-helper/backup-scripts:/scripts:ro
-      - ./config/backup/:/config/rclone/:rw
-      - pds:/data/pds:ro
-      - feed-generator:/data/feed-generator:ro
-      - opensearch:/data/opensearch:ro
-      - bgs:/data/bgs:ro
-      - bsky:/data/bsky:ro
+      - pds:/data/pds:rw
+      - feed-generator:/data/feed-generator:rw
+      - opensearch:/data/opensearch:rw
+      - bgs:/data/bgs:rw
+      - bsky:/data/bsky:rw
       - backup-staging:/staging
     environment:
       - BACKUP_SCHEDULE=0 2 * * *  # Run at 2 AM daily
@@ -593,6 +592,6 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - RCLONE_PATH=foodios-vabl-dev-backup
-    entrypoint: ["/scripts/install.sh"]
+    entrypoint: ["/scripts/entrypoint.sh"]
     restart: unless-stopped
 
