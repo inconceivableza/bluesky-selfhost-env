@@ -7,4 +7,5 @@ config/**secret**
 **/node_modules/**
 **/venv*/**
 **/package-lock.json
-./*.env
+*.env
+.*.sw*
