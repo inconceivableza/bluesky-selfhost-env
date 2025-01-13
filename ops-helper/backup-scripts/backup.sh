@@ -1,20 +1,11 @@
 #!/bin/sh
 set -e
 
+# assumes $RESTIC_REPOSITORY is set, with the repository location
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 staging_dir="/staging/${timestamp}"
 mkdir -p "$staging_dir"
-
-# Copy regular files
-for data_path in $BACKUP_PATHS
-  do
-    if [ -d "$data_path" ]; then
-      echo "Backing up files from $data_path"
-      cp -r $data_path "$staging_dir/" || true
-    else
-      echo could not find $data_path to backup
-    fi
-  done
 
 # Handle PostgreSQL databases
 if [ -n "$POSTGRES_HOST" ]; then
@@ -33,8 +24,8 @@ if [ -n "$POSTGRES_HOST" ]; then
 
     for db in $databases; do
         echo "Backing up PostgreSQL database: $db"
-        PGPASSFILE=~/.pgpass pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" \
-            $POSTGRES_EXTRA_OPTS -Fc -f "$postgres_dir/${db}.pgdump" "$db"
+        PGPASSFILE=~/.pgpass restic backup --stdin-filename /data/postgres/${db}.pgdump --stdin-from-command -- \
+            pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" $POSTGRES_EXTRA_OPTS -Fc "$db"
     done
 
     # Remove .pgpass file
@@ -42,20 +33,51 @@ if [ -n "$POSTGRES_HOST" ]; then
 fi
 
 # Handle SQLite databases
+set -a SQLITE_BACKUP_DIRS
 if [ -n "$SQLITE_PATHS" ]; then
     echo "Backing up SQLite databases"
-    for SQLITE_PATHSPEC in $SQLITE_PATHS; do
-        echo searching for databases matching $SQLITE_PATHSPEC
-        for db in $(find /data/ -path $SQLITE_PATHSPEC); do
-            db_rel_path=${db#/data/}
-            db_dir="$staging_dir/$(dirname "$db_rel_path")"
-            mkdir -p "$db_dir"
-
-            echo "Backing up database: $db"
-            sqlite3 "$db" ".backup '$staging_dir/$db_rel_path'"
+    for SQLITE_SPEC in $SQLITE_PATHS; do
+        SQLITE_NAME=${SQLITE_SPEC/:*}
+        SQLITE_PATHSPEC=${SQLITE_SPEC#*:}
+        sqlite_staging_dir=${staging_dir}/$SQLITE_NAME
+        echo SQLITE_SPEC $SQLITE_SPEC
+        echo SQLITE_NAME $SQLITE_NAME
+        echo SQLITE_PATHSPEC "$SQLITE_PATHSPEC"
+        echo searching for databases matching "$SQLITE_PATHSPEC" with target $sqlite_staging_dir
+        for db in $(find /data/ -path "$SQLITE_PATHSPEC"); do
+            db_name="$(basename "$db")"
+            db_dir="$(dirname "$db")"
+            staging_db_dir="$sqlite_staging_dir/$db_dir"
+            echo making directory $staging_db_dir for $db
+            mkdir -p "$staging_db_dir"
+            if [ -f "$db_dir/key" ]
+              then
+                # these encrypted databases are written safely for backup
+                echo "Backing up encrypted database: $db"
+                cp "$db" "$db_dir/key" "$staging_db_dir"
+              else
+                echo "Backing up database: $db"
+                sqlite3 "$db" ".backup '$staging_db_dir/$db_name'"
+              fi
         done
+        echo "Backing up databases in $SQLITE_PATHSPEC to restic repository under $SQLITE_NAME"
+        restic backup --stdin-filename /data/${SQLITE_NAME}.tar --stdin-from-command -- \
+            tar -cf - -C "${sqlite_staging_dir}" data/
     done
 fi
+
+# Copy regular files
+for data_path in $BACKUP_PATHS
+  do
+    if [ -d "$data_path" ]; then
+      echo "Backing up files from $data_path"
+      restic backup $data_path 
+    else
+      echo could not find $data_path to backup
+    fi
+  done
+
+exit 1
 
 # Create archive
 echo "Creating archive of whole backup"
@@ -74,4 +96,5 @@ echo "Cleaning up..."
 rm -rf "$staging_dir" "/staging/backup_${timestamp}.tar.gz"
 
 echo "Done"
+
 

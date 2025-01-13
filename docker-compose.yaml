@@ -27,6 +27,8 @@ volumes:
     name: jetstream
   backup-staging:
     name: backup-staging
+  backup-repo:
+    name: backup-repo
 # ozone:
 # ozone-daemon:
 # plc:
@@ -574,29 +576,32 @@ services:
       - feed-generator:/data/
 
   backup:
-    image: rclone/rclone:latest
+    image: creativeprojects/resticprofile:latest
+    hostname: backup.${DOMAIN}
     volumes:
       - ./ops-helper/backup-scripts:/scripts:ro
-      - ./config/backup/:/config/rclone/:rw # TODO: change to readonly
-      - type: bind
-        source: ./config/backup/ofelia.conf
-        target: /etc/ofelia.conf
+      - ./config/backup/:/etc/resticprofile/:ro
       - pds:/data/pds:rw
       - feed-generator:/data/feed-generator:rw
       - opensearch:/data/opensearch:rw
       - bgs:/data/bgs:rw
       - bsky:/data/bsky:rw
       - backup-staging:/staging
+      - backup-repo:/restic-repo
     environment:
-      - BACKUP_SCHEDULE=0 2 * * *  # Run at 2 AM daily
-      - BACKUP_PATHS=/data/pds/ /data/bgs/ /data/bsky/ /data/opensearch/
-      - SQLITE_PATHS=/data/pds/*.sqlite /data/feed-generator/*.sqlite  # Glob pattern for SQLite files
+      - TZ=Etc/UTC
+      - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
+      - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite  # Glob pattern for SQLite files
       - POSTGRES_HOST=database
       - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - RESTIC_REPOSITORY=/restic-repo
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
       - RCLONE_FILENAME_PREFIX=foodios-vabl-dev-backup-
       - RCLONE_PATH=foodios-vabl-dev-backup
-    entrypoint: ["/scripts/entrypoint.sh"]
+    entrypoint: ["/bin/sh"]
+    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
     restart: unless-stopped
+
 
