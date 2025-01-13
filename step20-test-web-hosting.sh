@@ -27,7 +27,7 @@ if [ "$EMAIL4CERTS" == "internal" ]
     show_info "Using CA Cert" "for tests: $CURL_ARGS"
   else
     show_heading "Artificial delay" "to allow letsencrypt to work"
-    sleep 10
+    sleep 5
   fi
 
 show_heading "Checking test web containers"
