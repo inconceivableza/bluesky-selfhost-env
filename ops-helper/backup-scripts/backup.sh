@@ -59,14 +59,15 @@ fi
 
 # Create archive
 echo "Creating archive of whole backup"
-tar czf "/staging/backup_${timestamp}.tar.gz" -C "$staging_dir" .
+backup_filename=${RCLONE_FILENAME_PREFIX}backup_${timestamp}.tar.gz
+tar czf "/staging/$backup_filename" -C "$staging_dir" .
 
 # Upload to Hetzner Object Storage
 echo "Uploading to Hetzner"
-rclone copy "/staging/backup_${timestamp}.tar.gz" "hetzner:$RCLONE_PATH"
+rclone copy "/staging/$backup_filename" "hetzner:$RCLONE_PATH"
 
 # Upload to AWS S3 Glacier
-# rclone copy "/staging/backup_${timestamp}.tar.gz" "glacier:$RCLONE_PATH"
+# rclone copy "/staging/$backup_filename" "glacier:$RCLONE_PATH"
 
 # Cleanup
 echo "Cleaning up..."

@@ -595,6 +595,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - RCLONE_FILENAME_PREFIX=foodios-vabl-dev-backup-
       - RCLONE_PATH=foodios-vabl-dev-backup
     entrypoint: ["/scripts/entrypoint.sh"]
     restart: unless-stopped
