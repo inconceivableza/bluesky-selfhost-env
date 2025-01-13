@@ -3,11 +3,11 @@ docker_network ?= bsky_${DOMAIN}
 dockerCompose ?= docker compose
 auto_watchlog ?= true
 
-_dockerUp: _load_vars _dockerUP_network
+_dockerUp: _silent_load_vars _dockerUP_network
 	${_envs} ${dockerCompose} -f ${f} up -d ${services}
 
 # _env := passfile + below listup vars. cf. sed '1i' command inserts given chars to stdin.
-_load_vars:
+_silent_load_vars:
 	$(eval _envs=$(shell cat ${passfile} | sed '1i\
 DOMAIN=${DOMAIN} \
 bgsFQDN=${bgsFQDN} \
@@ -40,6 +40,9 @@ PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL} \
 PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED} \
 ' \
 	| cat))
+
+_load_vars: _silent_load_vars
+_load_vars:
 	@echo ${_envs} | sed 's/ /\n/g' | awk -F= '{print $$1,"=",$$2}' | sed 's/ //g'
 
 _dockerUP_network:
@@ -108,6 +111,15 @@ docker-rm-all:
 	-docker ps -a -q | xargs docker rm -f
 	-docker volume ls | tail -n +2 | awk '{print $$2}' | xargs docker volume rm -f
 	-docker system prune -f
+
+docker-exec: _silent_load_vars
+docker-exec:
+	@${_envs} docker ${cmd}
+
+docker-compose-exec: _silent_load_vars
+docker-compose-exec:
+	@${_envs} ${dockerCompose} --env-file=${params_file} ${cmd}
+
 
 _gen_compose_for_binary:
 	cat docker-compose-builder.yaml | yq4 'del(.services[].build)' > docker-compose.yaml
