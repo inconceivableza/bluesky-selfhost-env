@@ -577,6 +577,10 @@ services:
     image: rclone/rclone:latest
     volumes:
       - ./ops-helper/backup-scripts:/scripts:ro
+      - ./config/backup/:/config/rclone/:rw # TODO: change to readonly
+      - type: bind
+        source: ./config/backup/ofelia.conf
+        target: /etc/ofelia.conf
       - pds:/data/pds:rw
       - feed-generator:/data/feed-generator:rw
       - opensearch:/data/opensearch:rw
