@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 restic_profiles="`resticprofile profiles | grep '^^  .*:' | cut -d: -f1`"
 echo Will backup the following profiles: $restic_profiles
 errors=""
