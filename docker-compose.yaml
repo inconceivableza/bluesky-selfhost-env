@@ -592,10 +592,10 @@ services:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
       - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite  # Glob pattern for SQLite files
-      - POSTGRES_HOST=database
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGHOST=database
+      - PGPORT=5432
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
       - RESTIC_REPOSITORY=/restic-repo
       - RESTIC_PASSWORD=${RESTIC_PASSWORD}
       - RCLONE_FILENAME_PREFIX=foodios-vabl-dev-backup-
