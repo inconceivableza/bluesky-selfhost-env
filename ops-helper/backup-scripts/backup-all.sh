@@ -1,10 +1,10 @@
 #!/bin/sh
-restic_profiles="`resticprofile profiles | grep '^^  .*:' | cut -d: -f1`"
+restic_profiles="`resticprofile profiles | grep '^  .*:' | cut -d: -f1`"
 echo Will backup the following profiles: $restic_profiles
 errors=""
 for p in $restic_profiles
   do
-    failure resticprofile run-schedule backup@$p || { errors="$errors $p" ; }
+    resticprofile run-schedule backup@$p || { errors="$errors $p" ; }
   done
 if [ "$errors" -eq "" ]
   then
