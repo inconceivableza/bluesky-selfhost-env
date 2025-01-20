@@ -33,7 +33,6 @@ if [ -n "$POSTGRES_HOST" ]; then
 fi
 
 # Handle SQLite databases
-set -a SQLITE_BACKUP_DIRS
 if [ -n "$SQLITE_PATHS" ]; then
     echo "Backing up SQLite databases"
     for SQLITE_SPEC in $SQLITE_PATHS; do

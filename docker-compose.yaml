@@ -598,6 +598,7 @@ services:
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - RESTIC_REPOSITORY=/restic-repo
       - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+      - RESTIC_LOGDIR=/var/log
       - RCLONE_FILENAME_PREFIX=foodios-vabl-dev-backup-
       - RCLONE_PATH=foodios-vabl-dev-backup
     entrypoint: ["/bin/sh"]
