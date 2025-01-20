@@ -1,0 +1,153 @@
+version: 2
+
+# assume env vars RESTIC_REPOSITORY and RESTIC_PASSWORD come through
+
+global:
+  scheduler: crond
+  default-command: snapshots
+  initialize: true
+  priority: low
+
+mixins:
+  schedule-defaults:
+    backup:
+      schedule-permission: system
+      schedule-priority: background
+      schedule-log: $RESTIC_LOGDIR/restic-{{ .Profile.Name }}.log
+    retention:
+      prune: true
+      after-backup: true
+
+  postgres:
+    default-vars:
+      DB: {{ .Profile.Name | replace "postgres-" "" }}
+    backup:
+      stdin: true
+      stdin-filename: "/data/postgres/$DB.pgdump"
+      # host, port, user, password are passed as PG* environment variables
+      stdin-command: 'pg_dump $POSTGRES_EXTRA_OPTS -Fc "$DB"'
+      tag...: ["postgres"]
+
+  sqlite-tree:
+    default-vars:
+      NAME: {{ .Profile.Name }}
+      SRC_TREE: /data/{{ .Profile.Name | replace "sqlite-" "" }}/
+    backup:
+      stdin: true
+      stdin-filename: /data/sqlite/${NAME}.tar
+      stdin-command: /scripts/sqlite-tree-tar.sh ${NAME} ${SRC_TREE}
+      tag...: ["sqlite-tree"]
+
+  source-data:
+    retention:
+      keep-within-hourly: "7d"
+      keep-within-daily: "30d"
+    backup:
+      schedule:
+        - hourly
+        - "*-*-* 0,4,8,12,16,20:00:00"
+      tag...: ["source-data"]
+    use:
+      - name: schedule-defaults
+
+  derived-data:
+    retention:
+      keep-within-hourly: "7d"
+      keep-within-daily: "30d"
+    backup:
+      schedule:
+        - "*-*-* 0,3,6,9,12,15,18,21:00:00"
+        - "*-*-* 0,12:00:00"
+      tag...: ["derived-data"]
+    use:
+      - name: schedule-defaults
+
+  runtime-data:
+    retention:
+      keep-within-hourly: "7d"
+    backup:
+      schedule:
+        - hourly
+      tag...: ["runtime-data"]
+    use:
+      - name: schedule-defaults
+
+  server-config:
+    retention:
+      keep-within-daily: "30d"
+    backup:
+      schedule:
+        - daily
+      tag...: ["server-config"]
+    use:
+      - name: schedule-defaults
+
+profiles:
+  postgres-bgs:
+    use:
+      - name: postgres
+      - name: source-data
+
+  bgs:
+    backup:
+      source:
+        - "/data/bgs"
+    use:
+      - name: derived-data
+
+  postgres-bsky:
+    use:
+      - name: postgres
+      - name: derived-data
+
+  bsky:
+    backup:
+      source:
+        - "/data/bsky"
+    use:
+      - name: derived-data
+
+  postgres-carstore:
+    use:
+      - name: postgres
+      - name: derived-data
+
+  postgres-ozone:
+    use:
+      - name: postgres
+      - name: source-data
+
+  postgres-palomar:
+    use:
+      - name: postgres
+      - name: runtime-data
+
+  postgres-plc:
+    use:
+      - name: postgres
+      - name: source-data
+
+  sqlite-pds:
+    use:
+      - name: sqlite-tree
+      - name: source-data
+
+  pds-blobs:
+    backup:
+      source:
+        - "/data/pds/blobs"
+    use:
+      - name: source-data
+
+  sqlite-feed-generator:
+    use:
+      - name: sqlite-tree
+      - name: source-data
+
+  opensearch:
+    backup:
+      source:
+        - "/data/opensearch"
+    use:
+      - name: derived-data
+
