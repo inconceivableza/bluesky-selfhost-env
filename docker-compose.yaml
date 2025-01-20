@@ -577,7 +577,7 @@ services:
 
   backup:
     image: creativeprojects/resticprofile:latest
-    hostname: backup.${DOMAIN}
+    hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
     volumes:
       - ./ops-helper/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
@@ -592,6 +592,7 @@ services:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
       - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite  # Glob pattern for SQLite files
+      - HOST_HOSTNAME=${HOST_HOSTNAME}
       - PGHOST=database
       - PGPORT=5432
       - PGUSER=${POSTGRES_USER}

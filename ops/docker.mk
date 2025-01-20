@@ -10,6 +10,7 @@ _dockerUp: _silent_load_vars _dockerUP_network
 _silent_load_vars:
 	$(eval _envs=$(shell cat ${passfile} | sed '1i\
 DOMAIN=${DOMAIN} \
+HOST_HOSTNAME=${HOST_HOSTNAME} \
 bgsFQDN=${bgsFQDN} \
 bskyFQDN=${bskyFQDN} \
 feedgenFQDN=${feedgenFQDN} \
