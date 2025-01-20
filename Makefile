@@ -113,12 +113,13 @@ LOG_LEVEL_DEFAULT ?=debug
 #    export Sdep='caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin'
 #    # no plc in Sdep, comparing below line.
 #
-Sdep  ?=caddy caddy-sidecar database redis opensearch plc test-wss test-ws test-indigo pgadmin
+Sdep  ?=caddy caddy-sidecar database redis opensearch plc test-wss test-ws test-indigo pgadmin backup
 Sbsky ?=pds bgs bsky social-app palomar
 Sfeed ?=feed-generator
 #Sozone ?=ozone ozone-daemon
 Sozone ?=ozone-standalone
 Sjetstream ?=jetstream
+Sbackup ?=backup
 
 # load passfile content as Makefile variables if exists
 ifeq ($(shell test -e ${passfile} && echo -n exists),exists)
