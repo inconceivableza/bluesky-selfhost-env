@@ -6,7 +6,7 @@ for p in $restic_profiles
   do
     resticprofile run-schedule backup@$p || { errors="$errors $p" ; }
   done
-if [ "$errors" -eq "" ]
+if [[ "$errors" == "" ]]
   then
     echo Successfully backed up the following restic profiles: $restic_profiles
   else
