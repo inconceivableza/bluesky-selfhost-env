@@ -34,6 +34,7 @@ echo Successfully backed up the following local profiles: $local_success
 echo Successfully backed up the following remote profiles: $remote_success
 if [[ "$errors" == "" ]]
   then
+    echo No profile failures detected
   else
     echo Errors backing up the following restic profiles: $errors 2>&1
   fi

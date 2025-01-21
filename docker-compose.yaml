@@ -608,6 +608,9 @@ services:
       - RESTIC_REMOTE_PASSWORD2=${RESTIC_REMOTE_PASSWORD2}
       - RESTIC_REMOTE_PASSWORD3=${RESTIC_REMOTE_PASSWORD3}
       - RESTIC_LOGDIR=/var/log
+      # if any of these keys are needed for the remote storage services, they can be configured in the environment
+      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${RESTIC_AWS_SECRET_ACCESS_KEY}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
     entrypoint: ["/bin/sh"]
