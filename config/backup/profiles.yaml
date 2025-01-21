@@ -7,6 +7,8 @@ global:
   default-command: snapshots
   initialize: true
   priority: low
+  restic-lock-retry-after: 1m
+  restic-stale-lock-age: 1h
 
 mixins:
   schedule-defaults:
@@ -14,6 +16,7 @@ mixins:
       schedule-permission: system
       schedule-priority: background
       schedule-log: $RESTIC_LOGDIR/restic-{{ .Profile.Name }}.log
+      schedule-lock-wait: 15m
       run-finally: 'resticprofile all-remote.copy'
     retention:
       prune: true
