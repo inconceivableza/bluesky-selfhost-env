@@ -53,6 +53,7 @@ mixins:
       schedule:
         - hourly
         - "*-*-* 0,4,8,12,16,20:00:00"
+        - daily
       tag...: ["source-data"]
     use:
       - name: schedule-defaults
