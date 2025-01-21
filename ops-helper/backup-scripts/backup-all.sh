@@ -1,14 +1,39 @@
 #!/bin/sh
-restic_profiles="`resticprofile profiles | grep '^  .*:' | cut -d: -f1`"
-echo Will backup the following profiles: $restic_profiles
+restic_profiles="$(resticprofile profiles | grep '^  .*:' | grep -v '\[.*\]' | sed 's/^  //' | cut -d: -f1)"
+local_profiles="$(echo "$restic_profiles" | grep -v "remote-")"
+remote_profiles="$(echo "$restic_profiles" | grep "remote-")"
+
+echo Will backup the following local profiles: $local_profiles
+echo and the following remote profiles: $remote_profiles
+
 errors=""
-for p in $restic_profiles
+local_success=""
+remote_success=""
+
+for p in $local_profiles
   do
-    resticprofile run-schedule backup@$p || { errors="$errors $p" ; }
+    if resticprofile $p.backup
+      then
+        local_success="$local_success $p"
+      else
+        errors="$errors $p"
+      fi
   done
+
+for p in $remote_profiles
+  do
+    if resticprofile $p.copy
+      then
+        remote_success="$remote_success $p"
+      else
+        errors="$errors $p"
+      fi
+  done
+
+echo Successfully backed up the following local profiles: $local_success
+echo Successfully backed up the following remote profiles: $remote_success
 if [[ "$errors" == "" ]]
   then
-    echo Successfully backed up the following restic profiles: $restic_profiles
   else
     echo Errors backing up the following restic profiles: $errors 2>&1
   fi

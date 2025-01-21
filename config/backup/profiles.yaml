@@ -14,6 +14,7 @@ mixins:
       schedule-permission: system
       schedule-priority: background
       schedule-log: $RESTIC_LOGDIR/restic-{{ .Profile.Name }}.log
+      run-finally: 'resticprofile all-remote.copy'
     retention:
       prune: true
       after-backup: true
@@ -81,6 +82,22 @@ mixins:
       tag...: ["server-config"]
     use:
       - name: schedule-defaults
+
+  remote-copy:
+    default-vars:
+      src_repo: $RESTIC_REPOSITORY
+      target_repo: ""
+      schedule: "hourly"
+    initialize: true
+    repository: "$src_repo"
+    password-file: "/resticprofile/p1"
+    lock: "/resticprofile/profile-{{ .Profile.Name }}.lock"
+    force-inactive-lock: true
+    copy:
+      initialize: true
+      initialize-copy-chunker-params: true
+      repository: "$target_repo"
+      password-file: "/resticprofile/p2"
 
 profiles:
   postgres-bgs:
@@ -150,4 +167,103 @@ profiles:
         - "/data/opensearch"
     use:
       - name: derived-data
+
+{{ if .Env.RESTIC_REMOTE_REPO1 }}
+  remote-repo1:
+    use:
+      - name: remote-copy
+        target_repo: "$RESTIC_REMOTE_REPO1"
+{{ end }}
+
+{{ if .Env.RESTIC_REMOTE_REPO2 }}
+  remote-repo2:
+    use:
+      - name: remote-copy
+        target_repo: "$RESTIC_REMOTE_REPO2"
+{{ end }}
+
+{{ if .Env.RESTIC_REMOTE_REPO3 }}
+  remote-repo3:
+    use:
+      - name: remote-copy
+        target_repo: "$RESTIC_REMOTE_REPO2"
+{{ end }}
+
+{{ define "profiles-source-data" }}
+      - postgres-bgs
+      - postgres-ozone
+      - postgres-plc
+      - sqlite-pds
+      - pds-blobs
+      - sqlite-feed-generator
+{{ end }}
+
+{{ define "profiles-derived-data" }}
+      - bgs
+      - postgres-bsky
+      - bsky
+      - postgres-carstore
+      - opensearch
+{{ end }}
+
+{{ define "profiles-runtime-data" }}
+      - postgres-palomar
+{{ end }}
+
+{{ define "profiles-remote" }}
+{{ if .Env.RESTIC_REMOTE_REPO1 }}
+      - remote-repo1
+{{ end }}
+{{ if .Env.RESTIC_REMOTE_REPO2 }}
+      - remote-repo2
+{{ end }}
+{{ if .Env.RESTIC_REMOTE_REPO3 }}
+      - remote-repo3
+{{ end }}
+{{ end }}
+
+groups:
+  source-data-local:
+    profiles:
+{{ template "profiles-source-data" . }}
+
+  derived-data-local:
+    profiles:
+{{ template "profiles-derived-data" . }}
+
+  runtime-data-local:
+    profiles:
+{{ template "profiles-runtime-data" . }}
+
+  all-local:
+    profiles:
+{{ template "profiles-source-data" . }}
+{{ template "profiles-derived-data" . }}
+{{ template "profiles-runtime-data" . }}
+
+  all-remote:
+    profiles:
+{{ template "profiles-remote" . }}
+
+  source-data:
+    profiles:
+{{ template "profiles-source-data" . }}
+{{ template "profiles-remote" . }}
+
+  runtime-data:
+    profiles:
+{{ template "profiles-runtime-data" . }}
+{{ template "profiles-remote" . }}
+
+  derived-data:
+    profiles:
+{{ template "profiles-derived-data" . }}
+{{ template "profiles-remote" . }}
+
+  all:
+    profiles:
+{{ template "profiles-source-data" . }}
+{{ template "profiles-derived-data" . }}
+{{ template "profiles-runtime-data" . }}
+{{ template "profiles-remote" . }}
 
