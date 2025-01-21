@@ -94,17 +94,20 @@ mixins:
     default-vars:
       src_repo: $RESTIC_REPOSITORY
       target_repo: ""
-      schedule: "hourly"
+      target_password: ""
     initialize: true
     repository: "$src_repo"
-    password-file: "/resticprofile/p1"
+    password-file: "$RESTIC_PASSWORD"
     lock: "/resticprofile/profile-{{ .Profile.Name }}.lock"
     force-inactive-lock: true
     copy:
       initialize: true
       initialize-copy-chunker-params: true
       repository: "$target_repo"
-      password-file: "/resticprofile/p2"
+      password-file: "$target_password_file"
+      # run this daily as a backup, but it should run normally after every other run
+      schedule:
+        - daily
 
 profiles:
   postgres-bgs:
@@ -180,6 +183,7 @@ profiles:
     use:
       - name: remote-copy
         target_repo: "$RESTIC_REMOTE_REPO1"
+        target_password_file: "/resticprofile/credentials/remote-repo1-password"
 {{ end }}
 
 {{ if .Env.RESTIC_REMOTE_REPO2 }}
@@ -187,13 +191,15 @@ profiles:
     use:
       - name: remote-copy
         target_repo: "$RESTIC_REMOTE_REPO2"
+        target_password_file: "/resticprofile/credentials/remote-repo2-password"
 {{ end }}
 
 {{ if .Env.RESTIC_REMOTE_REPO3 }}
   remote-repo3:
     use:
       - name: remote-copy
-        target_repo: "$RESTIC_REMOTE_REPO2"
+        target_repo: "$RESTIC_REMOTE_REPO3"
+        target_password_file: "/resticprofile/credentials/remote-repo3-password"
 {{ end }}
 
 {{ define "profiles-source-data" }}
