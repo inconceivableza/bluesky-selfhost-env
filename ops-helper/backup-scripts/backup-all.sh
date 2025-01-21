@@ -12,7 +12,7 @@ remote_success=""
 
 for p in $local_profiles
   do
-    if resticprofile $p.backup
+    if RESTIC_NO_AUTO_REMOTE=1 resticprofile $p.backup
       then
         local_success="$local_success $p"
       else
