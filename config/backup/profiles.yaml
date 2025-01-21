@@ -61,7 +61,7 @@ mixins:
     backup:
       schedule:
         - "*-*-* 0,3,6,9,12,15,18,21:00:00"
-        - "*-*-* 0,12:00:00"
+        - daily
       tag...: ["derived-data"]
     use:
       - name: schedule-defaults
