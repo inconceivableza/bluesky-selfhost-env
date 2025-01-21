@@ -97,7 +97,8 @@ mixins:
       target_password: ""
     initialize: true
     repository: "$src_repo"
-    password-file: "$RESTIC_PASSWORD"
+    # unlike other commands, this requires a password-file, and can't use $RESTIC_PASSWORD or --password
+    password-file: "/resticprofile/credentials/local-password"
     lock: "/resticprofile/profile-{{ .Profile.Name }}.lock"
     force-inactive-lock: true
     copy:
