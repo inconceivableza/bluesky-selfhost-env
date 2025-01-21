@@ -4,7 +4,7 @@
 # domain of self-hosting bluesky (care TLD, otherwise get failure, ie: NG=>mysky.local)
 DOMAIN ?=mysky.local.com
 # this is used for identifying restic backups; try to get as specifica a FQDN name as possible
-HOST_HOSTNAME ?= $(shell { hostname -A | sed 's/ /\n/g' ; hostname ; } | head -n 1)
+HOST_HOSTNAME ?= $(shell { hostname -A | sed 's/ /\n/g' | sed 's/.internal//g' ; hostname ; } | head -n 1)
 
 # FQDN of your self hosting bsky components.  DO NOT CHANGE THOSE, FOR USUAL CASES.
 # CHANGING THESE WITHOUT UNDERSTANDING WHAT YOU DOING, GETTING TROUBLES.
