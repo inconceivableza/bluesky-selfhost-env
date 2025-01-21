@@ -608,6 +608,8 @@ services:
       - RESTIC_REMOTE_PASSWORD2=${RESTIC_REMOTE_PASSWORD2}
       - RESTIC_REMOTE_PASSWORD3=${RESTIC_REMOTE_PASSWORD3}
       - RESTIC_LOGDIR=/var/log
+      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
     restart: unless-stopped
