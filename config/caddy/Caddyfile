@@ -113,7 +113,7 @@ http://test-ws.{$DOMAIN} {
 
 # starts: simple mapping >>>>>
 
-plc.{$DOMAIN} {
+{$plcFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -121,7 +121,7 @@ plc.{$DOMAIN} {
 	reverse_proxy http://plc:2582
 }
 
-bgs.{$DOMAIN} {
+{$bgsFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -129,7 +129,7 @@ bgs.{$DOMAIN} {
 	reverse_proxy http://bgs:2470
 }
 
-api.{$DOMAIN}, bsky.{$DOMAIN} {
+api.{$DOMAIN}, {$bskyFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -137,7 +137,6 @@ api.{$DOMAIN}, bsky.{$DOMAIN} {
 	reverse_proxy http://bsky:2584
 }
 
-# by default socialappFQDN is social-app.DOMAIN, but can be reconfigured
 {$socialappFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
@@ -146,7 +145,7 @@ api.{$DOMAIN}, bsky.{$DOMAIN} {
 	reverse_proxy http://social-app:8100
 }
 
-ozone.{$DOMAIN} {
+{$ozoneFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -163,7 +162,7 @@ ozone-standalone.{$DOMAIN} {
 }
 
 
-palomar.{$DOMAIN} {
+{$palomarFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -171,7 +170,7 @@ palomar.{$DOMAIN} {
 	reverse_proxy http://palomar:3999
 }
 
-feed-generator.{$DOMAIN} {
+{$feedgenFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -179,7 +178,7 @@ feed-generator.{$DOMAIN} {
 	reverse_proxy http://feed-generator:3000
 }
 
-jetstream.{$DOMAIN} {
+{$jetstreamFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
@@ -204,8 +203,7 @@ jetstream.{$DOMAIN} {
 }
 # ends:  simple mapping <<<<<
 
-# by default pdsFQDN is pds.DOMAIN, but can be reconfigured
-# starts:  *.pdsFQDN >>>>>>>>>>>
+# starts:  *.pdsFQDN (pds.DOMAIN) >>>>>>>>>>>
 *.{$pdsFQDN} {
         import cors
         tls {$EMAIL4CERTS} {
@@ -266,7 +264,7 @@ jetstream.{$DOMAIN} {
 
 # for ATP_APPVIEW_HOST=https://public.api.bsky.app in https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env
 # for https://github.com/bluesky-social/bsky-docs/issues/63
-public.api.{$DOMAIN} {
+{$publicApiFQDN} {
         import cors
 	tls {$EMAIL4CERTS} {
           on_demand
