@@ -253,6 +253,10 @@ ozone-standalone.{$DOMAIN} {
 #     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
         @others {
             header_regexp host Host ^(.*)\.{$pdsFQDN}$
+            # this must exclude all above paths, as redir has a higher priority than rewrite
+            not {
+                path          /xrpc* /.well-known* /robots.txt*
+            }
             path_regexp   path      ^(.*)
         }
         redir          @others      https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
