@@ -9,7 +9,7 @@ set -o allexport
 set +o allexport
 
 export u=firstever
-test_account_handle=${u}.pds.${DOMAIN}
+test_account_handle=${u}.${pdsFQDN}
 test_account_password=`pwgen 16`
 test_account_email=${u}@example.com
 show_heading "Test creating account" $handle with password $test_account_password and email $test_account_email 
