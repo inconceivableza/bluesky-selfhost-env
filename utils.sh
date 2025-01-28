@@ -88,5 +88,5 @@ export auto_watchlog=false
 # these are things we currently aren't patching - for ops/patch.mk
 export _nopatch=did-method-plc pds
 # these are the bluesky repositories we clone and use
-export _nrepo=atproto indigo social-app ozone jetstream feed-generator did-method-plc pds
+export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc pds"
 
