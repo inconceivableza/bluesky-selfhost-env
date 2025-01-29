@@ -44,7 +44,7 @@ services:
   caddy:
     #   reverse proxy
     #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
-    image: caddy:2
+    image: ${BRANDED_NAMESPACE}/caddy:2
     ports:
       - 80:80
       - 443:443

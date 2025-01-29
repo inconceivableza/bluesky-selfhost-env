@@ -1,0 +1,10 @@
+FROM caddy:2-builder AS builder
+ARG CADDY_DNS_PACKAGE_SRC
+
+RUN xcaddy build \
+    --with $CADDY_DNS_PACKAGE_SRC
+
+FROM caddy:2
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
