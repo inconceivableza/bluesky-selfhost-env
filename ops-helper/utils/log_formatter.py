@@ -1,4 +1,5 @@
 import json, sys, argparse
+import datetime
 import rich
 
 status_line_varnames = ['time', 'level', 'pid', 'remote_ip', 'host', 'hostname', 'name', 'status', 'req_method', 'req_url', 'res_statusCode', 'msg']
@@ -33,7 +34,9 @@ for line in sys.stdin:
     status_vars = {}
     for varname in status_line_varnames:
         if varname in log_obj:
-            status_vars[varname] = log_obj.pop(varname)
+            value = log_obj.pop(varname)
+            if varname == 'time' and type(value) == int:
+                value = datetime.datetime.fromtimestamp(value/1000.)
+            status_vars[varname] = value
     status_line = ' '.join([f"{varname}={status_vars[varname]}" for varname in status_line_varnames if varname in status_vars])
     rich.print(f"[bold green]{service_prefix}[/bold green]|", status_line, log_obj)
-
