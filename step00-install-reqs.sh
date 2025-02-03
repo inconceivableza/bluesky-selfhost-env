@@ -48,3 +48,12 @@ show_heading "Setting up environment" "for ops-helper/compose2envtable"
   python -m pip install -r requirements.txt
 )
 
+show_heading "Setting up environment" "for ops-helper/utils"
+(
+  cd ops-helper/utils
+  [ -d venv ] || python3 -m venv venv
+  . venv/bin/activate
+  python -m pip install -U pip
+  python -m pip install -r requirements.txt
+)
+
