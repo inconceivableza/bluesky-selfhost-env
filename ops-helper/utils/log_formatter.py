@@ -1,3 +1,5 @@
+#!/usr/bin/env -S sh -c 'exec "`dirname "$0"`/venv/bin/python" "$0" "$@"'
+
 import json, sys, argparse
 import datetime
 import rich
