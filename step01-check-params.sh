@@ -8,7 +8,7 @@ cd "$script_dir"
 [ -f $params_file ] || { show_error "Params file not found" at $params_file ; exit 1 ; }
 
 show_heading "Checking for required params" "in $params_file"
-declare -a needed_params=(DOMAIN asof EMAIL4CERTS PDS_EMAIL_SMTP_URL FEEDGEN_EMAIL CADDY_DNS_RESOLVER)
+declare -a needed_params=(DOMAIN pdsFQDN socialappFQDN asof EMAIL4CERTS PDS_EMAIL_SMTP_URL FEEDGEN_EMAIL CADDY_DNS_RESOLVER)
 failures=
 for needed_param in "${needed_params[@]}"
   do
