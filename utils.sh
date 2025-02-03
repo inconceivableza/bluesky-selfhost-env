@@ -45,8 +45,16 @@ function show_success {
   echo "${green_color}OK${reset_color}"
 }
 
+function show_success_n {
+  echo -n "${green_color}OK${reset_color}"
+}
+
 function show_failure {
   echo "${red_color}Fail${reset_color}"
+}
+
+function show_failure_n {
+  echo -n "${red_color}Fail${reset_color}"
 }
 
 function wait_for_container {

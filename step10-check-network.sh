@@ -11,11 +11,24 @@ set +o allexport
 show_heading "Checking DNS" configuration
 public_ip=`curl -s api.ipify.org/`
 echo "Expected IP address is $public_ip"
+show_info "Will check against default DNS as well as $CADDY_DNS_RESOLVER"
 
 # TODO: requires bind9-dnsutils
 function check_dns_maps_to_here() {
   check_domain="$1"
   echo -n "Checking DNS for $check_domain... "
+  resolved_ip="`dig +short -t a -q "$1" @$CADDY_DNS_RESOLVER | tail -n 1`"
+  failure=
+  if [ "$resolved_ip" == "$public_ip" ]
+    then
+      echo -n "$resolved_ip "
+      show_success_n
+      echo -n " "
+    else
+      echo -n "$resolved_ip != $public_ip "
+      show_failure
+      return 1
+    fi
   resolved_ip="`dig +short -t a -q "$1" | tail -n 1`"
   if [ "$resolved_ip" == "$public_ip" ]
     then
