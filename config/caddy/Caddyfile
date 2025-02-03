@@ -209,7 +209,7 @@ ozone-standalone.{$DOMAIN} {
         tls {$EMAIL4CERTS} {
 #         enables wildcards
           dns {$CADDY_DNS_PROVIDER} {$CADDY_DNS_API_TOKEN}
-          resolver {$CADDY_DNS_RESOLVER}
+          resolvers {$CADDY_DNS_RESOLVER}
         }
 #  it needs both of header_regexp and path_regexp with rewrite then reverse_proxy.
 #---------------
