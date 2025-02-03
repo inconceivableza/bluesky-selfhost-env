@@ -76,12 +76,12 @@ function wait_for_container {
 if [ "$params_file" != "" ]
   then
     show_info "Custom Parameters File" "using environment variable: $params_file"
-    params_file="`realpath "$params_file"`"
+    export params_file="`realpath "$params_file"`"
 elif [ "`basename "$script_dir"`" == "rebranding" ]
   then
-    params_file="`realpath "$script_dir/../bluesky-params.env"`"
+    export params_file="`realpath "$script_dir/../bluesky-params.env"`"
   else
-    params_file="$script_dir/bluesky-params.env"
+    export params_file="$script_dir/bluesky-params.env"
   fi
 
 # this will quit the calling script
