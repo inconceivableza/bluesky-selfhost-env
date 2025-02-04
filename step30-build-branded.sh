@@ -88,12 +88,19 @@ show_heading "Patching each repository" "with changes required for docker build"
 # NOTE: this op checks out a new branch before applying patch, and stays on the new branch
 make patch-dockerbuild checkoutbranchargs=-B commitargs=--no-verify
 
+failures=""
 for branded_service in $REBRANDED_SERVICES
   do
     show_heading "Building $branded_service" "customized for domain $DOMAIN"
     # 1) build image, customized for domain
-    make build f=./docker-compose-builder.yaml services=$branded_service
+    make build f=./docker-compose-builder.yaml services=$branded_service || failures="$failures $branded_service"
   done
+
+if [ "$failures" != "" ]
+  then
+    show_error "Error building containers" "for$failures"
+    exit 1
+  fi
 
 # show_heading "Building other images" "without domain customization"
 # 2) build images with original
