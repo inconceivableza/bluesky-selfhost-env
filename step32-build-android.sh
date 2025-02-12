@@ -1,0 +1,57 @@
+#!/bin/bash
+
+script_path="`realpath "$0"`"
+script_dir="`dirname "$script_path"`"
+. "$script_dir/utils.sh"
+
+set -o allexport
+. "$params_file"
+set +o allexport
+
+show_heading "Building Android app" "using applied branding and domain name changes"
+
+if [ "$JAVA_HOME" == "" ] || [ ! -d "$JAVA_HOME" ]
+  then
+    show_error "Java not found:" "default JAVA_HOME in $params_file to point to zulu17 install"
+    exit 1
+  fi
+
+if [ "$ANDROID_HOME" == "" ] || [ ! -d "$ANDROID_HOME" ]
+  then
+    show_error "Android Sdk not found:" "default ANDROID_HOME in $params_file to point to sdk install"
+    exit 1
+  fi
+
+cd "$script_dir/repos/social-app"
+
+which nvm || . ~/.nvm/nvm.sh
+nvm use 20
+npm install -g yarn
+yarn
+
+if npx eas-cli build -p android --local
+  then
+    build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.aab" | tail -n 1`"
+    show_heading "Build complete:" "presumed aab file is:"
+    ls -l "$build_file"
+    [ -f ${app_name}.apks ] && {
+      backup_file=${app_name}-"$(stat -t --format="%y" foodios-app.apks | cut -c 1-16 | sed 's/[- :]//g')".apks
+      show_warning "Renaming intermediate file" "${app_name}.apks -> ${backup_file}"
+      mv ${app_name}.apks ${backup_file}
+      ls -l ${backup_file}
+    }
+    show_info "Extracting apk" "and renaming to ${REBRANDING_NAME:=bluesky}"
+    bundletool build-apks --bundle $build_file --output=${REBRANDING_NAME:=bluesky}.apks --mode=universal
+    ls -l ${app_name}.apks
+    unzip ${app_name}.apks universal.apk
+    rm ${app_name}.apks
+    mv universal.apk ${app_name}.apk
+    # TODO: work out version/time stamping of apk
+    touch -r $build_file ${app_name}.apk
+    show_info "Android app extracted"
+    ls -l ${app_name}.apk
+  else
+    show_error "Error building Android app:" "see above for details"
+    exit 1
+  fi
+
