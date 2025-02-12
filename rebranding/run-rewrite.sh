@@ -67,7 +67,7 @@ python $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE |
     semgrep scan --config ${BRAND_CONFIG_DIR}/social-app.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
     cp google-services.json.example google-services.json
     python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" || { echo error running apply-files >&2 ; exit 1 ; }
-    echo "app_name=${brand}" > branding.env
+    echo "app_name=${REBRANDING_NAME}" > branding.env
 ) || { show_error "Patching social-app failed:" "examine above error messages and correct" ; exit 1 ; }
 
 (
