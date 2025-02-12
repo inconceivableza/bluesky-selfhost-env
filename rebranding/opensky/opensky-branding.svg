@@ -610,5 +610,19 @@
        id="email_mark_light"
        sodipodi:nodetypes="ssscssscssssssssssss"
        inkscape:label="pathEmailMarkLight" />
+    <use
+       x="0"
+       y="0"
+       xlink:href="#logo"
+       id="splash-android-icon"
+       transform="matrix(1.157454,0,0,1.157454,176.51801,95.248398)"
+       inkscape:label="gSplashAndroidIcon" />
+    <use
+       x="0"
+       y="0"
+       xlink:href="#black-logo"
+       id="splash-android-icon-dark"
+       transform="matrix(1.006978,0,0,1.006978,414.13398,276.32054)"
+       inkscape:label="gSplashAndroidIconDark" />
   </g>
 </svg>

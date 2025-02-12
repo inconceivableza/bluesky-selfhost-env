@@ -264,6 +264,8 @@ copy_files:
     - "logo.png"
     - "splash-dark.png"
     - "splash.png"
+    - "splash-android-icon-dark.png"
+    - "splash-android-icon.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "bskyweb/static/"

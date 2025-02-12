@@ -36,6 +36,8 @@ def wait_for_file(look_for_file, max_looks=20):
 def export_images(src, target_dir):
     inkscape_convert(src, 'splash-dark', target_dir, 'png')
     inkscape_convert(src, 'splash', target_dir, 'png')
+    inkscape_convert(src, 'splash-android-icon-dark', target_dir, 'png')
+    inkscape_convert(src, 'splash-android-icon', target_dir, 'png')
     inkscape_convert(src, 'default-avatar', target_dir, 'png')
     inkscape_convert(src, 'logo', target_dir, 'png')
     inkscape_convert(src, 'icon', target_dir, 'png')
