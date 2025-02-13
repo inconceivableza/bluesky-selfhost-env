@@ -48,4 +48,12 @@ rules:
     include:
       - packages/pds/src/mailer/templates
 
+- id: web-view
+  patterns:
+    - pattern: 'https://bsky.app'
+  fix: 'https://social-app.opensky.local.com'
+  message: Update the web view (used in email messages)
+  languages:
+    - generic
+  severity: WARNING
 
