@@ -161,7 +161,7 @@ rules:
 - id: expo-project-id
   patterns:
     - pattern: "55bd077a-d905-4184-9c7f-94789ba0f302"
-  fix: "87ab4766-b66c-489c-98ca-65e740fa205b"
+  fix: "19a6f1d0-201b-434e-affb-e4bdd025cd58"
   message: Update the expo project ID
   languages:
     - generic
