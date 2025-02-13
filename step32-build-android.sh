@@ -34,14 +34,15 @@ if npx eas-cli build -p android --local
     build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.aab" | head -n 1`"
     show_heading "Build complete:" "presumed aab file is:"
     ls -l "$build_file"
+    app_name="${REBRANDING_NAME:=bluesky}"
     [ -f ${app_name}.apks ] && {
-      backup_file=${app_name}-"$(stat -t --format="%y" foodios-app.apks | cut -c 1-16 | sed 's/[- :]//g')".apks
+      backup_file=${app_name}-"$(stat -t --format="%y" ${app_name}.apks | cut -c 1-16 | sed 's/[- :]//g')".apks
       show_warning "Renaming intermediate file" "${app_name}.apks -> ${backup_file}"
       mv ${app_name}.apks ${backup_file}
       ls -l ${backup_file}
     }
-    show_info "Extracting apk" "and renaming to ${REBRANDING_NAME:=bluesky}"
-    bundletool build-apks --bundle $build_file --output=${REBRANDING_NAME:=bluesky}.apks --mode=universal
+    show_info "Extracting apk" "and renaming to ${app_name}"
+    bundletool build-apks --bundle $build_file --output=${app_name}.apks --mode=universal
     ls -l ${app_name}.apks
     unzip ${app_name}.apks universal.apk
     rm ${app_name}.apks
