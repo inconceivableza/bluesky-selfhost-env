@@ -131,17 +131,27 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--env-file', type=str, action='append', default=[], help="Env file (can specify multiple)")
     parser.add_argument('-n', '--dry-run', action='store_true', default=False, help="Don't actually copy")
     parser.add_argument('--git-mv', action='store_true', default=False, help="Do renames with git mv instead of mv")
+    all_actions = ['rename', 'copy', 'svg-html', 'svg-tsx']
+    parser.add_argument('-a', '--actions', action='append', choices=all_actions, default=[], help="Specify which actions to run (defaults to all)")
     parser.add_argument('-l', '--loglevel', type=str, default='INFO', help="log level")
     args = parser.parse_args()
     if args.loglevel:
         logging.getLogger().setLevel(args.loglevel)
+    if not args.actions:
+        args.actions = all_actions
     with open(args.config) as config_file:
         config = yaml.safe_load(config_file)
     env = {}
     for env_file in args.env_file:
         env.update(read_env(env_file))
-    copy_files(config.get('copy_files', []), env, dry_run=args.dry_run)
-    replace_svg_in_html_files(config.get('svg_html_subst', []), env, dry_run=args.dry_run)
-    replace_svg_in_tsx_files(config.get('svg_tsx_subst', []), env, dry_run=args.dry_run)
+    for action in args.actions:
+        if action == 'rename':
+            rename_files(config.get('rename_paths', []), env, dry_run=args.dry_run, git_mv=args.git_mv)
+        elif action == 'copy':
+            copy_files(config.get('copy_files', []), env, dry_run=args.dry_run)
+        elif action == 'svg-html':
+            replace_svg_in_html_files(config.get('svg_html_subst', []), env, dry_run=args.dry_run)
+        elif action == 'svg-tsx':
+            replace_svg_in_tsx_files(config.get('svg_tsx_subst', []), env, dry_run=args.dry_run)
 
 
