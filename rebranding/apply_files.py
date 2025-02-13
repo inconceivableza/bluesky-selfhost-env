@@ -3,8 +3,10 @@
 import argparse
 import configparser
 import logging
+import os
 from os.path import join
 import shutil
+import subprocess
 import yaml
 import replace_svg_in_tsx
 import re
@@ -24,6 +26,20 @@ def replace_env(src, env):
     for key, value in sorted(env.items()):
         src = src.replace('${%s}' % key, value)
     return src
+
+def rename_files(config, env, dry_run=False, git_mv=False):
+    def get_config(node, key):
+        value = node.get(key)
+        return replace_env(value, env) if value else value
+    for rename_config in config:
+        src_path = get_config(rename_config, 'src_path')
+        dest_path = get_config(rename_config, 'dest_path')
+        logging.info(f"Renaming {src_path} to {dest_path}")
+        if not dry_run:
+            if git_mv:
+                subprocess.call(["git", "mv", src_path, dest_path])
+            else:
+                os.replace(src_path, dest_path)
 
 def copy_files(config, env, dry_run=False):
     def get_config(node, key):
@@ -114,6 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', type=str, required=True, help="Config file")
     parser.add_argument('-e', '--env-file', type=str, action='append', default=[], help="Env file (can specify multiple)")
     parser.add_argument('-n', '--dry-run', action='store_true', default=False, help="Don't actually copy")
+    parser.add_argument('--git-mv', action='store_true', default=False, help="Do renames with git mv instead of mv")
     parser.add_argument('-l', '--loglevel', type=str, default='INFO', help="log level")
     args = parser.parse_args()
     if args.loglevel:
