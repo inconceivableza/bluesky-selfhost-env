@@ -31,7 +31,7 @@ yarn
 
 if npx eas-cli build -p android --local
   then
-    build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.aab" | tail -n 1`"
+    build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.aab" | head -n 1`"
     show_heading "Build complete:" "presumed aab file is:"
     ls -l "$build_file"
     [ -f ${app_name}.apks ] && {
