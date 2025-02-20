@@ -2,6 +2,7 @@
 docker_network ?= bsky_${DOMAIN}
 dockerCompose ?= docker compose
 auto_watchlog ?= true
+COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
 
 _dockerUp: _silent_load_vars _dockerUP_network
 	${_envs} ${dockerCompose} -f ${f} up -d ${services}
@@ -53,7 +54,7 @@ docker-pull:
 docker-pull-unbranded:
 	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull ${unbranded_services}
 build:
-	DOMAIN=${DOMAIN} asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} build ${services}
+	COMPOSE_PROFILES=${COMPOSE_PROFILES} DOMAIN=${DOMAIN} asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} build ${services}
 
 docker-start::      setupdir ${wDir}/config/caddy/Caddyfile ${passfile}
 ifeq ($(EMAIL4CERTS),internal)

@@ -106,6 +106,7 @@ services:
 # debug for bluesky with indigo subcmds >>>
   test-indigo:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-tools:${asof}
+    profiles: ['', 'indigo']
     build:
        context: ./repos/indigo/
        dockerfile: Dockerfile
@@ -170,6 +171,7 @@ services:
 
   opensearch:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof}
+    profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
@@ -203,16 +205,16 @@ services:
     restart: always
 
   plc:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:latest
-#   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
-#   build:
-#     context: ./repos/did-method-plc/
-#     dockerfile: packages/server/Dockerfile
-#     args:
-#      - http_proxy=${http_proxy}
-#      - https_proxy=${https_proxy}
-#      - no_proxy=${no_proxy}
-#      - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
+    profiles: ['', 'did-method-plc']
+    build:
+      context: ./repos/did-method-plc/
+      dockerfile: packages/server/Dockerfile
+      args:
+       - http_proxy=${http_proxy}
+       - https_proxy=${https_proxy}
+       - no_proxy=${no_proxy}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 2582:2582
     volumes:
@@ -238,8 +240,8 @@ services:
       - caddy
       
   pds:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}-${DOMAIN}
+    profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
       dockerfile: services/pds/Dockerfile
@@ -300,6 +302,7 @@ services:
 
   bgs:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-bgs:${asof}
+    profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
@@ -340,6 +343,7 @@ services:
   bsky:
     # appview(api)
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-bsky:${asof}
+    profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
       dockerfile: services/bsky/Dockerfile
@@ -402,6 +406,7 @@ services:
   social-app:
     #image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
+    profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile
@@ -436,6 +441,7 @@ services:
 
   palomar:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
+    profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile
@@ -471,16 +477,16 @@ services:
       - caddy
 
   jetstream:
-   #image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
-   #build:
-   #  context: ./repos/jetstream/
-   #  dockerfile: Dockerfile
-   #  args:
-   #   - http_proxy=${http_proxy}
-   #   - https_proxy=${https_proxy}
-   #   - no_proxy=${no_proxy}
-   #   - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
+    profiles: ['', 'jetstream']
+    build:
+      context: ./repos/jetstream/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy}
+       - https_proxy=${https_proxy}
+       - no_proxy=${no_proxy}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 6008:6008
     volumes:
@@ -501,6 +507,7 @@ services:
   ozone-standalone:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
       dockerfile: Dockerfile
@@ -557,6 +564,7 @@ services:
   ozone:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -606,6 +614,7 @@ services:
 
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -652,16 +661,16 @@ services:
       - caddy
 
   feed-generator:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
-   #image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
-   #build:
-   #  context: ./repos/feed-generator/
-   #  dockerfile: Dockerfile
-   #  args:
-   #   - http_proxy=${http_proxy}
-   #   - https_proxy=${https_proxy}
-   #   - no_proxy=${no_proxy}
-   #   - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
+    profiles: ['', 'feed-generator']
+    build:
+      context: ./repos/feed-generator/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy}
+       - https_proxy=${https_proxy}
+       - no_proxy=${no_proxy}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 2586:3000
     environment:
