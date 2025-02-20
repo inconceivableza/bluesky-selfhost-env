@@ -412,7 +412,7 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 8100:8100
-    command: /usr/bin/bskyweb serve
+    command: /usr/bin/${REBRANDED_WEB_SERVICE:bskyweb} serve
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
