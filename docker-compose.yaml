@@ -361,7 +361,7 @@ services:
     image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
     ports:
       - 8100:8100
-    command: /usr/bin/${REBRANDED_WEB_SERVICE:bskyweb} serve
+    command: /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -376,6 +376,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
