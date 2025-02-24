@@ -13,7 +13,8 @@ for db_table in plc:dids plc:operations bgs:actor_infos bgs:pds bgs:repo_event_r
     [ "$src_db" == "bsky" ] && export PGOPTIONS="--search-path=bsky"
     target_file=$target_dir/$src_db-$table.json
     echo saving $src_db table $table to $(echo $target_file | sed "s#$target_dir/##")
-    psql -A -t -c "\\copy (SELECT json_agg(row_to_json($table)) :: text FROM $table) to '$target_file';" $src_db | grep -v '^COPY 1$'
+    # two-layer double-escaping in a sed command allows adjusting for postgres copy treating the output as csv and escaping " with a backslash that is then escaped
+    psql -A -t -c "\\copy (SELECT json_agg(row_to_json($table)) :: text FROM $table) to program 'sed ''s~\\\\\\\\\"~\\\\\"~g'' > $target_file';" $src_db | grep -v '^COPY 1$'
   done
 
 # now sqlite
