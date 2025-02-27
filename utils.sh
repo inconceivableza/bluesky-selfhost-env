@@ -12,7 +12,6 @@ blue_color=$(printf '\e[1;34m')
 purple_color=$(printf '\e[1;35m')
 reset_color=$(printf '\e[1;0m')
 
-
 function show_heading {
   echo
   echo -n "$blue_color""$start_bold"$1 "$clear_bold"
@@ -73,10 +72,34 @@ function wait_for_container {
   show_success
 }
 
+function get_linux_os {
+  . /etc/os-release
+  if [ "$ID" != "" ]
+    then
+      echo $ID
+    else
+      echo unknown
+  fi
+}
+
+uname_os=$(uname)
+if [ "$uname_os" == "Linux" ]
+  then
+    os=linux-$(get_linux_os)
+elif [ "$uname_os" == "Darwin" ]
+  then
+    os=macos
+else
+    os=unknown
+fi
+
+show_info "OS detected" $os
+
 if [ "$params_file" != "" ]
   then
     show_info "Custom Parameters File" "using environment variable: $params_file"
     export params_file="`realpath "$params_file"`"
+
 elif [ "`basename "$script_dir"`" == "rebranding" ]
   then
     export params_file="`realpath "$script_dir/../bluesky-params.env"`"
