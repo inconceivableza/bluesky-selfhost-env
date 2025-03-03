@@ -305,6 +305,11 @@ if __name__ == '__main__':
     process_bsky_data()
     process_pds_data()
     process_bgs_data()
+    pprint.pprint(dids_with_mismatches)
     patch_scripts = create_patch_scripts()
     pprint.pprint(patch_scripts)
+    patch_scripts_filename = 'patch_scripts.json'
+    with open(patch_scripts_filename, 'w') as f:
+        json.dump(patch_scripts, f, indent=4)
+    print(f"Saved patch scripts to {patch_scripts_filename}")
 
