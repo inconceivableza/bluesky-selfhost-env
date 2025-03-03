@@ -258,3 +258,32 @@ for did, bgs_actor_info in bgs_actor_info_dids.items():
 print()
 print(f"Mismatch summary:\n{pprint.pformat(dids_with_mismatches)}")
 
+def update_bsky_handle_from_plc(did):
+    plc_handle = did_to_handles.get(did)[0].replace('at://', '')
+    return ["UPDATE actor SET handle=:handle where did=:did", {'handle': plc_handle, 'did': did}]
+
+def update_bgs_display_name_from_bsky(did):
+    bsky_display_name = did_to_profiles.get(did, [(None, '')])[0][1]
+    return ["UPDATE actor_infos SET display_name=:display_name where did=:did", {'display_name': bsky_display_name, 'did': did}]
+
+known_handlers = {
+    'plc-bsky-actor-handle': ('bsky', update_bsky_handle_from_plc),
+    'bgs-bsky-display-name-mismatch': ('bgs', update_bgs_display_name_from_bsky),
+    'bsky-profile-display-name-missing': None,  # this isn't necessarily an error
+}
+
+patch_scripts = {}
+
+for did, mismatches in dids_with_mismatches.items():
+    can_handle = [mismatch in known_handlers for mismatch in mismatches]
+    if False not in can_handle:
+        for mismatch in mismatches:
+            handler = known_handlers.get(mismatch)
+            if handler is None:
+                continue
+            target_db, handler_fn = handler
+            script = handler_fn(did)
+            patch_scripts.setdefault(target_db, []).append(script)
+
+pprint.pprint(patch_scripts)
+
