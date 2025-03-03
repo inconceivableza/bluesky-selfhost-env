@@ -254,10 +254,10 @@ def process_bgs_data():
         if not valid_handle:
             print(f"bgs reports invalid handle for did {did}, handle {handle}")
             dids_with_mismatches.setdefault(did, []).append('bgs-actor_info-invalid-handle')
-        bsky_handle = did_to_handles.get(did, [])
-        if bsky_handle != [f'at://{handle}']:
-            print(f"bgs handle for did {did} is {handle}, but bsky has {bsky_handle}")
-            dids_with_mismatches.setdefault(did, []).append('bgs-bsky-handle-mismatch')
+        plc_handle = did_to_handles.get(did, [])
+        if plc_handle != [f'at://{handle}']:
+            print(f"bgs handle for did {did} is {handle}, but plc has {plc_handle}")
+            dids_with_mismatches.setdefault(did, []).append('bgs-plc-handle-mismatch')
         bsky_display_name = did_to_profiles.get(did, [(None, '')])[0][1]
         if bsky_display_name != display_name:
             print(f"bgs display name for did {did} is {display_name}, but bsky has {bsky_display_name}")
@@ -274,8 +274,13 @@ def update_bgs_display_name_from_bsky(did):
     bsky_display_name = did_to_profiles.get(did, [(None, '')])[0][1]
     return ["UPDATE actor_infos SET display_name=:display_name where did=:did", {'display_name': bsky_display_name, 'did': did}]
 
+def update_bgs_handle_from_plc(did):
+    plc_handle = did_to_handles.get(did)[0].replace('at://', '')
+    return ["UPDATE actor_infos SET handle=:handle where did=:did", {'handle': plc_handle, 'did': did}]
+
 known_handlers = {
     'plc-bsky-actor-handle': ('bsky', update_bsky_handle_from_plc),
+    'bgs-plc-handle-mismatch': ('bgs', update_bgs_handle_from_plc),
     'bgs-bsky-display-name-mismatch': ('bgs', update_bgs_display_name_from_bsky),
     'bsky-profile-display-name-missing': None,  # this isn't necessarily an error
 }
