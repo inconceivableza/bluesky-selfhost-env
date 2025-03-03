@@ -268,15 +268,15 @@ def process_bgs_data():
 
 def update_bsky_handle_from_plc(did):
     plc_handle = did_to_handles.get(did)[0].replace('at://', '')
-    return ["UPDATE actor SET handle=:handle where did=:did", {'handle': plc_handle, 'did': did}]
+    return ["UPDATE actor SET handle=%(handle)s where did=%(did)s", {'handle': plc_handle, 'did': did}]
 
 def update_bgs_display_name_from_bsky(did):
     bsky_display_name = did_to_profiles.get(did, [(None, '')])[0][1]
-    return ["UPDATE actor_infos SET display_name=:display_name where did=:did", {'display_name': bsky_display_name, 'did': did}]
+    return ["UPDATE actor_infos SET display_name=%(display_name)s where did=%(did)s", {'display_name': bsky_display_name, 'did': did}]
 
 def update_bgs_handle_from_plc(did):
     plc_handle = did_to_handles.get(did)[0].replace('at://', '')
-    return ["UPDATE actor_infos SET handle=:handle where did=:did", {'handle': plc_handle, 'did': did}]
+    return ["UPDATE actor_infos SET handle=%(handle)s where did=%(did)s", {'handle': plc_handle, 'did': did}]
 
 known_handlers = {
     'plc-bsky-actor-handle': ('bsky', update_bsky_handle_from_plc),
