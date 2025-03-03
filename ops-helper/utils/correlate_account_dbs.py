@@ -63,19 +63,26 @@ def read_all_data():
         data[basename] = d
     return data
 
-data_files = read_all_data()
+data_files = {}
 
-all_dids = [r['did'] for r in data_files['plc-dids']]
+all_dids = []
 
-current_did_info = {did: {} for did in all_dids}
+dids_with_mismatches = {}
+
+current_did_info = {}
 current_did_commit = {}
 did_to_handles = {}
 did_to_profiles = {}
 handle_to_did = {}
 
-# PLC data
+bgs_user_dids = {}
+bgs_actor_info_dids = {}
+
+# PLC processing
 
 def process_plc_data():
+    all_dids.extend([r['did'] for r in data_files['plc-dids']])
+    current_did_info.update({did: {} for did in all_dids})
     for did_op in data_files['plc-operations']:
         did = did_op['did']
         op_record = did_op['operation']
@@ -111,9 +118,7 @@ def process_plc_data():
             base_handle = handle.replace('at://', '', 1)
             handle_to_did.setdefault(handle, {})['plc'] = did
 
-# BSKY data
-
-dids_with_mismatches = {}
+# BSKY processing
 
 def process_bsky_data():
     for actor in data_files['bsky-actor']:
@@ -172,7 +177,7 @@ def process_bsky_data():
             print(f"plc did {did} does not have a profile in bsky")
             dids_with_mismatches.setdefault(did, []).append('missing-bsky-profile')
 
-# PDS data
+# PDS processing
 
 def process_pds_data():
     pds_account_dids = {pds_account.get('did'): pds_account for pds_account in data_files['pds-account-account']}
@@ -215,12 +220,9 @@ def process_pds_data():
 
 # ignore pds-sequencer-repo_seq - this is about repositories, not accounts
 
-# BGS (relay) data
+# BGS (relay) processing
 
 # ignore bgs-repo_event_records - contains non-account info
-
-bgs_user_dids = {}
-bgs_actor_info_dids = {}
 
 def process_bgs_data():
     bgs_user_dids.update({bgs_user.get('did'): bgs_user for bgs_user in data_files['bgs-users']})
@@ -293,7 +295,7 @@ def create_patch_scripts():
     return db_scripts
 
 if __name__ == '__main__':
-    read_all_data()
+    data_files.update(read_all_data())
     process_plc_data()
     process_bsky_data()
     process_pds_data()
