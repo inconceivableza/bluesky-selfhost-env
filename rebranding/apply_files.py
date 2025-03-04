@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S sh -c 'exec "`dirname "$0"`/venv/bin/python" "$0" "$@"'
 
 import argparse
 import configparser
