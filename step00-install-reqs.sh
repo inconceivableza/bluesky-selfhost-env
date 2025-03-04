@@ -80,3 +80,12 @@ show_heading "Setting up environment" "for ops-helper/utils"
   python -m pip install -r requirements.txt
 )
 
+show_heading "Setting up environment" "for rebranding"
+(
+  cd rebranding
+  [ -d venv ] || python3 -m venv venv
+  . venv/bin/activate
+  python -m pip install -U pip
+  python -m pip install -r requirements.txt
+)
+
