@@ -19,10 +19,10 @@ for repoDir in $repoDirs
     (
       cd $repoDir
       echo "$blue_color$clear_bold`basename ${repoDir}`$reset_color"
-      src_branch=origin/main
-      # TODO: code this to fetch from multiple repositories, and configure which branch to use with parameters
-      [ "`basename $repoDir`" == "social-app" ] && src_branch=brightsun/1.98.0-foodios
-      $script_dir/autobranch.sh work $src_branch dockerbuild local-rebranding-$REBRANDING_NAME $src_branch
+      repo_branch_varname=$(basename $repoDir | sed 's/-/_/g')_branch
+      src_branch=${!repo_branch_varname:-origin/main}
+      [[ "$src_branch" != "origin/main" ]] && show_info "Using branch $src_branch" from \$$repo_branch_varname for repo $(basename $repoDir)
+      $script_dir/autobranch.sh work $src_branch dockerbuild local-rebranding-$REBRANDING_NAME $src_branch main
     ) || { show_error "Error updating to latest branch:" "inspect $repoDir and adjust as necessary" ; exit 1 ; }
   done
 

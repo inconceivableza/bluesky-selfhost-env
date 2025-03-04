@@ -76,7 +76,7 @@ elif [[ "$allowed_starting_branches" != "" ]]
     is_allowed=
     for allowed_starting_branch in $allowed_starting_branches
       do
-        if [[ "$current_branch" == "$allowed_starting_branch" ]]
+        if [[ "$current_branch" == "$allowed_starting_branch" || "$current_branch" == "$(basename $allowed_starting_branch)" ]]
           then
             is_allowed=true
           fi
