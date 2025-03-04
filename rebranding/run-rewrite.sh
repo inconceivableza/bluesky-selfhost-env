@@ -46,13 +46,18 @@ BRAND_IMAGES_FILE="`basename "$BRAND_IMAGES_DIR"`-branding.svg"
     exit 1
 }
 
-BRAND_TMP_ENV_FILE="`mktemp --suffix=.env`"
+if [ "$os" == "macos" ]
+  then
+    BRAND_TMP_ENV_FILE="`mktemp`"
+  else
+    BRAND_TMP_ENV_FILE="`mktemp --suffix=.env`"
+  fi
 echo "BRAND_CONFIG_DIR=${BRAND_CONFIG_DIR}" >> "$BRAND_TMP_ENV_FILE" 
 echo "BRAND_IMAGES_DIR=${BRAND_IMAGES_DIR}" >> "$BRAND_TMP_ENV_FILE" 
 
 [ -f "$params_file" ] && { set -a ; . "$params_file" ; set +a ; }
 
-python $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE || { show_error "Error exporting images" "from $BRAND_IMAGES_DIR" ; exit 1 ; }
+python3 $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE || { show_error "Error exporting images" "from $BRAND_IMAGES_DIR" ; exit 1 ; }
 
 [ "$social_app_dir" == "" ] && social_app_dir=../repos/social-app/
 [ "$atproto_dir" == "" ] && atproto_dir=../repos/atproto/
@@ -64,10 +69,10 @@ python $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE |
     cd "$social_app_dir"
     echo patching social-app in `pwd` with $(basename ${BRAND_CONFIG_DIR})
     git reset --hard
-    python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
+    python3 ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
     semgrep scan --config ${BRAND_CONFIG_DIR}/social-app.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
     cp google-services.json.example google-services.json
-    python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
+    python3 ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
     echo "app_name=${REBRANDING_NAME}" > branding.env
 ) || { show_error "Patching social-app failed:" "examine above error messages and correct" ; exit 1 ; }
 
