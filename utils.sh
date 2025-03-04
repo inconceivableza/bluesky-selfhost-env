@@ -93,11 +93,15 @@ else
     os=unknown
 fi
 
-show_info "OS detected" $os
+function maybe_show_info {
+  [ "$bluesky_utils_imported" == "" ] && show_info "$@"
+}
+
+maybe_show_info "OS detected" $os
 
 if [ "$params_file" != "" ]
   then
-    show_info "Custom Parameters File" "using environment variable: $params_file"
+    maybe_show_info "Custom Parameters File" "using environment variable: $params_file"
     export params_file="`realpath "$params_file"`"
 
 elif [ "`basename "$script_dir"`" == "rebranding" ]
@@ -106,6 +110,8 @@ elif [ "`basename "$script_dir"`" == "rebranding" ]
   else
     export params_file="$script_dir/bluesky-params.env"
   fi
+
+export bluesky_utils_imported=1
 
 # this will quit the calling script
 [ -f "$params_file" ] || {
