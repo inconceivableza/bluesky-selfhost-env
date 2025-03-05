@@ -32,7 +32,10 @@ elif [ "$os" == "macos" ]
         required_packages= 
         for cmd in make pwgen jq yq websocat inkscape imagemagick semgrep comby python
           do
-            which $cmd > /dev/null || required_packages="$required_packages $cmd"
+            cmd=$pkg
+            [ "$pkg" == "imagemagick" ] && cmd=magick
+            [ "$pkg" == "python" ] && cmd=python3
+            which $cmd > /dev/null || required_packages="$required_packages $pkg"
           done
         if [ "$required_packages" == "" ]
           then
