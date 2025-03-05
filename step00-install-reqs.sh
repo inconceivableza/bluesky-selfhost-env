@@ -30,7 +30,7 @@ elif [ "$os" == "macos" ]
     if which brew >/dev/null
       then
         required_packages= 
-        for cmd in make pwgen jq yq websocat inkscape imagemagick semgrep comby python
+        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane
           do
             cmd=$pkg
             [ "$pkg" == "imagemagick" ] && cmd=magick
