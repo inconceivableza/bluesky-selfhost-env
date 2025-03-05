@@ -50,13 +50,23 @@ elif [ "$os" == "macos" ]
       fi
 fi
 
+
 show_heading "Setting up nvm" and node
-# installing nvm and node
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-# this is manually sourcing nvm so we can use its functions
 export NVM_DIR="$HOME/.nvm"
+export NVM_VER=0.40.1
+export NODE_VER=20
+if [ ! -d "$NVM_DIR/.git" ]
+  then
+    show_info "Installing nvm" version $NVM_VER
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v$NVM_VER/install.sh | bash
+  fi
+# this is manually sourcing nvm so we can use its functions
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install 20
+show_info "Checking node" version $NODE_VER
+nvm ls $NODE_VER || {
+  show_info "Installing node" version $NODE_VER
+  nvm install $NODE_VER
+}
 
 show_heading "Building internal tool" "ops-helper/apiImpl" 
 (
