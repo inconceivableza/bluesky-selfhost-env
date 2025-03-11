@@ -67,6 +67,15 @@ elif [ "$os" == "macos" ]
           security add-trusted-cert -d -r unspecified -k "${target_keychain}" ~/Downloads/$cert_filename
         fi
     done
+
+  # Check Xcode location - see https://stackoverflow.com/a/19529693/120398
+  # This could be done differently e.g. checking that the right executables are available at this location
+  expected_xcode=/Applications/Xcode.app/Contents/Developer
+  if [ "$(xcode-select -p)" != "$expected_xcode" ]
+    then
+      show_heading "Correcting xcode location" "which will require password for sudo rights"
+      sudo xcode-select -s "$expected_xcode"
+    fi
 fi
 
 show_heading "Setting up nvm" and node
