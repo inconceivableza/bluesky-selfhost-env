@@ -32,7 +32,7 @@ this repository aims to get self-hosted bluesky env in easy with:
  - simple:          all bluesky components runs on one host, by docker-compose.
  - less remapping:  simple rules as possible, among FQDN <=> reverse proxy <=> docker-container, for easy understanding and tunning.
 
-at current, my latest release is <strong>2025-02-16</strong> based on codes <strong>2025-02-16</strong> of bluesky-social.<br>
+at current, my latest release is <strong>2025-03-08</strong> based on codes <strong>2025-03-08</strong> of bluesky-social.<br>
 
 ## <a id="status"/>Current status regarding self-hosting
 
@@ -84,8 +84,8 @@ Copy `bluesky-params.env.example` to start off.
 export DOMAIN=whatever.yourdomain.com
 
 # 2) set asof date, to distinguish docker images / its sources.
-#    2025-02-16(for latest prebuild, in %Y-%m-%d), or latest (following docker image naming manner in lazy).
-export asof=2025-02-16
+#    2025-03-08(for latest prebuild, in %Y-%m-%d), or latest (following docker image naming manner in lazy).
+export asof=2025-03-08
 
 # 3) set email addresses.
 
@@ -153,6 +153,10 @@ If you don't set `EMAIL4CERTS` to `internal` in your environment file, this scri
 # check DNS server responses for your self-host domain
 dig  ${DOMAIN}
 dig  any.${DOMAIN}
+
+# check if DNS works as expected. test from all nodes you want to access to your selfhosting bluesky, including host and client machines.
+ping ${DOMAIN}
+ping any.${DOMAIN}
 
 # start containers for test
 make    docker-start f=./docker-compose-debug-caddy.yaml services=
