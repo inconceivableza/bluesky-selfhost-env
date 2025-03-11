@@ -51,8 +51,23 @@ elif [ "$os" == "macos" ]
         show_error "Brew not found but is required:" please install homebrew before continuing
         exit 1
       fi
-fi
+  show_info "Checking other build requirements" "for iOS builds"
 
+  # Check required certificates - see https://stackoverflow.com/a/78231028/120398 
+  target_keychain=~/Library/Keychains/login.keychain-db
+  # to get these sha checks, download the certificate and then openssl x509 -noout -fingerprint -sha1 -inform der -in ~/Downloads/AppleWWDRCAG3.cer | sed 's/://g'
+  for cert_sha_pair in AppleWWDRCAG3.cer:06EC06599F4ED0027CC58956B4D3AC1255114F35 AppleWWDRCAG6.cer:0BE38BFE21FD434D8CC51CBE0E2BC7758DDBF97B
+    do
+      cert_filename="${cert_sha_pair%:*}"
+      cert_sha="${cert_sha_pair#*:}"
+      if ! security find-certificate -a -c "Apple Worldwide Developer Relations Certification Authority" -Z "${target_keychain}" | grep ${cert_sha} >/dev/null
+        then
+          show_heading "Installing certificate" $cert_filename
+          curl https://www.apple.com/certificateauthority/$cert_filename -o ~/Downloads/$cert_filename
+          security add-trusted-cert -d -r unspecified -k "${target_keychain}" ~/Downloads/$cert_filename
+        fi
+    done
+fi
 
 show_heading "Setting up nvm" and node
 export NVM_DIR="$HOME/.nvm"
@@ -70,6 +85,12 @@ nvm ls $NODE_VER || {
   show_info "Installing node" version $NODE_VER
   nvm install $NODE_VER
 }
+
+show_info "Checking yarn" in node $NODE_VER
+(
+  nvm use $NODE_VER
+  which yarn > /dev/null || npm install -g yarn
+)
 
 show_heading "Building internal tool" "ops-helper/apiImpl" 
 (

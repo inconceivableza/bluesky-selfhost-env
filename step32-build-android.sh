@@ -26,7 +26,6 @@ cd "$script_dir/repos/social-app"
 
 which nvm || . ~/.nvm/nvm.sh
 nvm use 20
-npm install -g yarn
 yarn
 
 if npx eas-cli build -p android --local
