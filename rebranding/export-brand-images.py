@@ -98,10 +98,14 @@ def copy_style_between_elements(svg_string, source_id, target_id):
         if element_id:
             element_id_map[element_id] = elem
     source_element, target_element = element_id_map.get(source_id), element_id_map.get(target_id)
-    if not source_id:
+    if source_element is None:
         raise ValueError(f"Source element with id '{source_id}' not found")
-    if not target_id:
+    if target_element is None:
         raise ValueError(f"Target element with id '{target_id}' not found")
+    if target_element.tag.endswith('use'):
+        # if the target is actually a reference, affect the base style, since we assume only this reference is being exported
+        target_ref_id = target_element.get('{http://www.w3.org/1999/xlink}href').replace('#', '')
+        target_element = element_id_map.get(target_ref_id)
     style = source_element.get('style') or ''
     styles_dict = parse_css_styles(style)
     gradient_id = get_gradient_id(styles_dict)
