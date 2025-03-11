@@ -27,6 +27,43 @@ def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False):
     logging.info(f"Extracting {src_path}:{src_id} to {target_dir}/{src_id}.{target_ext}")
     subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={join(target_dir, src_id)}.{target_ext}", src_path])
 
+def parse_css_styles(css_string):
+    styles = {}
+    # Split the string by semicolons to get individual style declarations
+    declarations = css_string.split(';')
+    for declaration in declarations:
+        if not declaration.strip():
+            continue
+        # Split each declaration into property and value
+        parts = declaration.split(':', 1)
+        if len(parts) == 2:
+            property_name = parts[0].strip()
+            value = parts[1].strip()
+            styles[property_name] = value
+    return styles
+
+def get_gradient_id(styles):
+    # Extract gradient id if fill uses url() format
+    fill_value = styles.get('fill', '')
+    gradient_match = re.search(r'url\(#([a-zA-Z0-9_]+)\)', fill_value)
+    if gradient_match:
+        return gradient_match.group(1)
+    return None
+
+def get_relative_gradient_vector(gradient_def, source_element, target_element):
+    """Given absolutely positioned gradient and rectangle, translate the gradient definition from the source to the target element"""
+    def get_float(d, k):
+        v = d.get(k)
+        return float(v) if v is not None else None
+    grad_x1, grad_x2, grad_y1, grad_y2 = [get_float(gradient_def, key) for key in ('x1', 'x2', 'y1', 'y2')]
+    src_x, src_y, src_width, src_height = [get_float(source_element, key) for key in ('x', 'y', 'width', 'height')]
+    tgt_x, tgt_y, tgt_width, tgt_height = [get_float(target_element, key) for key in ('x', 'y', 'width', 'height')]
+    relgrad_x1, relgrad_x2, relgrad_y1, relgrad_y2 = [(grad_x1 - src_x) / src_width, (grad_x2 - src_x) / src_width,
+                                                      (grad_y1 - src_y) / src_height, (grad_y2 - src_y) / src_height]
+    tgtgrad_x1, tgtgrad_x2, tgtgrad_y1, tgtgrad_y2 = [tgt_x + relgrad_x1 * tgt_width, tgt_x + relgrad_x2 * tgt_width,
+                                                      tgt_y + relgrad_y1 * tgt_height, tgt_y + relgrad_y2 * tgt_height]
+    return {'x1': tgtgrad_x1, 'x2': tgtgrad_x2, 'y1': tgtgrad_y1, 'y2': tgtgrad_y2}
+
 def copy_style_between_elements(svg_string, source_id, target_id):
     """
     Copy the style attribute from one SVG element to another.
@@ -46,18 +83,24 @@ def copy_style_between_elements(svg_string, source_id, target_id):
     except ET.ParseError as e:
         raise ValueError(f"Error parsing SVG: {e}")
     # Find both elements by ID
-    source_element = None
-    target_element = None
+    element_id_map = {}
     for elem in root.iter():
-        if elem.get('id') == source_id:
-            source_element = elem
-        elif elem.get('id') == target_id:
-            target_element = elem
-    if source_element is None:
+        element_id = elem.get('id')
+        if element_id:
+            element_id_map[element_id] = elem
+    source_element, target_element = element_id_map.get(source_id), element_id_map.get(target_id)
+    if not source_id:
         raise ValueError(f"Source element with id '{source_id}' not found")
-    if target_element is None:
+    if not target_id:
         raise ValueError(f"Target element with id '{target_id}' not found")
     style = source_element.get('style') or ''
+    styles_dict = parse_css_styles(style)
+    gradient_id = get_gradient_id(styles_dict)
+    if gradient_id:
+        gradient_def = element_id_map.get(gradient_id)
+        target_gradient_coords = get_relative_gradient_vector(gradient_def, source_element, target_element)
+        for coord_key, coord_value in target_gradient_coords.items():
+            gradient_def.set(coord_key, str(coord_value))
     target_style = target_element.get('style') or ''
     logging.info(f"Changing style of {target_id} from {target_style} to {style} to match {source_id}")
     target_element.set('style', style)
@@ -82,7 +125,6 @@ def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_i
     for target_id, bg_rect_style_src_id in zip(target_ids, bg_rect_style_src_ids):
         tmp_file = None
         if bg_rect_style_src_id:
-            # TODO: adjust linked gradient offset to match the correct width and height...
             new_svg_src = copy_style_between_elements(svg_src, bg_rect_style_src_id, f"{src_id}_bg")
             tmp_file = tempfile.NamedTemporaryFile(prefix=basename(src_path).replace('.svg', '')+'-'+target_id, suffix=".svg", delete_on_close=False, mode='w')
             tmp_file.write(new_svg_src)
