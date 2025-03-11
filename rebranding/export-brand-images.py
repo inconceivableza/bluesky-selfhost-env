@@ -119,7 +119,7 @@ def copy_style_between_elements(svg_string, source_id, target_id):
     target_element.set('style', style)
     return ET.tostring(root, encoding='unicode')
 
-def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_ids, bg_rect_style_src_ids):
+def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_id_bases, theme_style_id_bases):
     with open(src_path, 'rb') as f:
         svg_src = f.read()
     orig_src_path = src_path
@@ -135,11 +135,16 @@ def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_i
     exportargs.extend([
             '--export-id-only',
         ])
-    for target_id, bg_rect_style_src_id in zip(target_ids, bg_rect_style_src_ids):
+    for target_id, theme_style_id_base in zip(target_id_bases, theme_style_id_bases):
         tmp_file = None
-        if bg_rect_style_src_id:
-            new_svg_src = copy_style_between_elements(svg_src, bg_rect_style_src_id, f"{src_id}_bg")
-            tmp_file = tempfile.NamedTemporaryFile(prefix=basename(src_path).replace('.svg', '')+'-'+target_id, suffix=".svg", delete_on_close=False, mode='w')
+        if theme_style_id_base:
+            new_svg_src = copy_style_between_elements(svg_src, f"{theme_style_id_base}_bg", f"{src_id}_bg")
+            # this repeats the operation for the foreground element, but ignores failures as most don't have a foreground element
+            try:
+                new_svg_src = copy_style_between_elements(new_svg_src, f"{theme_style_id_base}_fg", f"{src_id}_icon")
+            except ValueError as e:
+                pass # ignore there not being a foreground style to copy
+            tmp_file = tempfile.NamedTemporaryFile(prefix=basename(orig_src_path).replace('.svg', '')+'-'+target_id, suffix=".svg", delete_on_close=False, mode='w')
             tmp_file.write(new_svg_src)
             tmp_file.close()
             src_path = tmp_file.name
@@ -162,11 +167,11 @@ def wait_for_file(look_for_file, max_looks=20):
     return os.exist(look_for_file)
 
 def export_images(src, target_dir):
-    icon_themes = ['flat_black', 'flat_red', 'bonfire']
+    icon_themes = ['core_bonfire', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light'] # , 'core_classic']
     for os in ['android', 'ios']:
-        target_ids = [f'{os}_icon_core_{icon_theme}' for icon_theme in icon_themes]
-        bg_rect_style_src_ids = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
-        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_ids, bg_rect_style_src_ids)
+        target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
+        theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
+        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_id_bases, theme_style_id_bases)
     return False
     inkscape_convert(src, 'splash-dark', target_dir, 'png')
     inkscape_convert(src, 'splash', target_dir, 'png')
