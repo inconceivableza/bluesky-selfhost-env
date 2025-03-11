@@ -392,14 +392,6 @@
        y1="367.52515"
        x2="1349.375"
        y2="290.12894"
-       gradientUnits="userSpaceOnUse" /><linearGradient
-       inkscape:collect="always"
-       xlink:href="#linearGradient24"
-       id="linearGradient33"
-       x1="1290.1583"
-       y1="320.01773"
-       x2="1329.5312"
-       y2="336.6925"
        gradientUnits="userSpaceOnUse" /></defs><g
      inkscape:label="Branding Images Layer"
      inkscape:groupmode="layer"
@@ -805,7 +797,7 @@
        x="1270"
        y="289.45416"
        inkscape:label="rectAppIconThemeCoreClassicBg" /><rect
-       style="opacity:1;fill:url(#linearGradient33);fill-opacity:1;stroke-width:0.0620115;stroke-linecap:round"
+       style="opacity:1;fill:#ffffff;fill-opacity:1;stroke-width:1;stroke-linecap:round;stroke:#c6c6c6;stroke-opacity:1;stroke-dasharray:none"
        id="app_icon_theme_core_classic_fg"
        width="39.6875"
        height="39.6875"

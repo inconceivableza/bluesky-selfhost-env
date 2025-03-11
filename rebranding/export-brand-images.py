@@ -167,7 +167,7 @@ def wait_for_file(look_for_file, max_looks=20):
     return os.exist(look_for_file)
 
 def export_images(src, target_dir):
-    icon_themes = ['core_bonfire', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light'] # , 'core_classic']
+    icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
     for os in ['android', 'ios']:
         target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
         theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
