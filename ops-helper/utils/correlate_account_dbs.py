@@ -39,6 +39,9 @@ def fixup_binary_json(a):
     b.append(aaa[pos:])
     return b''.join(b)
 
+def fixup_sqlite_json(a):
+    return a.replace('\\\\', '\\')
+
 def read_all_data():
     data = {}
     for filename in glob.glob('*.json'):
