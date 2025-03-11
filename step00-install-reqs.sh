@@ -30,12 +30,15 @@ elif [ "$os" == "macos" ]
     if which brew >/dev/null
       then
         required_packages= 
-        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane
+        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit
           do
             cmd=$pkg
+            check_cmd=which
             [ "$pkg" == "imagemagick" ] && cmd=magick
             [ "$pkg" == "python" ] && cmd=python3
-            which $cmd > /dev/null || required_packages="$required_packages $pkg"
+            [ "$pkg" == "cocoapods" ] && cmd=pod
+            [ "$pkg" == "expo-orbit" ] && check_cmd="brew list"
+            $check_cmd $cmd > /dev/null || required_packages="$required_packages $pkg"
           done
         if [ "$required_packages" == "" ]
           then
