@@ -50,12 +50,21 @@ def get_gradient_id(styles):
         return gradient_match.group(1)
     return None
 
+translate_re = re.compile('translate\\(([0-9.-]*),([0-9.-]*)\\)')
 def get_relative_gradient_vector(gradient_def, source_element, target_element):
     """Given absolutely positioned gradient and rectangle, translate the gradient definition from the source to the target element"""
     def get_float(d, k):
         v = d.get(k)
         return float(v) if v is not None else None
     grad_x1, grad_x2, grad_y1, grad_y2 = [get_float(gradient_def, key) for key in ('x1', 'x2', 'y1', 'y2')]
+    if 'gradientTransform' in gradient_def.attrib:
+        transform = gradient_def.get('gradientTransform')
+        translate_m = translate_re.match(transform)
+        if translate_m:
+            trans_x, trans_y = translate_m.group(1), translate_m.group(2)
+            trans_x, trans_y = float(trans_x), float(trans_y)
+            grad_x1, grad_x2 = grad_x1 + trans_x, grad_x2 + trans_x
+            grad_y1, grad_y2 = grad_y1 + trans_y, grad_y2 + trans_y
     src_x, src_y, src_width, src_height = [get_float(source_element, key) for key in ('x', 'y', 'width', 'height')]
     tgt_x, tgt_y, tgt_width, tgt_height = [get_float(target_element, key) for key in ('x', 'y', 'width', 'height')]
     relgrad_x1, relgrad_x2, relgrad_y1, relgrad_y2 = [(grad_x1 - src_x) / src_width, (grad_x2 - src_x) / src_width,
