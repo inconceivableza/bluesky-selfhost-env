@@ -227,13 +227,13 @@ def export_images(src, target_dir):
     compactify_svg.compactify(join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
     compactify_svg.compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
     # app icon themes; aurora is used as the base and the others have their styles copied on before export
-    inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'svg', id_only=True)
-    inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'svg', id_only=True)
+    inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True)
+    inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'png', id_only=True)
     icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
     for os in ['android', 'ios']:
         target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
         theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
-        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_id_bases, theme_style_id_bases)
+        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'png', target_id_bases, theme_style_id_bases)
 
 
 def show_files(target_dir):
