@@ -148,7 +148,7 @@ def process_bsky_data():
     
     bsky_dids_cached = {}
     
-    for did_cache in data_files['bsky-did_cache']:
+    for did_cache in data_files.get('bsky-did_cache', []):
         did, handle = did_cache.get('did'), did_cache.get('handle')
         plc_handle = did_to_handles.get(did)
         if plc_handle != [f'at://{handle}']:
@@ -286,6 +286,7 @@ known_handlers = {
     'bgs-plc-handle-mismatch': ('bgs', update_bgs_handle_from_plc),
     'bgs-bsky-display-name-mismatch': ('bgs', update_bgs_display_name_from_bsky),
     'bsky-profile-display-name-missing': None,  # this isn't necessarily an error
+    'missing-bsky-did_cache': None, # this always seems to be empty anyway
 }
 
 def create_patch_scripts():
