@@ -111,27 +111,18 @@ show_heading "Building internal tool" "ops-helper/apiImpl"
 show_heading "Setting up environment" "for ops-helper/compose2envtable"
 (
   cd ops-helper/compose2envtable
-  [ -d venv ] || python3 -m venv venv
-  . venv/bin/activate
-  python -m pip install -U pip
-  python -m pip install -r requirements.txt
+  setup_python_venv_with_requirements
 )
 
 show_heading "Setting up environment" "for ops-helper/utils"
 (
   cd ops-helper/utils
-  [ -d venv ] || python3 -m venv venv
-  . venv/bin/activate
-  python -m pip install -U pip
-  python -m pip install -r requirements.txt
+  setup_python_venv_with_requirements
 )
 
 show_heading "Setting up environment" "for rebranding"
 (
   cd rebranding
-  [ -d venv ] || python3 -m venv venv
-  . venv/bin/activate
-  python -m pip install -U pip
-  python -m pip install -r requirements.txt
+  setup_python_venv_with_requirements
 )
 

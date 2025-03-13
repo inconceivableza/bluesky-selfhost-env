@@ -82,6 +82,14 @@ function get_linux_os {
   fi
 }
 
+function setup_python_venv_with_requirements {
+  venv_target=venv
+  [ -d $venv_target ] || python3 -m venv $venv_target
+  . $venv_target/bin/activate
+  python -m pip install -U pip
+  python -m pip install -r requirements.txt
+}
+
 uname_os=$(uname)
 if [ "$uname_os" == "Linux" ]
   then
