@@ -140,6 +140,34 @@ rules:
     - javascript
   severity: WARNING
 
+- id: rename-bluesky-app-urls
+  patterns:
+    - pattern-either:
+      - pattern: '"bluesky://"'
+      - pattern: '"bluesky:///"'
+  fix-regex:
+    regex: 'bluesky'
+    replacement: 'opensky'
+  message: "Rename the url scheme used for app actions on smart devices"
+  languages:
+    - typescript
+  severity: WARNING
+  paths:
+    include:
+      - "src/"
+
+- id: rename-bsky-app-urls
+  patterns:
+    - pattern: "'bsky://',"
+  fix: ""
+  message: "Remove the redundant bsky url scheme"
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "src/"
+
 - id: expo-app-owner
   patterns:
     - pattern: "owner: 'blueskysocial'"
@@ -251,6 +279,38 @@ rules:
     - generic
   severity: WARNING
 
+- id: rename-bluesky-in-app-actions
+  patterns:
+    - pattern: 'bluesky'
+  fix: 'opensky'
+  message: "Rename the core ID used for app actions on smart devices"
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "modules/"
+#       - "modules/expo-receive-android-intents/"
+
+
+rename_paths:
+- src_path: "modules/Share-with-Bluesky"
+  dest_path: "modules/Share-with-Opensky"
+- src_path: "modules/Share-with-Opensky/Share-with-Bluesky.entitlements"
+  dest_path: "modules/Share-with-Opensky/Share-with-Opensky.entitlements"
+- src_path: "modules/BlueskyNSE"
+  dest_path: "modules/OpenskyNSE"
+- src_path: "modules/OpenskyNSE/BlueskyNSE.entitlements"
+  dest_path: "modules/OpenskyNSE/OpenskyNSE.entitlements"
+- src_path: "modules/BlueskyClip"
+  dest_path: "modules/OpenskyClip"
+- src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb"
+  dest_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/openskyweb"
+- src_path: "openskyweb"
+  dest_path: "openskyweb"
+- src_path: "openskyweb/cmd/bskyweb"
+  dest_path: "openskyweb/cmd/openskyweb"
+
 copy_files:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "assets/"
@@ -268,7 +328,7 @@ copy_files:
     - "splash-android-icon.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "bskyweb/static/"
+  dest_dir: "openskyweb/static/"
   files:
     - "favicon.png"
     - "favicon-16x16.png"
@@ -321,7 +381,7 @@ svg_html_subst:
       view_box: "0 0 128 128"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "bskyweb/templates/"
+  dest_dir: "openskyweb/templates/"
   file_substs:
     - src: "logo.compact.svg"
       dest: "base.html"
