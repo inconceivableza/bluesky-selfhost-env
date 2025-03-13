@@ -63,6 +63,7 @@ def read_all_data():
                     d = json.load(f)
                 except Exception as e:
                     print(f"Error parsing {filename}: {e}")
+                    continue
         data[basename] = d
     return data
 
