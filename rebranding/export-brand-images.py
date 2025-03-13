@@ -50,21 +50,53 @@ def get_gradient_id(styles):
         return gradient_match.group(1)
     return None
 
-translate_re = re.compile('translate\\(([0-9.-]*),([0-9.-]*)\\)')
+float_p = r'[-+]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:e[+-]?[0-9]+)?'
+translate_re = re.compile(rf'translate\(({float_p}),\s*({float_p})\)')
+
+def apply_translate_transform(transform_str, x1, y1, x2, y2):
+    translate_m = translate_re.match(transform_str)
+    if not translate_m:
+        raise ValueError(f"Invalid translate transform format '{transform_str}'. Expected: translate(x,y)")
+    trans_x, trans_y = translate_m.group(1), translate_m.group(2)
+    trans_x, trans_y = float(trans_x), float(trans_y)
+    new_x1, new_x2 = x1 + trans_x, x2 + trans_x
+    new_y1, new_y2 = y1 + trans_y, y2 + trans_y
+    return new_x1, new_y1, new_x2, new_y2
+
+matrix_re = re.compile(rf'matrix\(({float_p}),\s*({float_p}),\s*({float_p}),\s*({float_p}),\s*({float_p}),\s*({float_p})\)')
+
+def apply_matrix_transform(transform_str, x1, y1, x2, y2):
+    matrix_m = matrix_re.match(transform_str)
+    if not matrix_m:
+        raise ValueError(f"Invalid matrix transform format '{transform_str}'. Expected: matrix(a,b,c,d,e,f)")
+    # Parse the matrix coefficients
+    a, b, c, d, e, f = map(float, matrix_m.groups())
+    # Apply the transform to the coordinates
+    # [x'] = [a c e] [x]
+    # [y'] = [b d f] [y]
+    # [1 ] = [0 0 1] [1]
+    new_x1 = a * x1 + c * y1 + e
+    new_y1 = b * x1 + d * y1 + f
+    new_x2 = a * x2 + c * y2 + e
+    new_y2 = b * x2 + d * y2 + f
+    return new_x1, new_y1, new_x2, new_y2
+
 def get_relative_gradient_vector(gradient_def, source_element, target_element):
     """Given absolutely positioned gradient and rectangle, translate the gradient definition from the source to the target element"""
     def get_float(d, k):
         v = d.get(k)
         return float(v) if v is not None else None
-    grad_x1, grad_x2, grad_y1, grad_y2 = [get_float(gradient_def, key) for key in ('x1', 'x2', 'y1', 'y2')]
+    grad_x1, grad_y1, grad_x2, grad_y2 = [get_float(gradient_def, key) for key in ('x1', 'y1', 'x2', 'y2')]
     if 'gradientTransform' in gradient_def.attrib:
         transform = gradient_def.get('gradientTransform')
-        translate_m = translate_re.match(transform)
-        if translate_m:
-            trans_x, trans_y = translate_m.group(1), translate_m.group(2)
-            trans_x, trans_y = float(trans_x), float(trans_y)
-            grad_x1, grad_x2 = grad_x1 + trans_x, grad_x2 + trans_x
-            grad_y1, grad_y2 = grad_y1 + trans_y, grad_y2 + trans_y
+        if transform.startswith('translate'):
+            grad_x1, grad_y1, grad_x2, grad_y2 = apply_translate_transform(transform, grad_x1, grad_y1, grad_x2, grad_y2)
+            del gradient_def.attrib['gradientTransform']
+        elif transform.startswith('matrix'):
+            grad_x1, grad_y1, grad_x2, grad_y2 = apply_matrix_transform(transform, grad_x1, grad_y1, grad_x2, grad_y2)
+            del gradient_def.attrib['gradientTransform']
+        else:
+            raise ValueError(f"Unknown transform, cannot apply: {transform}")
     src_x, src_y, src_width, src_height = [get_float(source_element, key) for key in ('x', 'y', 'width', 'height')]
     tgt_x, tgt_y, tgt_width, tgt_height = [get_float(target_element, key) for key in ('x', 'y', 'width', 'height')]
     relgrad_x1, relgrad_x2, relgrad_y1, relgrad_y2 = [(grad_x1 - src_x) / src_width, (grad_x2 - src_x) / src_width,
@@ -194,11 +226,15 @@ def export_images(src, target_dir):
     compactify_svg.compactify(join(target_dir, 'Logotype.svg'), join(target_dir, 'Logotype.compact.svg'))
     compactify_svg.compactify(join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
     compactify_svg.compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
+    # app icon themes; aurora is used as the base and the others have their styles copied on before export
+    inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'svg', id_only=True)
+    inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'svg', id_only=True)
     icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
     for os in ['android', 'ios']:
         target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
         theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
         inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_id_bases, theme_style_id_bases)
+
 
 def show_files(target_dir):
     for filename in os.listdir(target_dir):
