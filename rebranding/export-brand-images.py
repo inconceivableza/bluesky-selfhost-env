@@ -167,12 +167,6 @@ def wait_for_file(look_for_file, max_looks=20):
     return os.exist(look_for_file)
 
 def export_images(src, target_dir):
-    icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
-    for os in ['android', 'ios']:
-        target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
-        theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
-        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_id_bases, theme_style_id_bases)
-    return False
     inkscape_convert(src, 'splash-dark', target_dir, 'png')
     inkscape_convert(src, 'splash', target_dir, 'png')
     inkscape_convert(src, 'splash-android-icon-dark', target_dir, 'png')
@@ -200,6 +194,11 @@ def export_images(src, target_dir):
     compactify_svg.compactify(join(target_dir, 'Logotype.svg'), join(target_dir, 'Logotype.compact.svg'))
     compactify_svg.compactify(join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
     compactify_svg.compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
+    icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
+    for os in ['android', 'ios']:
+        target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
+        theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
+        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'svg', target_id_bases, theme_style_id_bases)
 
 def show_files(target_dir):
     for filename in os.listdir(target_dir):
