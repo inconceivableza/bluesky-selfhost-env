@@ -306,7 +306,7 @@ rename_paths:
   dest_path: "modules/OpenskyClip"
 - src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb"
   dest_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/openskyweb"
-- src_path: "openskyweb"
+- src_path: "bskyweb"
   dest_path: "openskyweb"
 - src_path: "openskyweb/cmd/bskyweb"
   dest_path: "openskyweb/cmd/openskyweb"
