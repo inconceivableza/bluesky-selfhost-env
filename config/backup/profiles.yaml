@@ -109,6 +109,7 @@ mixins:
       # run this daily as a backup, but it should run normally after every other run
       schedule:
         - daily
+      schedule-log: $RESTIC_LOGDIR/restic-copy-{{ .Profile.Name }}.log
 
 profiles:
   postgres-bgs:
