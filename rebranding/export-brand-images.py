@@ -11,8 +11,21 @@ import xml.etree.ElementTree as ET
 import re
 
 src_dir = dirname(abspath(__file__))
-# if exist "{src_dir}\script-env.cmd" call "{src_dir}\script-env.cmd"
-exe_name = 'inkscape.com' if sys.platform.startswith('win') else 'inkscape'
+
+def find_inkscape_exe():
+    if sys.platform.startswith('win'):
+        exe_name = 'inkscape.com'
+        status, result = subprocess.getstatusoutput(f"{exe_name} -h")
+        if status != 0:
+            for _parent_path in ["C:\\Program Files", "C:\\Program Files (x86)", "C:\\Program Files\\WindowsApps"]:
+                potential_path = join(_parent_path, "Inkscape", "bin", exe_name)
+                if exists(potential_path):
+                    return potential_path
+        return exe_name
+    else:
+        return 'inkscape'
+
+exe_name = find_inkscape_exe()
 magick_prefix = ["magick"] if sys.platform.startswith('win') else []
 
 def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False):
