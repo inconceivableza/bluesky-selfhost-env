@@ -40,6 +40,13 @@ function show_warning {
   echo "$@""$clear_text" >&2
 }
 
+function get_input {
+  echo -n "$blue_color$start_italic"$1 "$clear_italic$reset_color"
+  shift 1
+  read -r -p "$*$clear_text"
+  echo "$REPLY"
+}
+
 function show_success {
   echo "${green_color}OK${reset_color}"
 }

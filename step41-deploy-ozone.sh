@@ -46,7 +46,8 @@ export PATH=$PATH:`pwd`/ops-helper/apiImpl/node_modules/.bin
 show_heading "Sign Ozone DidDoc" for ozone admin account
 #    first, request and get PLC sign by email
 make api_ozone_reqPlcSign handle=$OZONE_ADMIN_HANDLE password=$OZONE_ADMIN_PASSWORD || { show_error "Error signing Ozone DidDoc:" "Please correct" ; exit 1 ; }
-# FIXME: get the plc token from the user somehow
+get_input "Please enter PLC token" "sent via email to $OZONE_ADMIN_EMAIL: "
+OZONE_PLC_TOKEN=$REPLY
 #    update didDoc with above sign
 make api_ozone_updateDidDoc plcSignToken=$OZONE_PLC_TOKEN handle=$OZONE_ADMIN_HANDLE ozoneURL=https://ozone.${DOMAIN}/ || { show_error "Error updating Ozone DidDoc:" "Please correct" ; exit 1 ; }
 

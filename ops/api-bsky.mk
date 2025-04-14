@@ -37,6 +37,9 @@ api_CheckAccount_feedgen: getFeedgenUserinfo api_CheckAccount
 #HINT: make api_CreateAccount_ozone
 api_CreateAccount_ozone: getOzoneUserinfo api_CreateAccount
 
+#HINT: make api_CheckAccount_ozone
+api_CheckAccount_ozone: getOzoneUserinfo api_CheckAccount
+
 #HINT: api_ozone_member_add role=...  did=...
 api_ozone_member_add:
 	$(eval pass=$(shell cat ${passfile} | grep OZONE_ADMIN_PASSWORD | awk -F= '{ print $$2}'))
