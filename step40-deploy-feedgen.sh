@@ -11,7 +11,9 @@ set +o allexport
 feedgen_file="data/accounts/${REBRANDING_NAME:-bluesky}-feedgen.did"
 grep '^null$' "$feedgen_file" >/dev/null 2>/dev/null && { sed -i '/^null/d' "$feedgen_file" ; show_warning "Nulls found" "in $feedgen_file; they have been removed" ; exit 1 ; }
 [[ -e "$feedgen_file" && ! -s "$feedgen_file" ]] && { show_warning "Removing empty feedgen file" "$feedgen_file" ; rm "$feedgen_file" ; } 
-if [[ -f "$feedgen_file" ]]
+show_heading "Checking if feedgen account exists already"
+make exportDidFile="${feedgen_file}" api_CheckAccount_feedgen || { show_info "Need to create account" "for feedgen" ; }
+if [[ -s "$feedgen_file" ]]
   then
     FEEDGEN_PUBLISHER_DID="`<"${feedgen_file}"`"
     show_info "Using existing feedgen account" "$FEEDGEN_PUBLISHER_DID"

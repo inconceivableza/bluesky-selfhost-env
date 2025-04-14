@@ -17,6 +17,10 @@ api_setPerDayLimit:
 api_CreateAccount:: _mkmsg_createAccount  _sendMsg
 api_CreateAccount:: _echo_reqAccount _findDid
 
+#HINT: make api_CheckAccount handle=... password=...
+api_CheckAccount:: _mkmsg_createSession _sendMsg
+api_CheckAccount:: _echo_reqAccount _findDid
+
 #HINT: make api_DeleteAccount did=...
 api_DeleteAccount:
 	$(eval pass=$(shell cat ${passfile} | grep PDS_ADMIN_PASSWORD | awk -F= '{ print $$2}'))
@@ -26,6 +30,9 @@ api_DeleteAccount:
 
 #HINT: make api_CreateAccount_feedgen
 api_CreateAccount_feedgen: getFeedgenUserinfo api_CreateAccount
+
+#HINT: make api_CheckAccount_feedgen
+api_CheckAccount_feedgen: getFeedgenUserinfo api_CheckAccount
 
 #HINT: make api_CreateAccount_ozone
 api_CreateAccount_ozone: getOzoneUserinfo api_CreateAccount
@@ -61,6 +68,12 @@ _mkmsg_createAccount::
 	$(eval method=POST)
 	$(eval header=-H 'Content-Type: application/json'  -H 'Accept: application/json')
 	$(eval msg=-d '{ "email": "${email}" ,"handle": "${handle}", "password": "${password}", "inviteCode": "${invite_code}" }')
+
+_mkmsg_createSession::
+	$(eval url=${pdsURL}/xrpc/com.atproto.server.createSession)
+	$(eval method=POST)
+	$(eval header=-H 'Content-Type: application/json'  -H 'Accept: application/json')
+	$(eval msg=-d '{ "identifier": "${handle}", "password": "${password}" }')
 
 getFeedgenUserinfo:
 	$(eval handle=${FEEDGEN_PUBLISHER_HANDLE})
