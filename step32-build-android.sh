@@ -31,6 +31,10 @@ yarn
 if npx eas-cli build -p android --local
   then
     build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.aab" | head -n 1`"
+    build_number="`echo "$build_file" | sed 's/build-\([0-9]*\).aab/\1/'`"
+    build_name="`jq -r .name package.json`"
+    build_version="`jq -r .version package.json`"
+    build_id="${build_name}-${build_version}-${build_date}-${build_number}"
     show_heading "Build complete:" "presumed aab file is:"
     ls -l "$build_file"
     app_name="${REBRANDING_NAME:=bluesky}"
@@ -45,11 +49,11 @@ if npx eas-cli build -p android --local
     ls -l ${app_name}.apks
     unzip ${app_name}.apks universal.apk
     rm ${app_name}.apks
-    mv universal.apk ${app_name}.apk
-    # TODO: work out version/time stamping of apk
-    touch -r $build_file ${app_name}.apk
+    mv universal.apk ${build_id}.apk
+    touch -r $build_file ${build_id}.apk
+    mv ${build_file} ${build_id}.aab
     show_info "Android app extracted"
-    ls -l ${app_name}.apk
+    ls -l ${build_id}.apk ${build_id}.aab
   else
     show_error "Error building Android app:" "see above for details"
     exit 1
