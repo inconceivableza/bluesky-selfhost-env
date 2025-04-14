@@ -134,4 +134,4 @@ export auto_watchlog=false
 # export _nopatch="did-method-plc pds"
 # these are the bluesky repositories we clone and use
 export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc pds"
-
+export npm_config_yes=true # stop npx eas-cli from asking whether to install itself; see https://stackoverflow.com/a/69006263
