@@ -10,9 +10,13 @@ set +o allexport
 
 feedgen_file="data/accounts/${REBRANDING_NAME:-bluesky}-feedgen.did"
 grep '^null$' "$feedgen_file" >/dev/null 2>/dev/null && { sed -i '/^null/d' "$feedgen_file" ; show_warning "Nulls found" "in $feedgen_file; they have been removed" ; exit 1 ; }
-[[ -e "$feedgen_file" && ! -s "$feedgen_file" ]] && { show_warning "Removing empty feedgen file" "$feedgen_file" ; rm "$feedgen_file" ; } 
-show_heading "Checking if feedgen account exists already"
-make exportDidFile="${feedgen_file}" api_CheckAccount_feedgen || { show_info "Need to create account" "for feedgen" ; }
+[[ -e "$feedgen_file" && ! -s "$feedgen_file" ]] && { show_warning "Removing empty feedgen account file" "$feedgen_file" ; rm "$feedgen_file" ; } 
+
+if [[ ! -s "$feedgen_file" ]]
+  then
+    show_heading "Checking if feedgen account exists already"
+    make exportDidFile="${feedgen_file}" api_CheckAccount_feedgen || { show_info "Need to create account" "for feedgen" ; }
+  fi
 if [[ -s "$feedgen_file" ]]
   then
     FEEDGEN_PUBLISHER_DID="`<"${feedgen_file}"`"
@@ -20,7 +24,7 @@ if [[ -s "$feedgen_file" ]]
   else
     show_heading "Create feedgen account"
     make exportDidFile="${feedgen_file}" api_CreateAccount_feedgen || { show_error "Error creating account" "for feedgen" ; exit 1 ; }
-    grep did:plc: ${feedgen_file} >/dev/null || { show_error "Error creating feedgen account" "did not found in file" ; exit 1 ; }
+    grep did:plc: ${feedgen_file} >/dev/null || { show_error "Error creating feedgen account" "did not find in file" ; exit 1 ; }
   fi
 # show_heading "Wait here"
 # sleep 20
