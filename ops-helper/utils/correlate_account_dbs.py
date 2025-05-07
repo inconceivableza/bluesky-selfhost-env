@@ -100,11 +100,11 @@ def process_plc_data():
                     o2 = op_record.copy()
                     o2.pop('prev'); o2.pop('sig')
                     record_diff = deepdiff.DeepDiff(e2, o2)
-                    if list(record_diff.get('values_changed')) == ["root['alsoKnownAs'][0]"]:
+                    if record_diff.get('values_changed') and list(record_diff.get('values_changed')) == ["root['alsoKnownAs'][0]"]:
                         print(f"Handle change for {did}: {existing_record.get('alsoKnownAs')[0]} -> {op_record.get('alsoKnownAs')[0]}")
                     else:
                         print(f"Differences received for {did} (excluding sig and prev):")
-                        pprint.pprint(record_diff['values_changed'])
+                        pprint.pprint(record_diff.get('values_changed'))
             else:
                 handles = op_record.get('alsoKnownAs', None)
                 if handles and len(handles) == 1:
