@@ -436,7 +436,7 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:latest
     ports:
       - 3000:3000
     volumes:
