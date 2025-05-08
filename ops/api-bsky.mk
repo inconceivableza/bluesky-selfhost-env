@@ -78,6 +78,12 @@ _mkmsg_createSession::
 	$(eval header=-H 'Content-Type: application/json'  -H 'Accept: application/json')
 	$(eval msg=-d '{ "identifier": "${handle}", "password": "${password}" }')
 
+_mkmsg_checkAccount::
+	$(eval url=${pdsURL}/xrpc/com.atproto.server.checkAccountStatus)
+	$(eval method=POST)
+	$(eval header=-H 'Content-Type: application/json'  -H 'Accept: application/json')
+	$(eval msg=--user "${handle}:${password}")
+
 getFeedgenUserinfo:
 	$(eval handle=${FEEDGEN_PUBLISHER_HANDLE})
 	$(eval email=${FEEDGEN_EMAIL})
