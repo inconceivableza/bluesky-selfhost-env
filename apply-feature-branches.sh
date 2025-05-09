@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This allows the automated creation of updated version branches, by auto-merging specified feature branches
-# the feature branches are currently specified in a file called branch-rules.yml, in this directory
+# the feature branches are specified in a branch-rules.yml file, which can be specified
 # It should be structured as $repo_name: $target_branch: {base: $base_name, merge: [list of branches to merge]}
 # For example:
 # social-app:
@@ -14,11 +14,17 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 
+set -o allexport
+. "$params_file"
+set +o allexport
+
 function usage {
   echo ""
-  echo "Usage: $0 [--clobber] repo target_branch [allowed_starting_branch ...]"
+  echo "Usage: $0 repo target_branch [allowed_starting_branch ...]"
   echo ""
   echo "Creates target_branch, by applying the merge rules in branches to the configured base branch"
+  echo 'Rules are read from $FEATURE_BRANCH_RULES in the env file, or from ./branch-rules-file.yml if not defined'
+  echo ""
   echo "Will not do this and exit with an error code if:"
   echo " - there are uncommitted changes"
   echo " - not on target_branch or base_branch or one of the existing allowed_starting_branches"
@@ -37,6 +43,10 @@ shift
 allowed_starting_branches="$@"
 repoDir="$script_dir/repos/$repoName"
 rulesFile="$script_dir/branch-rules.yml"
+[ "$FEATURE_BRANCH_RULES" != "" ] && rulesFile="$FEATURE_BRANCH_RULES"
+rulesFile="`readlink -f "$rulesFile"`" # this makes it non-relative
+[ -f "$rulesFile" ] || { show_error "Could not find rules file" "$rulesFile" ; exit 1 ; }
+show_info "Rules file" "$rulesFile found"
 
 cd "$repoDir" || { show_error "Could not find repo $repoDir:" "please check" ; exit 1 ; }
 
@@ -44,16 +54,13 @@ git fetch --all
 git diff --exit-code --stat || { show_error "Uncommitted changes in $repoName:" "inspect $repoDir and adjust as necessary" ; exit 1 ; }
 current_branch="`git rev-parse --abbrev-ref HEAD`"
 
-is_defined=
-[[ "$(yq '.["'$repoName'"]["'$target_branch'"]' "$rulesFile")" == "null" ]] || is_defined=1
-if [[ "$is_defined" != "1" ]]
-  then
-    echo branch $target_branch is not defined for $repoName in $rulesFile >&2
-    exit 1
-  fi
-
 base_branch="$(yq '.["'$repoName'"]["'$target_branch'"].base' "$rulesFile")"
 merge_branches="$(yq '.["'$repoName'"]["'$target_branch'"].merge[]' "$rulesFile")"
+if [[ "$base_branch" == "" ]]
+  then
+    echo base branch for $target_branch is not defined for $repoName in $rulesFile >&2
+    exit 1
+  fi
 show_heading "Will create branch $target_branch" "in $repoName based on $base_branch by merging configured branches" $merge_branches
 
 if [[ "$current_branch" == "$target_branch" ]]

@@ -1,0 +1,6 @@
+social-app:
+  1.101.0-opensky:
+    base: 1.101.0
+    merge:
+      - brightsun/disable-chat # This is an example
+
