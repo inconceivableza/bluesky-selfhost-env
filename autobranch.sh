@@ -54,6 +54,8 @@ allowed_starting_branches="$@"
 repoDir="`pwd`"
 repoName="`basename "$repoDir"`"
 
+[ "$repoDir" == "$script_dir/repos/$repoName" ] || { show_error "In wrong directory:" "this script should be run from $script_dir/repos/\$repoName" ; exit 1 ; }
+
 git fetch --all
 git diff --exit-code --stat || { show_error "Uncommitted changes in $repoName:" "inspect $repoDir and adjust as necessary" ; exit 1 ; }
 current_branch="`git rev-parse --abbrev-ref HEAD`"

@@ -12,50 +12,55 @@
 
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
-. "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
 
 function usage {
   echo ""
-  echo "Usage: $0 repo target_branch [allowed_starting_branch ...]"
+  echo "Usage: $0 target_branch [allowed_starting_branch ...]"
   echo ""
   echo "Creates target_branch, by applying the merge rules in branches to the configured base branch"
   echo 'Rules are read from $FEATURE_BRANCH_RULES in the env file, or from ./branch-rules-file.yml if not defined'
+  echo 'Must be run from repos/$repo under bluesky-selfhost-env'
   echo ""
   echo "Will not do this and exit with an error code if:"
   echo " - there are uncommitted changes"
   echo " - not on target_branch or base_branch or one of the existing allowed_starting_branches"
 }
 
-if [[ "$#" -lt 2 ]]
+if [[ "$#" -lt 1 ]]
   then
     usage
     exit 1
   fi
 
-repoName="$1"
-target_branch="$2"
-shift
+target_branch="$1"
 shift
 allowed_starting_branches="$@"
-repoDir="$script_dir/repos/$repoName"
+
+repoDir="`pwd`"
+repoName="`basename "$repoDir"`"
+
+[ "$repoDir" == "$script_dir/repos/$repoName" ] || { echo "In wrong directory: this script should be run from $script_dir/repos/\$repoName" 2>&1 ; exit 1 ; }
+
+cd "$script_dir"
+. "$script_dir/utils.sh"
+
+set -o allexport
+. "$params_file"
+set +o allexport
+cd "$repoDir"
+
 rulesFile="$script_dir/branch-rules.yml"
 [ "$FEATURE_BRANCH_RULES" != "" ] && rulesFile="$FEATURE_BRANCH_RULES"
-rulesFile="`readlink -f "$rulesFile"`" # this makes it non-relative
+rulesFile="`cd "$script_dir" ; readlink -f "$rulesFile"`" # this makes it non-relative
 [ -f "$rulesFile" ] || { show_error "Could not find rules file" "$rulesFile" ; exit 1 ; }
 show_info "Rules file" "$rulesFile found"
-
-cd "$repoDir" || { show_error "Could not find repo $repoDir:" "please check" ; exit 1 ; }
 
 git fetch --all
 git diff --exit-code --stat || { show_error "Uncommitted changes in $repoName:" "inspect $repoDir and adjust as necessary" ; exit 1 ; }
 current_branch="`git rev-parse --abbrev-ref HEAD`"
 
-base_branch="$(yq '.["'$repoName'"]["'$target_branch'"].base' "$rulesFile")"
-merge_branches="$(yq '.["'$repoName'"]["'$target_branch'"].merge[]' "$rulesFile")"
+base_branch="$(yq -r '.["'$repoName'"]["'$target_branch'"].base' "$rulesFile")"
+merge_branches="$(yq -r '.["'$repoName'"]["'$target_branch'"].merge[]' "$rulesFile")"
 if [[ "$base_branch" == "" ]]
   then
     echo base branch for $target_branch is not defined for $repoName in $rulesFile >&2
