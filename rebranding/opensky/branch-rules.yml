@@ -1,0 +1,6 @@
+social-app:
+  1.101.0-opensky:
+    base: 1.101.0
+    merge:
+      - brightsun/disable-chat-1.101 # This is an example. feature branches can be tagged with a version to allow later versions
+
