@@ -30,7 +30,8 @@ for line in sys.stdin:
     try:
         log_obj = json.loads(log_json)
     except Exception as e:
-        rich.print(f"[bold green]{service_prefix}[/bold green]|", log_json.rstrip())
+        rich.print(f"[bold green]{service_prefix}[/bold green]|", end='')
+        print(log_json.rstrip())
         continue
     log_obj = adjust_vars(log_obj)
     status_vars = {}

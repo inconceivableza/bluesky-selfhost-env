@@ -40,6 +40,13 @@ function show_warning {
   echo "$@""$clear_text" >&2
 }
 
+function get_input {
+  echo -n "$blue_color$start_italic"$1 "$clear_italic$reset_color"
+  shift 1
+  read -r -p "$*$clear_text"
+  echo "$REPLY"
+}
+
 function show_success {
   echo "${green_color}OK${reset_color}"
 }
@@ -134,4 +141,4 @@ export auto_watchlog=false
 # export _nopatch="did-method-plc pds"
 # these are the bluesky repositories we clone and use
 export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc pds"
-
+export npm_config_yes=true # stop npx eas-cli from asking whether to install itself; see https://stackoverflow.com/a/69006263
