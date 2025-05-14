@@ -197,9 +197,14 @@ ozone-standalone.{$DOMAIN} {
           header Upgrade websocket
         }
 
-        reverse_proxy @ws http://pds:2583
-        reverse_proxy     http://pds:2583
-
+        @xrpc {
+          path /xrpc/*
+        }
+        reverse_proxy @ws   http://pds:2583
+        reverse_proxy @xrpc http://pds:2583
+        # serve the social app's website on this domain, as well as xrpc
+        root * /socialweb/
+        file_server
 }
 # ends:  simple mapping <<<<<
 
