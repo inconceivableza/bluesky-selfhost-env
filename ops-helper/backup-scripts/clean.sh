@@ -20,7 +20,14 @@ if [[ "$REPLY" == "DELETE" ]]
     for db in $POSTGRES_DBS
       do
         echo Dropping database $db
-        psql postgres -c "drop database ${db};" || errors="$errors database:$db"
+        psql postgres -c "drop database ${db};" || errors="$errors database:drop-$db"
+      done
+
+    for db in $POSTGRES_DBS
+      do
+        echo Recreating database $db
+        psql postgres -c "create database ${db};" || errors="$errors database:create-$db"
+        psql postgres -c "grant all privileges on database ${db} to pg;" || errors="$errors database:grant-$db"
       done
 
     if [[ "$errors" != "" ]]
