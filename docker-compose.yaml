@@ -379,6 +379,7 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s

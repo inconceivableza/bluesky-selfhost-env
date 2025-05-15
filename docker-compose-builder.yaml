@@ -415,6 +415,9 @@ services:
        - https_proxy=${https_proxy}
        - no_proxy=${no_proxy}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - SENTRY_ORG=${SENTRY_ORG}
+       - SENTRY_PROJECT=${SENTRY_PROJECT}
+       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN}
     ports:
       - 8100:8100
     command: /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve
@@ -433,6 +436,7 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
