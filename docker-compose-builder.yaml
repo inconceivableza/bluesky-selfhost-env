@@ -26,6 +26,8 @@ volumes:
     name: redis
   jetstream:
     name: jetstream
+  ipcc:
+    name: ipcc
 # ozone:
 # ozone-daemon:
 # plc:
@@ -441,6 +443,7 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+      - IPCC_HOST=http://ipcc:8080
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
@@ -707,3 +710,14 @@ services:
       # supporting self-signed certificates, easiest way <<<<
       - feed-generator:/data/
 #     - ${rDir}/feed-generator:/app
+
+  ipcc:
+    image: inconceivableza/ip-location-service-bsky
+    volumes:
+      # persist ip location data
+      - ipcc:/app/downloads
+    environment:
+      - DB_TYPE=mmdb
+      - COUNTRY=geo-whois-asn-country
+      - ASN=
+    restart: always
