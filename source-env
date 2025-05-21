@@ -1,0 +1,26 @@
+#!/bin/bash
+
+if [ "$0" = "${BASH_SOURCE[0]}" ]; then
+  echo "This script must be sourced, not run directly." >&2
+  exit 1
+fi
+
+if [ "$1" = "" ]; then
+  if [ "$params_file" = "" ]; then
+    echo "Either set $params_file or pass params_file as an argument to this script." >&2
+    exit 1
+  fi
+else
+  params_file="$1"
+fi
+
+export params_file="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" ; readlink -f "$params_file")"
+
+[ -f "$params_file" ] || { echo "Could not find $params_file" >&2 ; exit 1 ; }
+
+echo "Reading variables from $params_file into the current environment"
+
+set -o allexport
+. "$params_file"
+set +o allexport
+
