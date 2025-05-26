@@ -653,4 +653,48 @@ services:
       - ASN=
     restart: always
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    volumes:
+      - "./config/telemetry/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    ports:
+      - "14250:14250"   # gRPC
+      - "14268:14268"
+      - "6831:6831/udp"
+      - "16686:16686"   # Jaeger UI
+      - "16685:16685"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - "./config/telemetry/otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml"
+    command:
+      - "--config=/etc/otelcol/otel-collector-config.yml"
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
+      - "14278:14278"
+    depends_on:
+      - jaeger
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - "./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml"
+      # - "./data/prometheus:/prometheus"
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      # - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=200h"
+
 
