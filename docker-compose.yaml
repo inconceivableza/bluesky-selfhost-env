@@ -407,6 +407,7 @@ services:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
     ports:
       - 3999:3999
+      # - 3998:3998 # metrics port by default
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -426,6 +427,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     restart: always
     depends_on:
       - opensearch

@@ -24,17 +24,18 @@ scrape_configs:
       - targets: ['otel-collector:8888']
     scrape_interval: 5s
 
-  # Add your application metrics here
-  # - job_name: 'your-app'
-  #   static_configs:
-  #     - targets: ['your-app:8080']
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    scrape_interval: 5s
+
   - job_name: 'bgs-relay'
     static_configs:
       - targets: ['bgs:2471']
     scrape_interval: 5s
 
-  - job_name: 'jaeger'
+  - job_name: 'palomar'
     static_configs:
-      - targets: ['jaeger:14269']
+      - targets: ['palomar:3998']
     scrape_interval: 5s
 
