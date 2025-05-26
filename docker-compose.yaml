@@ -361,6 +361,10 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2584
       - REDIS_HOST=redis
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_OTEL_ENABLED=true
+      - DD_OTEL_ENDPOINT=http://otel-collector:4318
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
