@@ -41,9 +41,12 @@ exporters:
     
   # OTLP exporter - useful for forwarding to other collectors
   otlp/jaeger:
-    endpoint: jaeger:14250
+    endpoint: jaeger:4317
     tls:
       insecure: true
+
+  # used to be called logging
+  debug:
 
 service:
   pipelines:
@@ -51,7 +54,8 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       # exporters: [jaeger, logging]
-      exporters: [otlp/jaeger]
+      # exporters: [otlp/jaeger]
+      exporters: [debug, otlp/jaeger]
     
     metrics:
       receivers: [otlp, hostmetrics]
@@ -68,4 +72,10 @@ service:
                 host: '0.0.0.0'
                 port: 8888
 
-  # extensions: [health_check]
+  extensions: [health_check, zpages]
+
+extensions:
+  health_check:
+  zpages:
+    endpoint: ':55679'
+

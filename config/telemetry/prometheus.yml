@@ -28,3 +28,13 @@ scrape_configs:
   # - job_name: 'your-app'
   #   static_configs:
   #     - targets: ['your-app:8080']
+  - job_name: 'bgs-relay'
+    static_configs:
+      - targets: ['bgs:2471']
+    scrape_interval: 5s
+
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    scrape_interval: 5s
+
