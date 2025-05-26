@@ -217,6 +217,10 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_OTEL_ENABLED=true
+      - DD_OTEL_ENDPOINT=http://otel-collector:4318
     restart: always
     depends_on:
       - database
@@ -265,6 +269,11 @@ services:
 #     - PDS_REPORT_SERVICE_URL=https://${ozoneFQDN}
 # ends: unset optional env for tesing ozone <<<<<<<<
       - PDS_SERVICE_DID=did:web:${pdsFQDN}
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_SERVICE=pds # the package.json misconfigures this as plc-service
+      - DD_TRACE_OTEL_ENABLED=true
+      - DD_OTEL_ENDPOINT=http://otel-collector:4318
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -689,6 +698,7 @@ services:
       - "55679:55679" # ZPages for direct view
       # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
       - "14278:14278" # alternate jaeger thrift_http receiver
+      - "8126:8126"   # datadog receiver for services instrumented with ddtrace
     depends_on:
       - jaeger
       - prometheus
