@@ -4,45 +4,45 @@
 #
 # global options: starts >>>>
 {
-#	debug
-        on_demand_tls {
-          ask http://caddy-sidecar:80
-        }
-#    limits to HTTP/1.1 >>>
-        servers  {
-          protocols  h1
-        }
-#    limits to HTTP/1.1 <<<
+	#	debug
+	on_demand_tls {
+		ask http://caddy-sidecar:80
+	}
+	#    limits to HTTP/1.1 >>>
+	servers {
+		protocols h1
+	}
+	#    limits to HTTP/1.1 <<<
 }
 
 # https://caddy.community/t/how-can-i-allow-multiple-domain-origins-in-cors/22129/5
 (cors) {
-    @cors_preflight {
-        method OPTIONS
-    }
-    @corsOrigin {
-        header_regexp Origin ^https?://*.({$DOMAIN})$
-    }
+	@cors_preflight {
+		method OPTIONS
+	}
+	@corsOrigin {
+		header_regexp Origin ^https?://*.({$DOMAIN})$
+	}
 
-    handle @cors_preflight {
-        header {
-            Access-Control-Allow-Origin "*"
-            Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE"
-            Access-Control-Allow-Headers *
-            Vary Origin
-            defer
-        }
-        respond "" 204
-    }
+	handle @cors_preflight {
+		header {
+			Access-Control-Allow-Origin "*"
+			Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE"
+			Access-Control-Allow-Headers *
+			Vary Origin
+			defer
+		}
+		respond "" 204
+	}
 
-    handle @corsOrigin {
-        header {
-            Access-Control-Allow-Origin "*"
-            Access-Control-Expose-Headers *
-            Vary Origin
-            defer
-        }
-    }
+	handle @corsOrigin {
+		header {
+			Access-Control-Allow-Origin "*"
+			Access-Control-Expose-Headers *
+			Vary Origin
+			defer
+		}
+	}
 }
 
 # global options: ends   <<<<
@@ -79,10 +79,10 @@ ca.{$DOMAIN}:9000 {
 # starts: to check if caddy works as reverse proxy, for HTTP(S) and WS(S) >>>>>>>>>>
 #  for HTTPS/WSS => HTTP/WS, you can test websocket by ```wscat -c wss://test-wss.mybluesky.local.com/ws```
 test-wss.{$DOMAIN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 
 	@ws {
 		header Connection *Upgrade*
@@ -91,15 +91,14 @@ test-wss.{$DOMAIN} {
 
 	reverse_proxy @ws http://test-wss:8080
 	reverse_proxy http://test-wss:8080
-
 }
 
 #  for HTTP/WS => HTTP/WS, you can test websocket by ```wscat -c ws://test-ws.mybluesky.local.com/ws```
 http://test-ws.{$DOMAIN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	@ws {
 		header Connection *Upgrade*
 		header Upgrade websocket
@@ -114,160 +113,158 @@ http://test-ws.{$DOMAIN} {
 # starts: simple mapping >>>>>
 
 {$plcFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://plc:2582
 }
 
 {$bgsFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://bgs:2470
 }
 
 api.{$DOMAIN}, {$bskyFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://bsky:2584
 }
 
 {$socialappFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://social-app:8100
 }
 
 {$ozoneFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
-#	reverse_proxy http://ozone:3000
+		on_demand
+	}
+	#	reverse_proxy http://ozone:3000
 	reverse_proxy http://ozone-standalone:3000
 }
 ozone-standalone.{$DOMAIN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://ozone-standalone:3000
 }
 
-
 {$palomarFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://palomar:3999
 }
 
 {$feedgenFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://feed-generator:3000
 }
 
 {$jetstreamFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 	reverse_proxy http://jetstream:6008
 }
 
 {$pdsFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
+		on_demand
+	}
 
-        @ws {
-          header Connection *Upgrade*
-          header Upgrade websocket
-        }
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
 
-        @xrpc {
-          path /xrpc/*
-        }
-        reverse_proxy @ws   http://pds:2583
-        reverse_proxy @xrpc http://pds:2583
-        # serve the social app's website on this domain, as well as xrpc
-        root * /socialweb/
-        file_server
+	@xrpc {
+		path /xrpc/*
+	}
+	reverse_proxy @ws http://pds:2583
+	reverse_proxy @xrpc http://pds:2583
+	# serve the social app's website on this domain, as well as xrpc
+	root * /socialweb/
+	file_server
 }
 # ends:  simple mapping <<<<<
 
 # starts:  *.pdsFQDN (pds.DOMAIN) >>>>>>>>>>>
 *.{$pdsFQDN} {
-        import cors
-        tls {$EMAIL4CERTS} {
-#         enables wildcards
-          dns {$CADDY_DNS_PROVIDER} {$CADDY_DNS_API_TOKEN}
-          resolvers {$CADDY_DNS_RESOLVER}
-        }
-#  it needs both of header_regexp and path_regexp with rewrite then reverse_proxy.
-#---------------
-#      websocket
-        @ws {
-          header Connection *Upgrade*
-          header Upgrade websocket
-          header_regexp host Host ^(.*)\.{$pdsFQDN}$
-	  path_regexp   path      ^(.*)
-        }
-        rewrite       @ws           {http.regexp.path.1}
-        reverse_proxy @ws           http://pds:2583
+	import cors
+	tls {$EMAIL4CERTS} {
+		#         enables wildcards
+		dns {$CADDY_DNS_PROVIDER} {$CADDY_DNS_API_TOKEN}
+		resolvers {$CADDY_DNS_RESOLVER}
+	}
+	#  it needs both of header_regexp and path_regexp with rewrite then reverse_proxy.
+	#---------------
+	#      websocket
+	@ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		path_regexp path ^(.*)
+	}
+	rewrite @ws {http.regexp.path.1}
+	reverse_proxy @ws http://pds:2583
 
-#---------------
-#      *.pdsFQDN/xrpc*  => http://pds:2583
-        @xrpc {
-            header_regexp host Host ^(.*)\.{$pdsFQDN}$
-            path_regexp   path      ^(/xrpc.*)
-        }
-        rewrite        @xrpc        {http.regexp.path.1}
-        reverse_proxy  @xrpc        http://pds:2583
+	#---------------
+	#      *.pdsFQDN/xrpc*  => http://pds:2583
+	@xrpc {
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		path_regexp path ^(/xrpc.*)
+	}
+	rewrite @xrpc {http.regexp.path.1}
+	reverse_proxy @xrpc http://pds:2583
 
-#---------------
-#      *.pdsFQDN/.well-known* => http://pds:2583
-        @wellknown {
-            header_regexp host Host ^(.*)\.{$pdsFQDN}$
-            path_regexp   path      ^(/\.well-known.*)
-        }
-        rewrite        @wellknown   {http.regexp.path.1}
-        reverse_proxy  @wellknown   http://pds:2583
+	#---------------
+	#      *.pdsFQDN/.well-known* => http://pds:2583
+	@wellknown {
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		path_regexp path ^(/\.well-known.*)
+	}
+	rewrite @wellknown {http.regexp.path.1}
+	reverse_proxy @wellknown http://pds:2583
 
+	#---------------
+	#      *.pdsFQDN/robots.txt* => http://pds:2583
+	@robots {
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		path_regexp path ^(/robots\.txt*)
+	}
+	rewrite @robots {http.regexp.path.1}
+	reverse_proxy @robots http://pds:2583
 
-#---------------
-#      *.pdsFQDN/robots.txt* => http://pds:2583
-        @robots {
-            header_regexp host Host ^(.*)\.{$pdsFQDN}$
-            path_regexp   path      ^(/robots\.txt*)
-        }
-        rewrite        @robots      {http.regexp.path.1}
-        reverse_proxy  @robots      http://pds:2583
-
-#---------------
-#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
-        @others {
-            header_regexp host Host ^(.*)\.{$pdsFQDN}$
-            # this must exclude all above paths, as redir has a higher priority than rewrite
-            not {
-                path          /xrpc* /.well-known* /robots.txt*
-            }
-            path_regexp   path      ^(.*)
-        }
-        redir          @others      https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
-        reverse_proxy  @others      http://social-app:8100
+	#---------------
+	#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
+	@others {
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		# this must exclude all above paths, as redir has a higher priority than rewrite
+		not {
+			path /xrpc* /.well-known* /robots.txt*
+		}
+		path_regexp path ^(.*)
+	}
+	redir @others https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
+	reverse_proxy @others http://social-app:8100
 }
 # ends: *.pdsFQDN <<<<<<<<<<<
 
@@ -276,11 +273,11 @@ ozone-standalone.{$DOMAIN} {
 # for ATP_APPVIEW_HOST=https://public.api.bsky.app in https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env
 # for https://github.com/bluesky-social/bsky-docs/issues/63
 {$publicApiFQDN} {
-        import cors
+	import cors
 	tls {$EMAIL4CERTS} {
-          on_demand
-        }
-#       temporal support of no-auth API call, fill secrets.
+		on_demand
+	}
+	#       temporal support of no-auth API call, fill secrets.
 	reverse_proxy http://admin:{$BSKY_ADMIN_PASSWORDS}@bsky:2584
 }
 # ends: additional (long FQDN)   <<<<<<<<<
