@@ -39,3 +39,9 @@ scrape_configs:
       - targets: ['palomar:3998']
     scrape_interval: 5s
 
+  - job_name: 'caddy'
+    static_configs:
+      - targets: ['caddy:2020']
+    scrape_interval: 5s
+
+

@@ -13,6 +13,9 @@
 		protocols h1
 	}
 	#    limits to HTTP/1.1 <<<
+	metrics {
+		per_host
+	}
 }
 
 # https://caddy.community/t/how-can-i-allow-multiple-domain-origins-in-cors/22129/5
@@ -45,7 +48,19 @@
 	}
 }
 
+# opentelemetry tracing. takes desired span name as parameter
+(tracing) {
+    tracing {
+        span caddy-{args[0]}
+    }
+}
+
 # global options: ends   <<<<
+
+# separate port for metrics from the admin port
+:2020 {
+	metrics
+}
 
 # self-hosting CA with ACME,  for self signed certicates >>>>
 #   accessible as https://ca.DOMAIN:9000/acme/local/directory
@@ -114,6 +129,7 @@ http://test-ws.{$DOMAIN} {
 
 {$plcFQDN} {
 	import cors
+	import tracing plc
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -122,6 +138,7 @@ http://test-ws.{$DOMAIN} {
 
 {$bgsFQDN} {
 	import cors
+	import tracing bgs-relay
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -130,6 +147,7 @@ http://test-ws.{$DOMAIN} {
 
 api.{$DOMAIN}, {$bskyFQDN} {
 	import cors
+	import tracing bsky
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -138,6 +156,7 @@ api.{$DOMAIN}, {$bskyFQDN} {
 
 {$socialappFQDN} {
 	import cors
+	import tracing social-app
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -146,6 +165,7 @@ api.{$DOMAIN}, {$bskyFQDN} {
 
 {$ozoneFQDN} {
 	import cors
+	import tracing ozone
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -154,6 +174,7 @@ api.{$DOMAIN}, {$bskyFQDN} {
 }
 ozone-standalone.{$DOMAIN} {
 	import cors
+	import tracing ozone-standalone
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -162,6 +183,7 @@ ozone-standalone.{$DOMAIN} {
 
 {$palomarFQDN} {
 	import cors
+	import tracing palomar
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -170,6 +192,7 @@ ozone-standalone.{$DOMAIN} {
 
 {$feedgenFQDN} {
 	import cors
+	import tracing {$feedgenFQDN}
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -178,6 +201,7 @@ ozone-standalone.{$DOMAIN} {
 
 {$jetstreamFQDN} {
 	import cors
+	import tracing jetstream
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -196,13 +220,16 @@ ozone-standalone.{$DOMAIN} {
 	}
 
 	@xrpc {
+		import tracing pds-xrpc
 		path /xrpc/*
 	}
 	reverse_proxy @ws http://pds:2583
 	reverse_proxy @xrpc http://pds:2583
 	# serve the social app's website on this domain, as well as xrpc
 	root * /socialweb/
-	file_server
+	file_server {
+		import tracing pds-social-web
+	}
 }
 # ends:  simple mapping <<<<<
 
@@ -231,6 +258,7 @@ ozone-standalone.{$DOMAIN} {
 	@xrpc {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/xrpc.*)
+		import tracing pds-profile-xrpc
 	}
 	rewrite @xrpc {http.regexp.path.1}
 	reverse_proxy @xrpc http://pds:2583
@@ -240,6 +268,7 @@ ozone-standalone.{$DOMAIN} {
 	@wellknown {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/\.well-known.*)
+		import tracing pds-profile-well-known
 	}
 	rewrite @wellknown {http.regexp.path.1}
 	reverse_proxy @wellknown http://pds:2583
@@ -249,6 +278,7 @@ ozone-standalone.{$DOMAIN} {
 	@robots {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/robots\.txt*)
+		import tracing pds-profile-robots
 	}
 	rewrite @robots {http.regexp.path.1}
 	reverse_proxy @robots http://pds:2583
@@ -257,6 +287,7 @@ ozone-standalone.{$DOMAIN} {
 	#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
 	@others {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
+		import tracing pds-profile-others
 		# this must exclude all above paths, as redir has a higher priority than rewrite
 		not {
 			path /xrpc* /.well-known* /robots.txt*
@@ -274,6 +305,7 @@ ozone-standalone.{$DOMAIN} {
 # for https://github.com/bluesky-social/bsky-docs/issues/63
 {$publicApiFQDN} {
 	import cors
+	import tracing public-bsky
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
