@@ -51,7 +51,7 @@ services:
       - 80:80
       - 443:443
       - 443:443/udp
-      - 9000:9000
+      # - 9000:9000 # internal CA server; doesn't need to be public
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -88,9 +88,9 @@ services:
       test: "wget --no-verbose --tries=1 --spider http://localhost:2019/metrics || exit 1"
       interval: 5s
       retries: 20
-      # to generate HTTPS certifications on-demand >>>>>
     restart: always
 
+# to generate HTTPS certifications on-demand >>>>>
   caddy-sidecar:
     image: httpd:2
     environment:
@@ -98,10 +98,9 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-  # to generate HTTPS certifications on-demand <<<<<
-  # debug for caddy>>> 
-    restart: always
+# to generate HTTPS certifications on-demand <<<<<
 
+# debug for caddy>>> 
   test-wss:
     image: itaru2622/fastapi:bookworm
     environment:
@@ -116,6 +115,8 @@ services:
       - opts=--host 0.0.0.0 --port 8080
     working_dir: /opt/fastapi-samples/3catchall
 
+# debug for caddy <<<
+# debug for bluesky with indigo subcmds >>>
   test-indigo:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-tools:${asof}
     command: tail -f /dev/null
@@ -135,7 +136,8 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # debug for bluesky with indigo subcmds <<<
+
+# debug for bluesky with indigo subcmds <<<
 
   database:
     image: postgres:16-bookworm
@@ -267,7 +269,7 @@ services:
 #     - PDS_MOD_SERVICE_URL=https://${ozoneFQDN}
 #     - PDS_REPORT_SERVICE_DID=did:web:${ozoneFQDN}
 #     - PDS_REPORT_SERVICE_URL=https://${ozoneFQDN}
-# ends: unset optional env for tesing ozone <<<<<<<<
+# ends: unset optional env for tesing ozone <<<<<<<
       - PDS_SERVICE_DID=did:web:${pdsFQDN}
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
@@ -418,7 +420,6 @@ services:
       # supporting self-signed certificates, easiest way <<<<
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
-
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/palomar
@@ -439,7 +440,7 @@ services:
       - caddy
 
   jetstream:
-   #image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     ports:
       - 6008:6008
@@ -475,6 +476,7 @@ services:
       - DEBUG_MODE=1
       - LOG_DESTINATION=1
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+#     - NODE_ENV=development
       - NODE_ENV=production
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - GOINSECURE=${GOINSECURE}
@@ -588,7 +590,7 @@ services:
       - caddy
 
   feed-generator:
-   #image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     ports:
       - 2586:3000

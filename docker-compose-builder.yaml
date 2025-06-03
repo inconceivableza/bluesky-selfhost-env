@@ -53,7 +53,7 @@ services:
       - 80:80
       - 443:443
       - 443:443/udp
-      - 9000:9000
+      # - 9000:9000 # internal CA server; doesn't need to be public
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -62,6 +62,16 @@ services:
       - pdsFQDN=${pdsFQDN}
       - EMAIL4CERTS=${EMAIL4CERTS}
       - BSKY_ADMIN_PASSWORDS=${BSKY_ADMIN_PASSWORDS}
+      - bgsFQDN=${bgsFQDN}
+      - bskyFQDN=${bskyFQDN}
+      - feedgenFQDN=${feedgenFQDN}
+      - jetstreamFQDN=${jetstreamFQDN}
+      - ozoneFQDN=${ozoneFQDN}
+      - palomarFQDN=${palomarFQDN}
+      - pdsFQDN=${pdsFQDN}
+      - plcFQDN=${plcFQDN}
+      - publicApiFQDN=${publicApiFQDN}
+      - socialappFQDN=${socialappFQDN}
       - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER}
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER}
@@ -160,8 +170,8 @@ services:
     environment:
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
-#   volumes:
-#      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      #   volumes:
+      #      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     depends_on:
       - database
 
@@ -207,6 +217,7 @@ services:
     restart: always
 
   plc:
+#   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
     profiles: ['', 'did-method-plc']
     build:
@@ -240,8 +251,9 @@ services:
     depends_on:
       - database
       - caddy
-      
+
   pds:
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}-${DOMAIN}
     profiles: ['', 'atproto']
     build:
@@ -276,7 +288,7 @@ services:
       - PDS_DEV_MODE=true
 #     - PDS_BLOBSTORE_DISK_TMP_LOCATION=/pds/image/tmp
       - PDS_DID_PLC_URL=https://${plcFQDN}
-      - PDS_EMAIL_FROM_ADDRESS=no-reply@gmail.com
+      - PDS_EMAIL_FROM_ADDRESS=${PDS_EMAIL_FROM_ADDRESS}
       - PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL}
       - PDS_ENABLE_DID_DOC_WITH_SESSION=true
       - PDS_HOSTNAME=${pdsFQDN}
@@ -315,6 +327,7 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 2470:2470
+      - 2471:2471
     command: /bigsky
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
@@ -408,7 +421,7 @@ services:
       - caddy
 
   social-app:
-    #image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
     profiles: ['', 'social-app']
     build:
@@ -427,15 +440,15 @@ services:
        - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL}
     ports:
       - 8100:8100
-    command: /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve
+    command: /bin/sh -c "/usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
     environment:
-#      cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 >>>>
+      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 >>>>
       - ATP_APPVIEW_HOST=https://${publicApiFQDN}
-#      cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 <<<<
+      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 <<<<
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - HTTP_ADDRESS=:8100
@@ -453,7 +466,7 @@ services:
     restart: always
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${branded_asof}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -465,12 +478,13 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 3999:3999
+      # - 3998:3998 # metrics port by default
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
     environment:
-#       refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
+      # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/palomar
@@ -490,7 +504,8 @@ services:
       - caddy
 
   jetstream:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     profiles: ['', 'jetstream']
     build:
       context: ./repos/jetstream/
@@ -502,6 +517,7 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 6008:6008
+      - 6009:6009
     volumes:
       - jetstream:/data
       # supporting self-signed certificates, easiest way >>>>
@@ -519,7 +535,7 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:latest
     profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
@@ -674,7 +690,8 @@ services:
       - caddy
 
   feed-generator:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
+    # image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     profiles: ['', 'feed-generator']
     build:
       context: ./repos/feed-generator/
@@ -713,7 +730,7 @@ services:
 #     - ${rDir}/feed-generator:/app
 
   ipcc:
-    image: inconceivableza/ip-location-service-bsky
+    image: davidfinconceivableza/ip-location-service-bsky
     volumes:
       # persist ip location data
       - ipcc:/app/downloads
