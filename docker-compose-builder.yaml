@@ -207,7 +207,7 @@ services:
     restart: always
 
   plc:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
     profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
@@ -453,7 +453,7 @@ services:
     restart: always
 
   palomar:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/

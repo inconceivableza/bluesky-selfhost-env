@@ -197,7 +197,7 @@ services:
 
   plc:
 #   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:latest
+    image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
     ports:
       - 2582:2582
     volumes:
@@ -408,7 +408,7 @@ services:
     restart: always
 
   palomar:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-palomar:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${branded_asof}
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
