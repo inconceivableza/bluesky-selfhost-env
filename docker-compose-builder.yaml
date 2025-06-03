@@ -88,6 +88,7 @@ services:
       test: "wget --no-verbose --tries=1 --spider http://localhost:2019/metrics || exit 1"
       interval: 5s
       retries: 20
+    restart: always
 
 # to generate HTTPS certifications on-demand >>>>>
   caddy-sidecar:
@@ -517,7 +518,7 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 6008:6008
-      - 6009:6009
+      # - 6009:6009 metrics address
     volumes:
       - jetstream:/data
       # supporting self-signed certificates, easiest way >>>>

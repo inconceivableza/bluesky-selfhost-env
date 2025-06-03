@@ -119,6 +119,7 @@ services:
 # debug for bluesky with indigo subcmds >>>
   test-indigo:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-tools:${asof}
+    profiles: ['', 'indigo']
     command: tail -f /dev/null
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
@@ -175,6 +176,7 @@ services:
 
   opensearch:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof}
+    profiles: ['', 'indigo']
     ports:
       - 9200:9200
     environment:
@@ -200,6 +202,7 @@ services:
   plc:
 #   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
+    profiles: ['', 'did-method-plc']
     ports:
       - 2582:2582
     volumes:
@@ -231,6 +234,7 @@ services:
   pds:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}-${DOMAIN}
+    profiles: ['', 'atproto']
     ports:
       - 2583:2583
     expose:
@@ -288,6 +292,7 @@ services:
 
   bgs:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-bgs:${asof}
+    profiles: ['', 'indigo']
     ports:
       - 2470:2470
       - 2471:2471
@@ -322,6 +327,7 @@ services:
   bsky:
     # appview(api)
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-bsky:${asof}
+    profiles: ['', 'atproto']
     ports:
       - 2584:2584
     expose:
@@ -382,6 +388,7 @@ services:
   social-app:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
+    profiles: ['', 'social-app']
     ports:
       - 8100:8100
     command: /bin/sh -c "/usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
@@ -411,6 +418,7 @@ services:
 
   palomar:
     image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${branded_asof}
+    profiles: ['', 'indigo']
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
@@ -442,9 +450,10 @@ services:
   jetstream:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
+    profiles: ['', 'jetstream']
     ports:
       - 6008:6008
-      - 6009:6009
+      # - 6009:6009 metrics address
     volumes:
       - jetstream:/data
       # supporting self-signed certificates, easiest way >>>>
@@ -463,6 +472,7 @@ services:
   ozone-standalone:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:latest
+    profiles: ['', 'ozone']
     ports:
       - 3000:3000
     volumes:
@@ -511,6 +521,7 @@ services:
   ozone:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    profiles: ['', 'atproto']
     command: node --enable-source-maps api.js
     ports:
       - 3000:3000
@@ -552,6 +563,7 @@ services:
 
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    profiles: ['', 'atproto']
     command: node --enable-source-maps daemon.js
     volumes:
       # supporting self-signed certificates, easiest way >>>>
@@ -592,6 +604,7 @@ services:
   feed-generator:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
+    profiles: ['', 'feed-generator']
     ports:
       - 2586:3000
     environment:
