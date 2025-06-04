@@ -26,6 +26,10 @@ volumes:
     name: redis
   jetstream:
     name: jetstream
+  backup-staging:
+    name: backup-staging
+  backup-repo:
+    name: backup-repo
   ipcc:
     name: ipcc
 # ozone:
@@ -760,3 +764,98 @@ services:
       - COUNTRY=geo-whois-asn-country
       - ASN=
     restart: always
+
+  backup:
+    image: creativeprojects/resticprofile:latest
+    hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
+    volumes:
+      - ./ops-helper/backup-scripts:/scripts:ro
+      - ./config/backup/:/etc/resticprofile/:ro
+      - ./data/accounts/backup-credentials:/resticprofile/credentials/remote:ro
+      - pds:/data/pds:rw
+      - feed-generator:/data/feed-generator:rw
+      - opensearch:/data/opensearch:rw
+      - bgs:/data/bgs:rw
+      - bsky:/data/bsky:rw
+      - backup-staging:/staging
+      - backup-repo:/restic-repo
+    environment:
+      - TZ=Etc/UTC
+      - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
+      - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite  # Glob pattern for SQLite files
+      - PGHOST=database
+      - PGPORT=5432
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - RESTIC_REPOSITORY=/restic-repo
+      # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+      - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
+      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1}
+      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2}
+      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3}
+      - RESTIC_REMOTE_PASSWORD1=${RESTIC_REMOTE_PASSWORD1}
+      - RESTIC_REMOTE_PASSWORD2=${RESTIC_REMOTE_PASSWORD2}
+      - RESTIC_REMOTE_PASSWORD3=${RESTIC_REMOTE_PASSWORD3}
+      - RESTIC_LOGDIR=/var/log
+      # if any of these keys are needed for the remote storage services, they can be configured in the environment
+      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${RESTIC_AWS_SECRET_ACCESS_KEY}
+      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: ["/bin/sh"]
+    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+    restart: always
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    volumes:
+      - "./config/telemetry/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    ports:
+      - "14250:14250"   # jaeger-agent spans gRPC
+      - "14268:14268"   # thrift_http receiver and sampling
+      - "14269:14269"   # admin port: health check at / and metrics at /metrics
+      # - "4317:4317"     # otlp collector over gRPC
+      # - "4318:4318"     # otlp collector over http
+      - "6831:6831/udp"
+      - "16686:16686"   # Jaeger UI
+      - "16685:16685"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - "./config/telemetry/otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml"
+    command:
+      - "--config=/etc/otelcol/otel-collector-config.yml"
+      - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
+      - "13133:13133" # health_check extension
+      - "55679:55679" # ZPages for direct view
+      # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
+      - "14278:14278" # alternate jaeger thrift_http receiver
+      - "8126:8126"   # datadog receiver for services instrumented with ddtrace
+    depends_on:
+      - jaeger
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - "./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml"
+      # - "./data/prometheus:/prometheus"
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      # - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=200h"
+

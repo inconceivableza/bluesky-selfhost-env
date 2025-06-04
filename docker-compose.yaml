@@ -636,6 +636,17 @@ services:
       - feed-generator:/data/
 #     - ${rDir}/feed-generator:/app
 
+  ipcc:
+    image: davidfinconceivableza/ip-location-service-bsky
+    volumes:
+      # persist ip location data
+      - ipcc:/app/downloads
+    environment:
+      - DB_TYPE=mmdb
+      - COUNTRY=geo-whois-asn-country
+      - ASN=
+    restart: always
+
   backup:
     image: creativeprojects/resticprofile:latest
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
@@ -676,17 +687,6 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
-    restart: always
-
-  ipcc:
-    image: davidfinconceivableza/ip-location-service-bsky
-    volumes:
-      # persist ip location data
-      - ipcc:/app/downloads
-    environment:
-      - DB_TYPE=mmdb
-      - COUNTRY=geo-whois-asn-country
-      - ASN=
     restart: always
 
   jaeger:
@@ -740,5 +740,4 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       # - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=200h"
-
 
