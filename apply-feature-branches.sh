@@ -106,7 +106,7 @@ show_info "merging branches into $target_branch:" "please handle any issues that
 for branch in $merge_branches
   do
     show_info "merging $branch into $target_branch:" "in $repoName"
-    git merge $branch
+    git merge $branch || { show_error "error merging $branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
   done
     
 
