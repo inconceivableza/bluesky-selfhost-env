@@ -55,6 +55,15 @@
     }
 }
 
+(tracing_reverse_proxy) {
+    handle {args[0]} {
+        tracing {
+	    span caddy-{args[2]}
+	}
+        reverse_proxy {args[1]}
+    }
+}
+
 # global options: ends   <<<<
 
 # separate port for metrics from the admin port
@@ -220,14 +229,14 @@ ozone-standalone.{$DOMAIN} {
 	}
 
 	@xrpc {
-		import tracing pds-xrpc
 		path /xrpc/*
 	}
-	reverse_proxy @ws http://pds:2583
-	reverse_proxy @xrpc http://pds:2583
+	import tracing_reverse_proxy @ws http://pds:2583 pds-websocket
+	import tracing_reverse_proxy @xrpc http://pds:2583 pds-xrpc
 	# serve the social app's website on this domain, as well as xrpc
 	root * /socialweb/
-	file_server {
+	handle {
+		file_server
 		import tracing pds-social-web
 	}
 }
@@ -258,36 +267,32 @@ ozone-standalone.{$DOMAIN} {
 	@xrpc {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/xrpc.*)
-		import tracing pds-profile-xrpc
 	}
 	rewrite @xrpc {http.regexp.path.1}
-	reverse_proxy @xrpc http://pds:2583
+	import tracing_reverse_proxy @xrpc http://pds:2583 pds-profile-xrpc
 
 	#---------------
 	#      *.pdsFQDN/.well-known* => http://pds:2583
 	@wellknown {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/\.well-known.*)
-		import tracing pds-profile-well-known
 	}
 	rewrite @wellknown {http.regexp.path.1}
-	reverse_proxy @wellknown http://pds:2583
+	import tracing_reverse_proxy @wellknown http://pds:2583 pds-profile-well-known
 
 	#---------------
 	#      *.pdsFQDN/robots.txt* => http://pds:2583
 	@robots {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/robots\.txt*)
-		import tracing pds-profile-robots
 	}
 	rewrite @robots {http.regexp.path.1}
-	reverse_proxy @robots http://pds:2583
+	import tracing_reverse_proxy @robots http://pds:2583 pds-profile-robots
 
 	#---------------
 	#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
 	@others {
 		header_regexp host Host ^(.*)\.{$pdsFQDN}$
-		import tracing pds-profile-others
 		# this must exclude all above paths, as redir has a higher priority than rewrite
 		not {
 			path /xrpc* /.well-known* /robots.txt*
@@ -295,7 +300,7 @@ ozone-standalone.{$DOMAIN} {
 		path_regexp path ^(.*)
 	}
 	redir @others https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
-	reverse_proxy @others http://social-app:8100
+	import tracing_reverse_proxy @others http://social-app:8100 pds-profile-others
 }
 # ends: *.pdsFQDN <<<<<<<<<<<
 
