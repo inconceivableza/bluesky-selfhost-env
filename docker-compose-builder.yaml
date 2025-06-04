@@ -75,6 +75,8 @@ services:
       - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER}
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER}
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=caddy
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
       # CA certificates for self-signed. >>>
@@ -248,6 +250,10 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
     restart: always
     depends_on:
       - database
@@ -305,6 +311,11 @@ services:
 #     - PDS_REPORT_SERVICE_URL=https://${ozoneFQDN}
 # ends: unset optional env for tesing ozone <<<<<<<
       - PDS_SERVICE_DID=did:web:${pdsFQDN}
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_SERVICE=pds # the package.json misconfigures this as plc-service
+      - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -316,7 +327,7 @@ services:
       - caddy
 
   bgs:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-bgs:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-bgs:${branded_asof}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -329,7 +340,7 @@ services:
     ports:
       - 2470:2470
       - 2471:2471
-    command: /bigsky
+    command: ['/bigsky', '--db-tracing']
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - BGS_ADMIN_KEY=${BGS_ADMIN_KEY}
@@ -346,6 +357,8 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -358,7 +371,7 @@ services:
 
   bsky:
     # appview(api)
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-bsky:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-bsky:${branded_asof}
     profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
@@ -409,6 +422,10 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2584
       - REDIS_HOST=redis
+      # telemetry settings
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
     volumes:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
@@ -498,6 +515,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     restart: always
     depends_on:
       - opensearch
