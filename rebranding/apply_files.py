@@ -34,6 +34,8 @@ def rename_files(config, env, dry_run=False, git_mv=False):
     for rename_config in config:
         src_path = get_config(rename_config, 'src_path')
         dest_path = get_config(rename_config, 'dest_path')
+        if os.path.exists(dest_path):
+            logging.error(f"Destination path {dest_path} already exists; rename will fail. Please remove and rerun")
         logging.info(f"Renaming {src_path} to {dest_path}")
         if not dry_run:
             if git_mv:
