@@ -634,6 +634,7 @@ services:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
       - feed-generator:/data/
+#     - ${rDir}/feed-generator:/app
 
   backup:
     image: creativeprojects/resticprofile:latest

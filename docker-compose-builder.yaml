@@ -3,11 +3,11 @@ version: "3.9"
 volumes:
   caddy-data:
     name: caddy-data
-#   driver: local
-#   driver_opts:
-#     o: bind
-#     device: ${dDir}/caddy
-#     type: none
+    #   driver: local
+    #   driver_opts:
+    #     o: bind
+    #     device: ${dDir}/caddy
+    #     type: none
   caddy-config:
     name: caddy-config
   database:
@@ -38,11 +38,11 @@ networks:
  default:
     name: ${docker_network}
     external: true
- 
+
 services:
   caddy:
-#   reverse proxy
-#   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
+    #   reverse proxy
+    #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
     image: ${BRANDED_NAMESPACE}/caddy:2
     build:
       context: .
@@ -85,6 +85,8 @@ services:
       # CA certificates for self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
+      # the social app's static website
+      - ./${PDS_WEB_DIR:-staticweb}:/socialweb
     healthcheck:
       # https://caddy.community/t/what-is-the-best-practise-for-doing-a-health-check-for-caddy-containers/12995
       test: "wget --no-verbose --tries=1 --spider http://localhost:2019/metrics || exit 1"
@@ -99,7 +101,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
-       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
 # to generate HTTPS certifications on-demand <<<<<
 
 # debug for caddy>>> 
