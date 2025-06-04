@@ -129,7 +129,7 @@ docker-compose-exec:
 
 
 _gen_compose_for_binary:
-	cat docker-compose-builder.yaml | yq4 'del(.services[].build)' > docker-compose.yaml
+	cat docker-compose-builder.yaml | yq -yY 'del(.services[].build)' > docker-compose.yaml
 
 # target to configure variable
 _applySdep:
