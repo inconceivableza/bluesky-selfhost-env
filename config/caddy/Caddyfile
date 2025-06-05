@@ -24,7 +24,7 @@
 		method OPTIONS
 	}
 	@corsOrigin {
-		header_regexp Origin ^https?://*.({$DOMAIN})$
+		header_regexp Origin ^https?://.*({$DOMAIN})$
 	}
 
 	handle @cors_preflight {
