@@ -31,7 +31,7 @@
 		header {
 			Access-Control-Allow-Origin "*"
 			Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE"
-			Access-Control-Allow-Headers *
+			Access-Control-Allow-Headers "Authorization,*"
 			Vary Origin
 			defer
 		}
