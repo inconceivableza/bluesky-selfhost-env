@@ -113,7 +113,7 @@ LOG_LEVEL_DEFAULT ?=debug
 #    export Sdep='caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin'
 #    # no plc in Sdep, comparing below line.
 #
-Sdep  ?=caddy caddy-sidecar database redis opensearch plc test-wss test-ws test-indigo pgadmin backup
+Sdep  ?=caddy caddy-sidecar database redis opensearch plc test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
 Sbsky ?=pds bgs bsky social-app palomar
 Sfeed ?=feed-generator
 #Sozone ?=ozone ozone-daemon
