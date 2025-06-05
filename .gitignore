@@ -9,3 +9,6 @@ config/**secret**
 **/package-lock.json
 *.env
 .*.sw*
+*.apk
+*.apks
+*.aab
