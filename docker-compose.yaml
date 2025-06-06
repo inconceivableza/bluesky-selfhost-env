@@ -690,23 +690,24 @@ services:
     restart: always
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/jaeger:2.6.0
     volumes:
-      - "./config/telemetry/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
-    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+      - "./config/telemetry/jaeger.yaml:/etc/jaeger/jaeger.yml"
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       - METRICS_STORAGE_TYPE=prometheus
       - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
-      - "14250:14250"   # jaeger-agent spans gRPC
-      - "14268:14268"   # thrift_http receiver and sampling
+      - "14250:14250"   # legacy jaeger-agent spans gRPC protobuf
+      - "14268:14268"   # legacy thrift_http receiver and sampling
       - "14269:14269"   # admin port: health check at / and metrics at /metrics
       # - "4317:4317"     # otlp collector over gRPC
       # - "4318:4318"     # otlp collector over http
-      - "6831:6831/udp"
+      # - "6831:6831/udp" # legacy thrift in compact thrift protocol
+      # - "6832:6832/udp" # legacy thrift in binary thrift protocol
+      # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
       - "16686:16686"   # Jaeger UI
-      - "16685:16685"
+      - "16685:16685"   # otlp-based protobuf, legacy protobuf read
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest

@@ -24,9 +24,9 @@ scrape_configs:
       - targets: ['otel-collector:8888']
     scrape_interval: 5s
 
-  - job_name: 'jaeger'
+  - job_name: 'jaeger-internal'
     static_configs:
-      - targets: ['jaeger:14269']
+      - targets: ['jaeger:8888']
     scrape_interval: 5s
 
   - job_name: 'bgs-relay'
