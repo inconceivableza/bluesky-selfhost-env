@@ -122,17 +122,23 @@ def add_span_to_trace(src_trace_id, name, attributes):
                  record_exception=False, set_status_on_exception=False,
                  limits=tracer._span_limits, instrumentation_scope=tracer._instrumentation_scope)
     span.start(start_time=start_time, parent_context=parent_context)
-    span.add_event('comment', {'event_attribute': 'test2'}, timestamp=start_time)
-    pprint.pprint(span)
+    # span.add_event('comment', {'event_attribute': 'test2'}, timestamp=start_time)
     span.end(end_time=end_time)
-    pprint.pprint(span)
     exporter.export([span])
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('trace_id', help="The hex ID of the trace to be annotated")
+    parser.add_argument('operation_name', help="The name to attach to this span (appears in jaeger next to annotator)")
+    parser.add_argument('attrs', nargs='*', help="Additional attributes in the form attr=value")
     args = parser.parse_args()
-    attributes = {"annotator.phase": "1-query", "annotator.note": "This looks fishy (test)", "annotator.group_id": "test2"}
-    add_span_to_trace(args.trace_id, "annotation.test", attributes)
+    attributes = {'annotator.date': datetime.datetime.now().isoformat()+'000Z'}
+    for attr_def in args.attrs:
+        if '=' not in attr_def:
+            attributes[attr_def] = ''
+        else:
+            key, value = attr_def.split('=', 1)
+            attributes[key] = value
+    add_span_to_trace(args.trace_id, args.operation_name, attributes)
 
