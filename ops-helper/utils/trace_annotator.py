@@ -80,10 +80,10 @@ if os.path.exists(SHORT_TRACE_ID_FILENAME):
     with open(SHORT_TRACE_ID_FILENAME, 'r') as f:
         short_trace_id_map.update(json.load(f))
 
-def find_trace_id(short_trace_id):
+def find_trace_id(short_trace_id, days=7):
     if short_trace_id in short_trace_id_map:
         return short_trace_id_map[short_trace_id][0]
-    start_time_min = (datetime.datetime.now() - datetime.timedelta(days=8)).isoformat() + '000Z'
+    start_time_min = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat() + '000Z'
     start_time_max = (datetime.datetime.now() + datetime.timedelta(days=0)).isoformat() + '000Z'
     found_trace_id = None
     for service_name in jaeger_client.QueryService_GetServices().json().get('services', []):
@@ -101,10 +101,15 @@ def find_trace_id(short_trace_id):
         json.dump(short_trace_id_map, f)
     return found_trace_id
 
-def add_span_to_trace(src_trace_id, name, attributes):
+def add_span_to_trace(src_trace_id, name, attributes, dry_run=False):
     if len(src_trace_id) < 32:
-        src_trace_id = find_trace_id(src_trace_id)
-        print(f"Found {src_trace_id}")
+        short_trace_id = src_trace_id
+        logging.info(f"Searching for full trace_id for {src_trace_id}")
+        src_trace_id = find_trace_id(short_trace_id, days=7)
+        if src_trace_id:
+            logging.info(f"Found {src_trace_id} for {short_trace_id}")
+        else:
+            raise ValueError("Could not find full trace id for {short_trace_id} (searched 7 days)")
     src_spans = get_trace_spans(src_trace_id)
     parent_span = src_spans[0]
     parent_span_id = parent_span.get('spanId')
@@ -124,11 +129,17 @@ def add_span_to_trace(src_trace_id, name, attributes):
     span.start(start_time=start_time, parent_context=parent_context)
     # span.add_event('comment', {'event_attribute': 'test2'}, timestamp=start_time)
     span.end(end_time=end_time)
-    exporter.export([span])
+    if dry_run:
+        logging.info("Span created, not exporting")
+    else:
+        logging.info("Exporting span with id {this_id:x}")
+        exporter.export([span])
 
 if __name__ == '__main__':
     import argparse
+    logging.getLogger().setLevel(logging.INFO)
     parser = argparse.ArgumentParser()
+    parser.add_argument('-n', '--dry-run', action='store_true', help="Create the telemetry but don't export them to opentelemetry")
     parser.add_argument('trace_id', help="The hex ID of the trace to be annotated")
     parser.add_argument('operation_name', help="The name to attach to this span (appears in jaeger next to annotator)")
     parser.add_argument('attrs', nargs='*', help="Additional attributes in the form attr=value")
@@ -140,5 +151,5 @@ if __name__ == '__main__':
         else:
             key, value = attr_def.split('=', 1)
             attributes[key] = value
-    add_span_to_trace(args.trace_id, args.operation_name, attributes)
+    add_span_to_trace(args.trace_id, args.operation_name, attributes, dry_run=args.dry_run)
 
