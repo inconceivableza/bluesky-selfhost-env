@@ -6,6 +6,9 @@ remote_profiles="$(echo "$restic_profiles" | grep "remote-")"
 echo Will backup the following local profiles: $local_profiles
 echo and the following remote profiles: $remote_profiles
 
+# these are manually created areas for storing database exports, not mounted volume locations
+mkdir -p /data/sqlite /data/postgres
+
 errors=""
 local_success=""
 remote_success=""

@@ -7,6 +7,9 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 staging_dir="/staging/${timestamp}"
 mkdir -p "$staging_dir"
 
+# these are manually created areas for storing database exports, not mounted volume locations
+mkdir -p /data/sqlite /data/postgres
+
 # Handle PostgreSQL databases
 if [ -n "$POSTGRES_HOST" ]; then
     echo "Backing up PostgreSQL databases"
