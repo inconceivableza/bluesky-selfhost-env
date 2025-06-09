@@ -7,7 +7,10 @@ from opentelemetry.sdk.trace import TracerProvider, _Span
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 import copy
+import datetime
+import json
 import logging
+import os.path
 import pprint
 
 def id2int(hex_id):
@@ -70,7 +73,38 @@ default_trace_state = trace.span.TraceState.get_default()
 def make_span_context(trace_id, span_id):
     return trace.SpanContext(trace_id=trace_id, span_id=span_id, is_remote=True, trace_flags=default_trace_flags, trace_state=default_trace_state)
 
+short_trace_id_map = {}
+
+SHORT_TRACE_ID_FILENAME = 'jaeger-short-trace-ids.json'
+if os.path.exists(SHORT_TRACE_ID_FILENAME):
+    with open(SHORT_TRACE_ID_FILENAME, 'r') as f:
+        short_trace_id_map.update(json.load(f))
+
+def find_trace_id(short_trace_id):
+    if short_trace_id in short_trace_id_map:
+        return short_trace_id_map[short_trace_id][0]
+    start_time_min = (datetime.datetime.now() - datetime.timedelta(days=8)).isoformat() + '000Z'
+    start_time_max = (datetime.datetime.now() + datetime.timedelta(days=0)).isoformat() + '000Z'
+    found_trace_id = None
+    for service_name in jaeger_client.QueryService_GetServices().json().get('services', []):
+        query = {'query.service_name': service_name, 'query.start_time_min': start_time_min, 'query.start_time_max': start_time_max}
+        # this is wasteful and returns the full traces
+        traces = jaeger_client.QueryService_FindTraces(**query).json()
+        for resource_span in traces.get('result', {}).get('resourceSpans', []):
+            for scope_span in resource_span.get('scopeSpans', []):
+                for span in scope_span.get('spans', []):
+                    trace_id = span.get('traceId')
+                    short_trace_id_map.setdefault(trace_id[:7], []).extend([trace_id])
+                    if trace_id[:7] == short_trace_id:
+                        found_trace_id = trace_id
+    with open(SHORT_TRACE_ID_FILENAME, 'w') as f:
+        json.dump(short_trace_id_map, f)
+    return found_trace_id
+
 def add_span_to_trace(src_trace_id, name, attributes):
+    if len(src_trace_id) < 32:
+        src_trace_id = find_trace_id(src_trace_id)
+        print(f"Found {src_trace_id}")
     src_spans = get_trace_spans(src_trace_id)
     parent_span = src_spans[0]
     parent_span_id = parent_span.get('spanId')
@@ -89,12 +123,16 @@ def add_span_to_trace(src_trace_id, name, attributes):
                  limits=tracer._span_limits, instrumentation_scope=tracer._instrumentation_scope)
     span.start(start_time=start_time, parent_context=parent_context)
     span.add_event('comment', {'event_attribute': 'test2'}, timestamp=start_time)
+    pprint.pprint(span)
     span.end(end_time=end_time)
     pprint.pprint(span)
     exporter.export([span])
 
 if __name__ == '__main__':
-    src_trace_id = "e3d160ec87e67d1262a6cf3326e13c0d"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('trace_id', help="The hex ID of the trace to be annotated")
+    args = parser.parse_args()
     attributes = {"annotator.phase": "1-query", "annotator.note": "This looks fishy (test)", "annotator.group_id": "test2"}
-    add_span_to_trace(src_trace_id, "annotation.test", attributes)
+    add_span_to_trace(args.trace_id, "annotation.test", attributes)
 
