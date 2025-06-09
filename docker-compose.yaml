@@ -648,7 +648,7 @@ services:
     restart: always
 
   backup:
-    image: creativeprojects/resticprofile:latest
+    image: creativeprojects/resticprofile:0.29.0 # wait until restic issue #5324 fix is released before upgrading
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
     volumes:
       - ./ops-helper/backup-scripts:/scripts:ro
