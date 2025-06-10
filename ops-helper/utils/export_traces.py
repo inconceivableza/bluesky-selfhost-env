@@ -8,11 +8,6 @@ import json
 import logging
 import sys
 
-def get_span_attribute(span, attr):
-    """This searches through the nested structure for an attribute matching this name
-    It looks first in span itself, then span/attributes, then span/resources/attributes, then span/scope"""
-    return span.get(attr, span.get('attributes', {}).get(attr, span.get('resource', {}).get('attributes', {}).get(attr, span.get('scope', {}).get(attr, None))))
-
 def query_traces(start_time_min, start_time_max):
     start_time_min = start_time_min.isoformat() + '.000000000Z'
     start_time_max = start_time_max.isoformat() + '.000000000Z'
