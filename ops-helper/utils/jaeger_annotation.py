@@ -18,8 +18,10 @@ def id2int(hex_id):
 SERVICE_NAME_STR = 'annotator'
 ANNOTATOR_NAME = 'brightsun.trace_annotator'
 
+__script_dir = os.path.dirname(os.path.abspath(__file__))
+
 def open_jaeger_client():
-    client = roa.Client().load_spec_from_file("jaeger-api-v3-openapi3.json")
+    client = roa.Client().load_spec_from_file(os.path.join(__script_dir, "jaeger-api-v3-openapi3.json"))
     client.set_server(roa.Server(url="http://localhost:16686"))
     return client
 
