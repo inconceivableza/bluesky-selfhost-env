@@ -1,73 +1,12 @@
 #!/usr/bin/env python
 
-import requests_openapi as roa
-from opentelemetry import trace
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider, _Span
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from jaeger_annotation import *
 import csv
 import copy
 import datetime
 import json
 import logging
-import os.path
-import pprint
 import sys
-
-def id2int(hex_id):
-    return int(hex_id, 16) if hex_id else None
-
-SERVICE_NAME_STR = 'annotator'
-ANNOTATOR_NAME = 'brightsun.trace_annotator'
-
-def open_jaeger_client():
-    client = roa.Client().load_spec_from_file("jaeger-api-v3-openapi3.json")
-    client.set_server(roa.Server(url="http://localhost:16686"))
-    return client
-
-def setup_otlp_client():
-    resource = Resource.create(attributes={SERVICE_NAME: SERVICE_NAME_STR})
-    provider = TracerProvider(resource=resource)
-    exporter = OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces",)
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-    tracer = provider.get_tracer(ANNOTATOR_NAME)
-    return tracer, exporter
-
-jaeger_client = open_jaeger_client()
-
-tracer, exporter = setup_otlp_client()
-
-def collapse_attributes(attributes):
-    new_attributes = {}
-    for attrdict in attributes:
-        value = attrdict['value']
-        if isinstance(value, dict) and 'stringValue' in value:
-            value = value['stringValue']
-        elif isinstance(value, dict) and 'intValue' in value:
-            value = value['intValue']
-        elif isinstance(value, dict) and 'doubleValue' in value:
-            value = value['doubleValue']
-        elif isinstance(value, dict) and 'boolValue' in value:
-            value = value['boolValue']
-        new_attributes[attrdict['key']] = value
-    return new_attributes
-
-def get_trace_spans(src_trace_id):
-    src_trace = jaeger_client.QueryService_GetTrace(trace_id=src_trace_id)
-    src_spans = []
-    for resource_span in src_trace.json().get('result', {}).get('resourceSpans', []):
-        resource = copy.deepcopy(resource_span.get('resource', {}))
-        resource['attributes'] = collapse_attributes(resource['attributes'])
-        for scope_span in resource_span.get('scopeSpans', []):
-            for span in scope_span.get('spans', []):
-                span = copy.deepcopy(span)
-                span['attributes'] = collapse_attributes(span['attributes'])
-                span['resource'] = resource
-                span['scope'] = scope_span.get('scope', {})
-                src_spans.append(span)
-    return src_spans
 
 def get_span_attribute(span, attr):
     """This searches through the nested structure for an attribute matching this name
@@ -114,7 +53,7 @@ def filter_traces(traces, search_attributes):
                  break
     return new_traces
 
-def export_traces(traces, first_attributes, last_attributes):
+def export_traces(traces, first_attributes, all_attributes, last_attributes):
     export_info = {}
     for trace_id, spans in traces.items():
         trace_info = export_info[trace_id] = {}
@@ -125,6 +64,10 @@ def export_traces(traces, first_attributes, last_attributes):
                 if attr_value != None:
                     trace_info[attr] = attr_value
                     needed_first_attributes.remove(attr)
+            for attr in all_attributes:
+                attr_value = get_span_attribute(span, attr)
+                if attr_value != None:
+                    trace_info.setdefault(attr, []).append(attr_value)
             for attr in last_attributes:
                 attr_value = get_span_attribute(span, attr)
                 if attr_value != None:
@@ -142,12 +85,6 @@ def export_traces(traces, first_attributes, last_attributes):
                     error_messages.append(message)
     return export_info
 
-def parse_unix_nano_time(ds):
-    return datetime.datetime.fromtimestamp(int(ds)/1000000000) if ds else None
-
-def format_date_csv(d):
-    return d.strftime('%Y-%m-%d %H:%M:%S.%f') if d is not None else ''
-    
 def format_csv(f, traces, op_name=None, annotator_batch=None):
     standard_fields = ['trace_id', 'start_time', 'span_counts', 'error_counts', 'error_messages']
     found_attrs = []
@@ -171,7 +108,8 @@ def format_csv(f, traces, op_name=None, annotator_batch=None):
                 continue
             if attr not in found_attrs:
                 found_attrs.append(attr)
-            row[attr] = trace[attr]
+            attr_value = trace[attr]
+            row[attr] = '\n'.join(attr_value) if isinstance(attr_value, list) else attr_value
         rows.append(row)
     rows.sort(key=lambda d: d.get('start_time'))
     writer = csv.DictWriter(f, standard_fields + found_attrs + fill_in_fields)
@@ -206,7 +144,7 @@ if __name__ == '__main__':
     logging.info(f"Found {len(traces)} traces between {start_time_min} and {start_time_max}")
     traces = filter_traces(traces, attributes)
     logging.info(f"Filtered {len(traces)} traces between {start_time_min} and {start_time_max}")
-    export_info = export_traces(traces, ['startTimeUnixNano', 'http.target'], ['endTimeUnixNano'])
+    export_info = export_traces(traces, ['startTimeUnixNano'], ['http.target'], ['endTimeUnixNano'])
     with (open(args.output_file, 'w') if args.output_file else sys.stdout) as f:
         if args.output_type == 'json':
             output = json.dump(export_info, f, indent=4)
