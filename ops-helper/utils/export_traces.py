@@ -74,9 +74,9 @@ def export_traces(traces, first_attributes, all_attributes, last_attributes, op_
                 span_op_name = get_span_attribute(span, 'operationName')
                 if span_op_name == op_name:
                     trace_info['trace_operation_name'] = span_op_name
-                    trace_info['annotator.batch'] = get_span_attribute(span, 'annotator.batch', '')
-                    trace_info['annotator.label'] = get_span_attribute(span, 'annotator.label', '')
-                    trace_info['annotator.note'] = get_span_attribute(span, 'annotator.note', '')
+                    trace_info['annotator.batch'] = get_span_attribute(span, 'annotator.batch') or ''
+                    trace_info['annotator.label'] = get_span_attribute(span, 'annotator.label') or ''
+                    trace_info['annotator.note'] = get_span_attribute(span, 'annotator.note') or ''
         span_counts = trace_info['span_counts'] = {}
         error_counts = trace_info['error_counts'] = {}
         error_messages = trace_info['error_messages'] = []
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     logging.info(f"Found {len(traces)} traces between {start_time_min} and {start_time_max}")
     traces = filter_traces(traces, attributes)
     logging.info(f"Filtered {len(traces)} traces between {start_time_min} and {start_time_max}")
-    export_info = export_traces(traces, ['startTimeUnixNano'], ['http.target'], ['endTimeUnixNano'])
+    export_info = export_traces(traces, ['startTimeUnixNano'], ['http.target'], ['endTimeUnixNano'], op_name=args.op_name, annotator_batch=args.batch)
     with (open(args.output_file, 'w') if args.output_file else sys.stdout) as f:
         if args.output_type == 'json':
             output = json.dump(export_info, f, indent=4)
