@@ -6,12 +6,14 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider, _Span
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+import csv
 import copy
 import datetime
 import json
 import logging
 import os.path
 import pprint
+import sys
 
 def id2int(hex_id):
     return int(hex_id, 16) if hex_id else None
@@ -67,6 +69,11 @@ def get_trace_spans(src_trace_id):
                 src_spans.append(span)
     return src_spans
 
+def get_span_attribute(span, attr):
+    """This searches through the nested structure for an attribute matching this name
+    It looks first in span itself, then span/attributes, then span/resources/attributes, then span/scope"""
+    return span.get(attr, span.get('attributes', {}).get(attr, span.get('resource', {}).get('attributes', {}).get(attr, span.get('scope', {}).get(attr, None))))
+
 def query_traces(start_time_min, start_time_max):
     start_time_min = start_time_min.isoformat() + '.000000000Z'
     start_time_max = start_time_max.isoformat() + '.000000000Z'
@@ -98,28 +105,30 @@ def filter_traces(traces, search_attributes):
     for trace_id, spans in traces.items():
         needed_attributes = copy.copy(search_attributes)
         for span in spans:
-             for attr, value in list(needed_attributes.items()):
-                 if span.get('attributes', {}).get(attr) == value:
-                     needed_attributes.pop(attr)
-                 elif span.get('resource', {}).get('attributes', {}).get(attr) == value:
-                     needed_attributes.pop(attr)
-                 elif span.get('scope', {}).get(attr) == value:
+             for attr, filter_value in list(needed_attributes.items()):
+                 attr_value = get_span_attribute(span, attr)
+                 if attr_value == filter_value:
                      needed_attributes.pop(attr)
              if not needed_attributes:
                  new_traces[trace_id] = spans
                  break
     return new_traces
 
-def export_traces(traces, first_attributes):
+def export_traces(traces, first_attributes, last_attributes):
     export_info = {}
     for trace_id, spans in traces.items():
         trace_info = export_info[trace_id] = {}
-        for attr in first_attributes:
-            for span in spans:
-                attr_value = span.get('attributes', {}).get(attr, span.get('resource', {}).get('attributes', {}).get(attr, span.get('scope', {}).get(attr, None)))
+        needed_first_attributes = copy.copy(first_attributes)
+        for span in spans:
+            for attr in needed_first_attributes[:]:
+                attr_value = get_span_attribute(span, attr)
                 if attr_value != None:
                     trace_info[attr] = attr_value
-                    break
+                    needed_first_attributes.remove(attr)
+            for attr in last_attributes:
+                attr_value = get_span_attribute(span, attr)
+                if attr_value != None:
+                    trace_info[attr] = attr_value
         span_counts = trace_info['span_counts'] = {}
         error_counts = trace_info['error_counts'] = {}
         error_messages = trace_info['error_messages'] = []
@@ -133,11 +142,53 @@ def export_traces(traces, first_attributes):
                     error_messages.append(message)
     return export_info
 
+def parse_unix_nano_time(ds):
+    return datetime.datetime.fromtimestamp(int(ds)/1000000000) if ds else None
+
+def format_date_csv(d):
+    return d.strftime('%Y-%m-%d %H:%M:%S.%f') if d is not None else ''
+    
+def format_csv(f, traces, op_name=None, annotator_batch=None):
+    standard_fields = ['trace_id', 'start_time', 'span_counts', 'error_counts', 'error_messages']
+    found_attrs = []
+    fill_in_fields = ['trace_operation_name', 'annotator.batch', 'annotator.label', 'annotator.note']
+    rows = []
+    for trace_id, trace in traces.items():
+        start_time_str = trace.pop('startTimeUnixNano', '')
+        start_time = format_date_csv(parse_unix_nano_time(start_time_str))
+        end_time_str = trace.pop('endTimeUnixNano', '')
+        end_time = format_date_csv(parse_unix_nano_time(end_time_str))
+        trace_link = f'=HYPERLINK("http://localhost:16686/trace/{trace_id}", "{trace_id}")'
+        row = {'trace_id': trace_link, 'start_time': start_time, 'trace_operation_name': op_name, 'annotator.batch': annotator_batch}
+        span_counts = sorted(trace.get('span_counts', {}).items())
+        error_counts = sorted(trace.get('error_counts', {}).items())
+        error_messages = sorted(trace.get('error_messages', []))
+        row['span_counts'] = ' '.join(f'{service_name}={count}' for (service_name, count) in span_counts)
+        row['error_counts'] = ' '.join(f'{service_name}={count}' for (service_name, count) in error_counts)
+        row['error_messages'] = '\n'.join(error_messages)
+        for attr in trace:
+            if attr in standard_fields:
+                continue
+            if attr not in found_attrs:
+                found_attrs.append(attr)
+            row[attr] = trace[attr]
+        rows.append(row)
+    rows.sort(key=lambda d: d.get('start_time'))
+    writer = csv.DictWriter(f, standard_fields + found_attrs + fill_in_fields)
+    writer.writeheader()
+    writer.writerows(rows)
+
+
 if __name__ == '__main__':
     import argparse
     logging.getLogger().setLevel(logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--dry-run', action='store_true', help="Create the telemetry but don't export them to opentelemetry")
+    parser.add_argument('--json', dest='output_type', action='store_const', const='json', default='json', help="Output JSON data (defaulit)")
+    parser.add_argument('--csv', dest='output_type', action='store_const', const='csv', help="Output CSV data")
+    parser.add_argument('-o', '--output-file', help="Output file (default stdout)")
+    parser.add_argument('--op-name', help="Trace operation name (to add to csv)")
+    parser.add_argument('--batch', help="Trace annotator batch (to add to csv)")
     parser.add_argument('start_time_min', help="The start time to search from")
     parser.add_argument('start_time_max', help="The start time to search to")
     parser.add_argument('attrs', nargs='*', help="Additional attributes in the form attr=value to limit the scope by")
@@ -155,8 +206,12 @@ if __name__ == '__main__':
     logging.info(f"Found {len(traces)} traces between {start_time_min} and {start_time_max}")
     traces = filter_traces(traces, attributes)
     logging.info(f"Filtered {len(traces)} traces between {start_time_min} and {start_time_max}")
-    export_info = export_traces(traces, ['http.target'])
-    import pprint
-    pprint.pprint(export_info)
+    export_info = export_traces(traces, ['startTimeUnixNano', 'http.target'], ['endTimeUnixNano'])
+    with (open(args.output_file, 'w') if args.output_file else sys.stdout) as f:
+        if args.output_type == 'json':
+            output = json.dump(export_info, f, indent=4)
+        elif args.output_type == 'csv':
+            output = format_csv(f, export_info, op_name=args.op_name, annotator_batch=args.batch)
+            f.write("done\n")
 
 
