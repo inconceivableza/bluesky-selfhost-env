@@ -48,7 +48,9 @@ def filter_traces(traces, search_attributes):
                  break
     return new_traces
 
-def export_traces(traces, first_attributes, all_attributes, last_attributes):
+annotator_fields = ['trace_operation_name', 'annotator.batch', 'annotator.label', 'annotator.note']
+
+def export_traces(traces, first_attributes, all_attributes, last_attributes, op_name=None, annotator_batch=None):
     export_info = {}
     for trace_id, spans in traces.items():
         trace_info = export_info[trace_id] = {}
@@ -67,6 +69,14 @@ def export_traces(traces, first_attributes, all_attributes, last_attributes):
                 attr_value = get_span_attribute(span, attr)
                 if attr_value != None:
                     trace_info[attr] = attr_value
+            service_name = get_span_attribute(span, 'service.name')
+            if service_name == SERVICE_NAME_STR:
+                span_op_name = get_span_attribute(span, 'operationName')
+                if span_op_name == op_name:
+                    trace_info['trace_operation_name'] = span_op_name
+                    trace_info['annotator.batch'] = get_span_attribute(span, 'annotator.batch', '')
+                    trace_info['annotator.label'] = get_span_attribute(span, 'annotator.label', '')
+                    trace_info['annotator.note'] = get_span_attribute(span, 'annotator.note', '')
         span_counts = trace_info['span_counts'] = {}
         error_counts = trace_info['error_counts'] = {}
         error_messages = trace_info['error_messages'] = []
@@ -83,7 +93,6 @@ def export_traces(traces, first_attributes, all_attributes, last_attributes):
 def format_csv(f, traces, op_name=None, annotator_batch=None):
     standard_fields = ['trace_id', 'start_time', 'span_counts', 'error_counts', 'error_messages']
     found_attrs = []
-    fill_in_fields = ['trace_operation_name', 'annotator.batch', 'annotator.label', 'annotator.note']
     rows = []
     for trace_id, trace in traces.items():
         start_time_str = trace.pop('startTimeUnixNano', '')
@@ -101,13 +110,13 @@ def format_csv(f, traces, op_name=None, annotator_batch=None):
         for attr in trace:
             if attr in standard_fields:
                 continue
-            if attr not in found_attrs:
+            if attr not in found_attrs and attr not in annotator_fields:
                 found_attrs.append(attr)
             attr_value = trace[attr]
             row[attr] = '\n'.join(attr_value) if isinstance(attr_value, list) else attr_value
         rows.append(row)
     rows.sort(key=lambda d: d.get('start_time'))
-    writer = csv.DictWriter(f, standard_fields + found_attrs + fill_in_fields)
+    writer = csv.DictWriter(f, standard_fields + found_attrs + annotator_fields)
     writer.writeheader()
     writer.writerows(rows)
 
