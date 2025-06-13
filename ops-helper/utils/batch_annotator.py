@@ -34,8 +34,6 @@ def process_csv_annotations(csv_file, dry_run=False):
             else:
                 if existing_annotations:
                     logging.info(f"For trace {trace_id}, none of the {len(existing_annotations)} annotations matched, so adding one")
-                    import pprint ; pprint.pprint(existing_annotations)
-                    import pdb ; pdb.set_trace()
                 add_span_to_trace(trace_id, op_name, wanted, dry_run)
 
 

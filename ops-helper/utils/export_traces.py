@@ -6,6 +6,7 @@ import copy
 import datetime
 import json
 import logging
+import re
 import sys
 
 def query_traces(start_time_min, start_time_max):
@@ -32,16 +33,28 @@ def query_traces(start_time_min, start_time_max):
                     span['scope'] = scope_span.get('scope', {})
                     trace_id = span.get('traceId')
                     traces.setdefault(trace_id, []).extend([span])
+    for trace_id, src_spans in traces.items():
+        src_spans.sort(key=lambda span: get_span_attributes(span, 'startTimeUnixNano', 'startTime'))
     return traces
 
-def filter_traces(traces, search_attributes):
+FILTER_RE = re.compile(r"^([a-zA-Z0-9.]*)(=|!=|~|!~)(.*)$")
+
+def filter_traces(traces, search_filter):
     new_traces = {}
     for trace_id, spans in traces.items():
-        needed_attributes = copy.copy(search_attributes)
+        needed_attributes = copy.copy(search_filter)
         for span in spans:
-             for attr, filter_value in list(needed_attributes.items()):
+             for attr, (op, filter_value) in list(needed_attributes.items()):
                  attr_value = get_span_attribute(span, attr)
-                 if attr_value == filter_value:
+                 if op == 'present':
+                     needed_attributes.pop(attr)
+                 elif op == '=' and attr_value == filter_value:
+                     needed_attributes.pop(attr)
+                 elif op == '!=' and attr_value is not None and attr_value != filter_value:
+                     needed_attributes.pop(attr)
+                 elif op == '~' and attr_value is not None and filter_value in attr_value:
+                     needed_attributes.pop(attr)
+                 elif op == '!~' and attr_value is not None and filter_value not in attr_value:
                      needed_attributes.pop(attr)
              if not needed_attributes:
                  new_traces[trace_id] = spans
@@ -64,7 +77,9 @@ def export_traces(traces, first_attributes, all_attributes, last_attributes, op_
             for attr in all_attributes:
                 attr_value = get_span_attribute(span, attr)
                 if attr_value != None:
-                    trace_info.setdefault(attr, []).append(attr_value)
+                    attr_values = trace_info.setdefault(attr, [])
+                    if attr_value not in attr_values:
+                        attr_values.append(attr_value)
             for attr in last_attributes:
                 attr_value = get_span_attribute(span, attr)
                 if attr_value != None:
@@ -91,16 +106,19 @@ def export_traces(traces, first_attributes, all_attributes, last_attributes, op_
     return export_info
 
 def format_csv(f, traces, op_name=None, annotator_batch=None):
-    standard_fields = ['trace_id', 'start_time', 'span_counts', 'error_counts', 'error_messages']
+    standard_fields = ['trace_id', 'start_time', 'end_time', 'span_counts', 'error_counts', 'error_messages']
     found_attrs = []
     rows = []
     for trace_id, trace in traces.items():
         start_time_str = trace.pop('startTimeUnixNano', '')
-        start_time = format_date_csv(parse_unix_nano_time(start_time_str))
+        start_time_nano = parse_unix_nano_time(start_time_str)
+        start_time = format_date_csv(start_time_nano)
         end_time_str = trace.pop('endTimeUnixNano', '')
-        end_time = format_date_csv(parse_unix_nano_time(end_time_str))
+        end_time_nano = parse_unix_nano_time(end_time_str)
+        end_time = format_date_csv(end_time_nano)
+        duration = (end_time_nano - start_time_nano)/1000
         trace_link = f'=HYPERLINK("http://localhost:16686/trace/{trace_id}", "{trace_id}")'
-        row = {'trace_id': trace_link, 'start_time': start_time, 'trace_operation_name': op_name, 'annotator.batch': annotator_batch}
+        row = {'trace_id': trace_link, 'start_time': start_time, 'end_time': end_time, 'duration': duration, 'trace_operation_name': op_name, 'annotator.batch': annotator_batch}
         span_counts = sorted(trace.get('span_counts', {}).items())
         error_counts = sorted(trace.get('error_counts', {}).items())
         error_messages = sorted(trace.get('error_messages', []))
@@ -137,18 +155,19 @@ if __name__ == '__main__':
     args = parser.parse_args()
     attributes = {}
     for attr_def in args.attrs:
-        if '=' not in attr_def:
-            attributes[attr_def] = ''
+        attr_match = FILTER_RE.match(attr_def)
+        if attr_match:
+            key, op, value = attr_match.groups()
+            attributes[key] = (op, value)
         else:
-            key, value = attr_def.split('=', 1)
-            attributes[key] = value
+            attributes[attr_def] = ('present', None)
     start_time_min = datetime.datetime.strptime(args.start_time_min, "%Y-%m-%dT%H:%M:%S")
     start_time_max = datetime.datetime.strptime(args.start_time_max, "%Y-%m-%dT%H:%M:%S")
     traces = query_traces(start_time_min, start_time_max)
     logging.info(f"Found {len(traces)} traces between {start_time_min} and {start_time_max}")
     traces = filter_traces(traces, attributes)
     logging.info(f"Filtered {len(traces)} traces between {start_time_min} and {start_time_max}")
-    export_info = export_traces(traces, ['startTimeUnixNano'], ['http.target'], ['endTimeUnixNano'], op_name=args.op_name, annotator_batch=args.batch)
+    export_info = export_traces(traces, ['startTimeUnixNano', 'http.method'], ['http.target'], ['endTimeUnixNano'], op_name=args.op_name, annotator_batch=args.batch)
     with (open(args.output_file, 'w') if args.output_file else sys.stdout) as f:
         if args.output_type == 'json':
             output = json.dump(export_info, f, indent=4)

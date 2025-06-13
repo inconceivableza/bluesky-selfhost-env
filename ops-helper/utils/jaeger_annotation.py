@@ -43,6 +43,11 @@ def get_span_attribute(span, attr):
     It looks first in span itself, then span/attributes, then span/resources/attributes, then span/scope"""
     return span.get(attr, span.get('attributes', {}).get(attr, span.get('resource', {}).get('attributes', {}).get(attr, span.get('scope', {}).get(attr, None))))
 
+def get_span_attributes(span, *attrs):
+    """This searches through the nested structure for an attribute matching this name
+    It looks first in span itself, then span/attributes, then span/resources/attributes, then span/scope"""
+    return tuple(get_span_attribute(span, attr) for attr in attrs)
+
 def collapse_attributes(attributes):
     new_attributes = {}
     for attrdict in attributes:
@@ -71,6 +76,7 @@ def get_trace_spans(src_trace_id):
                 span['resource'] = resource
                 span['scope'] = scope_span.get('scope', {})
                 src_spans.append(span)
+    src_spans.sort(key=lambda span: get_span_attributes(span, 'startTimeUnixNano', 'startTime'))
     return src_spans
 
 default_trace_flags = trace.span.TraceFlags.get_default()
