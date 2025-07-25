@@ -25,7 +25,7 @@ npx expo install --check
 
 if npx eas-cli build -p ios --local -e preview
   then
-    build_file="`ls --sort=time --time=mtime | grep "build-[0-9]*.ipa" | head -n 1`"
+    build_file="`ls -t | grep "build-[0-9]*.ipa" | head -n 1`"
     build_number="`echo "$build_file" | sed 's/build-\([0-9]*\).ipa/\1/'`"
     build_name="`jq -r .name package.json`"
     build_version="`jq -r .version package.json`"
