@@ -61,7 +61,7 @@ current_branch="`git rev-parse --abbrev-ref HEAD`"
 
 base_branch="$(yq -r '.["'$repoName'"]["'$target_branch'"].base' "$rulesFile")"
 merge_branches="$(yq -r '.["'$repoName'"]["'$target_branch'"].merge[]' "$rulesFile")"
-if [[ "$base_branch" == "" ]]
+if [[ "$base_branch" == "" || "$base_branch" == "null" ]]
   then
     echo base branch for $target_branch is not defined for $repoName in $rulesFile >&2
     exit 1
