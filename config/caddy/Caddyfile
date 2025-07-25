@@ -260,7 +260,7 @@ ozone-standalone.{$DOMAIN} {
 		path_regexp path ^(.*)
 	}
 	rewrite @ws {http.regexp.path.1}
-	reverse_proxy @ws http://pds:2583
+	import tracing_reverse_proxy @ws http://pds:2583 pds-profile-websocket
 
 	#---------------
 	#      *.pdsFQDN/xrpc*  => http://pds:2583
