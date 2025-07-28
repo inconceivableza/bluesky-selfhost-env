@@ -9,7 +9,7 @@ _dockerUp: _silent_load_vars _dockerUP_network
 
 # _env := passfile + below listup vars. cf. sed '1i' command inserts given chars to stdin.
 _silent_load_vars:
-	$(eval _envs=$(shell cat ${passfile} | sed '1i\
+	$(eval _envs=$(shell echo '\
 DOMAIN=${DOMAIN} \
 HOST_HOSTNAME=${HOST_HOSTNAME} \
 bgsFQDN=${bgsFQDN} \
@@ -40,8 +40,7 @@ OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS} \
 OZONE_SERVER_DID=${OZONE_SERVER_DID} \
 PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL} \
 PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED} \
-' \
-	| cat))
+' ; cat ${passfile}))
 
 _load_vars: _silent_load_vars
 _load_vars:
