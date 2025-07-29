@@ -1,6 +1,7 @@
 #!/bin/bash
 # this is meant to be sourced from stepNN-*.sh
 
+selfhost_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 clear_text=$(printf '\e[0m')
 start_bold=$(printf '\e[1m')
 clear_bold=$(printf '\e[22m')
@@ -114,16 +115,18 @@ function maybe_show_info {
 
 maybe_show_info "OS detected" $os
 
-if [ "$params_file" != "" ]
+if [ "$params_file" == "" ]
   then
-    maybe_show_info "Custom Parameters File" "using environment variable: $params_file"
-    export params_file="`realpath "$params_file"`"
-
-elif [ "`basename "$script_dir"`" == "rebranding" ]
-  then
-    export params_file="`realpath "$script_dir/../bluesky-params.env"`"
+    export params_file="$selfhost_dir/bluesky-params.env"
   else
-    export params_file="$script_dir/bluesky-params.env"
+    maybe_show_info "Custom Parameters File" "using environment variable: $params_file"
+    if [ -f "$params_file" ]
+      then
+        export params_file="`realpath "$params_file"`"
+    elif [ -f "$selfhost_dir/$params_file" ]
+      then
+        export params_file="`realpath "$selfhost_dir/$params_file"`"
+    fi
   fi
 
 export bluesky_utils_imported=1
