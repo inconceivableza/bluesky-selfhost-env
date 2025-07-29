@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from os.path import abspath, basename, dirname, exists, join
+from os.path import abspath, basename, dirname, exists, getmtime, join
 import compactify_svg
 import xml.etree.ElementTree as ET
 import re
@@ -28,8 +28,27 @@ def find_inkscape_exe():
 exe_name = find_inkscape_exe()
 magick_prefix = ["magick"] if sys.platform.startswith('win') else []
 
+force_recreate=False
+
+def should_recreate(source_file, target_file):
+    """
+    Check if target should be recreated based on source timestamp (like Make).
+    """
+    if not exists(source_file):
+        raise FileNotFoundError(f"Source file does not exist: {source_file}")
+    if not exists(target_file):
+        return True
+    if force_recreate:
+        return True
+    source_mtime = getmtime(source_file)
+    target_mtime = getmtime(target_file)
+    return source_mtime > target_mtime
+
 def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False):
     exportargs = []
+    target_path = join(target_dir, f"{src_id}.{target_ext}")
+    if not should_recreate(src_path, target_path):
+        return
     if target_ext == "svg":
         exportargs.append('--export-plain-svg')
     if id_only:
@@ -37,8 +56,8 @@ def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False):
             f'--actions=select:{src_id};clone-unlink;export-text-to-path',
             '--export-id-only',
         ])
-    logging.info(f"Extracting {src_path}:{src_id} to {target_dir}/{src_id}.{target_ext}")
-    subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={join(target_dir, src_id)}.{target_ext}", src_path])
+    logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
+    subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path])
 
 def parse_css_styles(css_string):
     styles = {}
@@ -181,6 +200,9 @@ def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_i
             '--export-id-only',
         ])
     for target_id, theme_style_id_base in zip(target_id_bases, theme_style_id_bases):
+        target_path = join(target_dir, f"{target_id}.{target_ext}")
+        if not should_recreate(orig_src_path, target_path):
+            continue
         tmp_file = None
         if theme_style_id_base:
             new_svg_src = copy_style_between_elements(svg_src, f"{theme_style_id_base}_bg", f"{src_id}_bg")
@@ -195,10 +217,10 @@ def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_i
             src_path = tmp_file.name
         else:
             src_path = orig_src_path
-        logging.info(f"Extracting {src_path}:{src_id} to {target_dir}/{target_id}.{target_ext}")
-        args = [exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={join(target_dir, target_id)}.{target_ext}", src_path]
+        logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
+        args = [exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path]
         logging.debug(f"Extraction command: {' '.join(args)}")
-        subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={join(target_dir, target_id)}.{target_ext}", src_path])
+        subprocess.run(args)
         if tmp_file:
             os.unlink(tmp_file.name)
 
@@ -211,7 +233,12 @@ def wait_for_file(look_for_file, max_looks=20):
         t += 1
     return os.exist(look_for_file)
 
-def export_images(src, target_dir):
+def compactify(src_path, target_path):
+    if not should_recreate(src_path, target_path):
+        return
+    compactify_svg.compactify(src_path, target_path)
+
+def export_images(src, target_dir, force=False):
     inkscape_convert(src, 'splash-dark', target_dir, 'png')
     inkscape_convert(src, 'splash', target_dir, 'png')
     inkscape_convert(src, 'splash-android-icon-dark', target_dir, 'png')
@@ -235,10 +262,10 @@ def export_images(src, target_dir):
     inkscape_convert(src, 'email_logo_default', target_dir, 'png')
     inkscape_convert(src, 'email_mark_dark', target_dir, 'png')
     inkscape_convert(src, 'email_mark_light', target_dir, 'png')
-    compactify_svg.compactify(join(target_dir, 'safari-pinned-tab.svg'), join(target_dir, 'safari-pinned-tab.compact.svg'))
-    compactify_svg.compactify(join(target_dir, 'Logotype.svg'), join(target_dir, 'Logotype.compact.svg'))
-    compactify_svg.compactify(join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
-    compactify_svg.compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
+    compactify(join(target_dir, 'safari-pinned-tab.svg'), join(target_dir, 'safari-pinned-tab.compact.svg'))
+    compactify(join(target_dir, 'Logotype.svg'), join(target_dir, 'Logotype.compact.svg'))
+    (join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
+    compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
     # app icon themes; aurora is used as the base and the others have their styles copied on before export
     inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True)
     inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'png', id_only=True)
@@ -256,6 +283,7 @@ def show_files(target_dir):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--force', action="store_true", help="Force regeneration of images even if newer than source")
     parser.add_argument('src_image', help="A branding image with the necessary ids to generate all the required images")
     parser.add_argument('target_dir', default=None, nargs='?', help="Where the generated images should be written (default: `dirname src_image`/generated)")
     args = parser.parse_args()
@@ -266,6 +294,8 @@ if __name__ == '__main__':
         args.target_dir = join(dirname(args.src_image), "generated")
     if not os.path.exists(args.target_dir):
         os.makedirs(args.target_dir)
+    if args.force:
+        force_recreate = True # global variable to stop having to pass this everywhere
     export_images(args.src_image, args.target_dir)
     show_files(args.target_dir)
 
