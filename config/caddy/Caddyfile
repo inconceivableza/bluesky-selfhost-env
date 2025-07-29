@@ -58,8 +58,8 @@
 (tracing_reverse_proxy) {
 	handle {args[0]} {
 		tracing {
-		span caddy-{args[2]}
-	}
+			span caddy-{args[2]}
+		}
 		reverse_proxy {args[1]}
 	}
 }
@@ -253,7 +253,6 @@ ozone-standalone.{$DOMAIN} {
 
 (dns_plugin_) {
 }
-
 
 # starts:  *.pdsFQDN (pds.DOMAIN) >>>>>>>>>>>
 *.{$pdsFQDN} {
