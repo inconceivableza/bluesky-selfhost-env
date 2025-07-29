@@ -391,6 +391,8 @@ services:
   social-app:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
     image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
+    # the social-app Dockerfile compiles for this platform
+    platform: linux/amd64
     profiles: ['', 'social-app']
     ports:
       - 8100:8100
