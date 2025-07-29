@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This patches the branded repositories based on the configured branding rules
+# If you only want to apply it to particular repositories, pass them on the commandline
+
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
@@ -12,6 +15,15 @@ repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
 show_heading "Cloning source code" "from the different repositories"
 make cloneAll
+
+echo command-line args $# $@
+if [ $# -gt 0 ]
+  then
+    cmdlineDirs="$@"
+    show_info "Will only run on repos" $cmdlineDirs
+    repoDirs="$(for cmdlineDir in ${cmdlineDirs}; do echo $script_dir/repos/$cmdlineDir ; done)"
+    REBRANDED_REPOS="$cmdlineDirs"
+  fi
 
 show_heading "Auto-creating latest work branch" "from the different repositories"
 for repoDir in $repoDirs
