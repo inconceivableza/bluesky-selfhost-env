@@ -1,0 +1,112 @@
+rules:
+- id: public-api
+  patterns:
+    - pattern: 'https://public.api.bsky.app'
+  fix: 'https://public.api.opensky.local.com'
+  message: Update the public API to use our public app view (this will in due course select lexicons etc)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: non-public-api
+  patterns:
+    - pattern: 'https://api.bsky.app'
+  fix: 'https://bsky.opensky.local.com'
+  message: Update the public API to use our authenticated app view (this will in due course select lexicons etc)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: web-view
+  patterns:
+    - pattern: 'https://bsky.app'
+  fix: 'https://opensky.local.com'
+  message: Update the web view
+  languages:
+    - generic
+  severity: WARNING
+
+- id: relay-domain
+  patterns:
+    - pattern: 'bsky.network'
+  fix: 'bgs.opensky.local.com'
+  message: Update to use our relay and host domains (CHECK)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: chat-domain
+  patterns:
+    - pattern: 'bsky.chat'
+  fix: 'chat.opensky.local.com'
+  message: Update to use our chat server domain (CHECK)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: hosting-provider
+  patterns:
+    - pattern: 'https://bsky.social'
+  fix: 'https://pds.opensky.local.com'
+  message: Update the website for bluesky handles / data storage. bsky.social is also a webpage, but the key here is *.${website-domain} which are handles.
+  languages:
+    - generic
+  severity: WARNING
+
+- id: hosting-provider-name
+  patterns:
+    - pattern: 'bsky.social'
+  fix: 'pds.opensky.local.com'
+  message: Update the website for bluesky handles / data storage. bsky.social is also a webpage, but the key here is *.${website-domain} which are handles.
+  languages:
+    - generic
+  severity: WARNING
+
+- id: xyz-web-package
+  patterns:
+    - pattern: 'xyz.blueskyweb.app'
+  fix: 'xyz.opensky.local.com'
+  message: Update the web package ID
+  languages:
+    - generic
+  severity: WARNING
+
+- id: app-domain
+  patterns:
+    - pattern: 'bsky.app'
+  fix: 'opensky.local.com'
+  message: Update the application domain
+  languages:
+    - generic
+  severity: WARNING
+
+- id: app-name
+  patterns:
+    - pattern: "Bluesky"
+  fix: "Opensky"
+  message: Update the application name
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - LICENSE
+
+- id: notification-service-extension
+  patterns:
+    - pattern: "BlueskyNSE"
+  fix: "OpenskyNSE"
+  message: Update the notification service extension (requires RENAME)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: clip-module
+  patterns:
+    - pattern: "BlueskyClip"
+  fix: "OpenskyClip"
+  message: Update the clip module name (requires RENAME)
+  languages:
+    - generic
+  severity: WARNING
+
