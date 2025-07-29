@@ -79,41 +79,40 @@ echo "BRAND_CONFIG_DIR=${BRAND_CONFIG_DIR}" >> "$BRAND_TMP_ENV_FILE"
 echo "BRAND_IMAGES_DIR=${BRAND_IMAGES_DIR}" >> "$BRAND_TMP_ENV_FILE" 
 
 [ -f "$params_file" ] && { set -a ; . "$params_file" ; set +a ; }
+function needs_images() {
+  show_info "Checking whether images should be rebuilt" "for $REBRANDED_REPOS"
+  for branded_repo in $REBRANDED_REPOS
+    do
+      if yq -e 'has("rename_paths") or has("copy_files") or has("svg_html_subst") or has("svg_tsx_subst")' ${BRAND_CONFIG_DIR}/${branded_repo}.yml > /dev/null 2>&1
+        then
+          show_info "Image build required" "for $branded_repo"
+          return 0
+        fi
+    done
+  return 1
+}
 
-python $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE || { show_error "Error exporting images" "from $BRAND_IMAGES_DIR" ; exit 1 ; }
+if needs_images
+  then
+    python $script_dir/export-brand-images.py $BRAND_IMAGES_DIR/$BRAND_IMAGES_FILE || { show_error "Error exporting images" "from $BRAND_IMAGES_DIR" ; exit 1 ; }
+  fi
 
-[ "$social_app_dir" == "" ] && social_app_dir=../repos/social-app/
-[ "$atproto_dir" == "" ] && atproto_dir=../repos/atproto/
+for branded_repo in $REBRANDED_REPOS
+  do
+    [ -f ${BRAND_CONFIG_DIR}/${branded_repo}.yml ] || { echo could not find ${BRAND_CONFIG_DIR}/${branded_repo}.yml >&2 ; exit 1 ; }
+    repo_dir="$script_dir/../repos/${branded_repo}"
+    [ -d "$repo_dir" ] || { echo could not find dir for $repo_dir - place at $repo_dir  >&2 ; exit 1 ; }
+    (
+      cd "$repo_dir"
+      echo patching $branded_repo in `pwd` with $(basename ${BRAND_CONFIG_DIR})
+      git reset --hard
+      python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/${branded_repo}.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
+      semgrep scan --config ${BRAND_CONFIG_DIR}/${branded_repo}.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
+      [ -f "google-services.json.example" ] && cp google-services.json.example google-services.json  # this is for social-app
+      python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/${branded_repo}.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
+      echo "app_name=${REBRANDING_NAME}" > branding.env
+      # git diff
+    ) || { show_error "Patching ${branded_repo} failed:" "examine above error messages and correct" ; exit 1 ; }
+  done
 
-(
-    [ -f ${BRAND_CONFIG_DIR}/social-app.yml ] || { echo could not find ${BRAND_CONFIG_DIR}/social-app.yml >&2 ; exit 1 ; }
-
-    [ -d "$social_app_dir" ] || { echo could not find social app dir - set '$social_app_dir' in bluesky-rebranding.env or in environment or place at $social_app_dir  >&2 ; exit 1 ; }
-    cd "$social_app_dir"
-    echo patching social-app in `pwd` with $(basename ${BRAND_CONFIG_DIR})
-    git reset --hard
-    python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
-    semgrep scan --config ${BRAND_CONFIG_DIR}/social-app.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
-    cp google-services.json.example google-services.json
-    python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/social-app.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
-    echo "app_name=${REBRANDING_NAME}" > branding.env
-) || { show_error "Patching social-app failed:" "examine above error messages and correct" ; exit 1 ; }
-
-(
-    [ -f "${BRAND_CONFIG_DIR}/atproto.yml" ] || { echo could not find ${BRAND_CONFIG_DIR}/atproto.yml >&2 ; exit 1 ; }
-    [ -d "$atproto_dir" ] || { echo could not find atproto dir - set '$atproto_dir' in atproto.env or in environment or place at $atproto_dir  >&2 ; exit 1 ; }
-    cd "$atproto_dir"
-    echo patching atproto in `pwd` with ${brand}
-    git reset --hard
-    semgrep scan --config "$BRAND_CONFIG_DIR"/atproto.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
-) || { show_error "Patching atproto failed:" "examine above error messages and correct" ; exit 1 ; }
-
-(
-    cd "$social_app_dir"
-    # git diff
-)
-(
-    cd "$atproto_dir"
-    # git diff
-)
 
