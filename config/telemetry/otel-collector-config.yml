@@ -53,6 +53,12 @@ exporters:
   # used to be called logging
   debug:
 
+  # OTLP pull-based exporter - for jaeger to collect from
+  # otlp:
+  #   endpoint: "0.0.0.0:14317"
+  # otlphttp:
+  #   endpoint: "http://0.0.0.0:14318"
+
 service:
   pipelines:
     traces:
