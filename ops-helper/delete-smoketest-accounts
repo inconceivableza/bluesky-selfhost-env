@@ -1,0 +1,40 @@
+#!/bin/bash
+
+script_path="`realpath "$0"`"
+script_dir="`dirname "$script_path"`"
+. "$script_dir/utils.sh"
+
+set -o allexport
+. "$params_file"
+set +o allexport
+
+. $script_dir/config/secrets-passwords.env
+
+auth_header=`python -c "import base64 ; print(base64.b64encode(b'admin:${PDS_ADMIN_PASSWORD}').decode('ascii'))"` 
+results=$(curl -s -X POST https://${pdsFQDN}/xrpc/com.atproto.server.createSession -H "Content-Type: application/json" -d "{\"identifier\": \"$FEEDGEN_PUBLISHER_HANDLE\", \"password\": \"$FEEDGEN_PUBLISHER_PASSWORD\"}")
+accessJwt=$(echo $results | jq -r .accessJwt)
+refreshJwt=$(echo $results | jq -r .refreshJwt)
+if [ "$accessJwt" != "$refreshJwt" ]
+  then
+    echo login successful...
+  else
+    echo login failed 2>&1
+    exit 1
+  fi
+# echo search accounts
+# curl -X GET https://${pdsFQDN}/xrpc/com.atproto.admin.searchAccounts -H "Authorization: Bearer ${accessJwt}" -G -d "email=david+foodios-feedgen@vabl.dev"
+# echo
+echo searching for smoketest- handles
+smoketest_handles=$(curl -s -X GET https://${pdsFQDN}/xrpc/app.bsky.actor.searchActors -H "Authorization: Bearer ${accessJwt}" -G -d "term=smoketest" -d "limit=100" | jq -r .actors[].handle)
+
+for smoketest_handle in $smoketest_handles
+  do
+    if [ "${smoketest_handle/smoketest-/}" == "$smoketest_handle" ]; then continue; fi
+    handle="$(echo $smoketest_handle | sed "s/[.]${pdsFQDN}//")"
+    did=`curl -s https://${handle}.${pdsFQDN}/.well-known/atproto-did`
+    echo deleting $did for $handle
+    curl -X POST https://${pdsFQDN}/xrpc/com.atproto.admin.deleteAccount -H "Authorization: Basic ${auth_header}" -H 'Content-Type: application/json' -d "{\"did\": \"${did}\"}"
+  done
+
+echo done
+

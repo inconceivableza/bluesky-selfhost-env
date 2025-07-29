@@ -1,0 +1,25 @@
+#!/bin/bash
+
+script_path="`realpath "$0"`"
+script_dir="`dirname "$script_path"`/.."
+. "$script_dir/utils.sh"
+
+set -o allexport
+. "$params_file"
+set +o allexport
+
+. $script_dir/config/secrets-passwords.env
+
+handle=$1
+[ "$handle" == "" ] && { echo syntax $0 handle >&2 ; exit 1 ; }
+if [ "${handle/$pdsFQDN/}" != "" ]
+  then
+    handle="$(echo $handle | sed "s/[.]${pdsFQDN}//")"
+  fi
+
+auth_header=`python -c "import base64 ; print(base64.b64encode(b'admin:${PDS_ADMIN_PASSWORD}').decode('ascii'))"`
+did=`curl -s https://${handle}.${pdsFQDN}/.well-known/atproto-did`
+echo going to delete $did for $handle
+curl -X POST https://${pdsFQDN}/xrpc/com.atproto.admin.deleteAccount -H "Authorization: Basic ${auth_header}" -H 'Content-Type: application/json' -d "{\"did\": \"${did}\"}"
+echo
+
