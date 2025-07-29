@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# syntax get-invite-code [N]
+
+script_path="`realpath "$0"`"
+script_dir="`dirname "$script_path"`/.."
+. "$script_dir/utils.sh"
+
+set -o allexport
+. "$params_file"
+. $script_dir/config/secrets-passwords.env
+set +o allexport
+
+number_of_codes="$1"
+[ "$number_of_codes" == "" ] && number_of_codes=1
+if [ "$number_of_codes" = 1 ]
+  then
+    show_heading "Generating Invite Code" ""
+  else
+    show_heading "Generating Invite Codes" "($number_of_codes)"
+  fi
+
+for i in $(seq $number_of_codes)
+  do
+    curl --fail --silent --show-error --request POST --user admin:${PDS_ADMIN_PASSWORD} --header "Content-Type: application/json" --data '{"useCount": 1}' https://${pdsFQDN}/xrpc/com.atproto.server.createInviteCode | sed 's/^.*"code":"\(.*\)".*$/\1/'
+    echo ""
+  done
+
