@@ -6,15 +6,36 @@ BRAND_CONFIG_DIR="$1"
 BRAND_IMAGES_DIR="$2"
 . $script_dir/../utils.sh
 
+main_rebranding_dir="$script_dir"
+main_rebranding_rel="$(realpath --relative-to="." "$main_rebranding_dir")"
+alt_rebranding_dir="$(realpath "$script_dir/../../rebranding")"
+alt_rebranding_rel="$(realpath --relative-to="." "$alt_rebranding_dir")"
+
+function show_subdirs_with_brand_config() {
+  base_dir="$1"
+  [ "$base_dir" = "" ] && base_dir=.
+  ls $base_dir/*/{social-app,atproto}.yml 2>/dev/null | sed 's#/\(social-app\|atproto\).yml##' | sort -u
+}
+
+function show_subdirs_with_brand_images() {
+  base_dir="$1"
+  [ "$base_dir" = "" ] && base_dir=.
+  ls $base_dir/*/*-branding.svg 2>/dev/null | sed 's#/[^/]*-branding.svg##' | sort -u
+}
+
 function usage() {
     echo syntax "$0" brand_config_dir brand_images_dir >&2
-    echo defined brand config dirs may include: `ls */{social-app,atproto}.yml 2>/dev/null | sed 's#/\(social-app\|atproto\).yml##' | sort -u`
+    echo defined brand config dirs may include:
+    echo "  "`show_subdirs_with_brand_config "$main_rebranding_rel"`
+    [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_config "$alt_rebranding_rel"`
     echo to create a new one, copy opensky-local-com and adjust for your domain name
     echo defined brand images dirs may include: `ls */*-branding.svg 2>/dev/null | sed 's#/.*-branding.svg##' | sort -u`
+    echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
+    [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
     echo to create a new one, copy opensky and adjust for your images
 }
 
-[[ "$BRAND_CONFIG_DIR" == "" || "$BRAND_IMAGES_DIR" == "" ]] && {
+[[ "$1" == "-h" || "$1" == "--help" || "$BRAND_CONFIG_DIR" == "" || "$BRAND_IMAGES_DIR" == "" ]] && {
     usage
     exit 1
 }
