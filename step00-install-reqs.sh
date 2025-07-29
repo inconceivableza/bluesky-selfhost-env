@@ -7,15 +7,26 @@ script_dir="`dirname "$script_path"`"
 if [ "$os" == "linux-ubuntu" ]
   then
     show_heading "Setting up apt packages" that are requirements for building running and testing these docker images
-    if dpkg-query -l make pwgen jq yq
+    if dpkg-query -l make pwgen jq
       then
         show_info "No install required:" all packages already installed
       else
         sudo apt update
         # make is used to run setup scripts etc
         # pwgen is used to generate new securish passwords
-        # jq and yq are used in extracted json and yaml data for config and tests
-        sudo apt install -y make pwgen jq yq
+        # jq in are used in extracting json data for config and tests
+        sudo apt install -y make pwgen jq
+      fi
+
+    show_heading "Setting up snap packages" that are requirements for building running and testing these docker images
+    if dpkg-query -l yq; then sudo apt remove yq ; fi
+    if snap list yq
+      then
+        show_info "No install required:" all packages already installed
+      else
+        # yq is used in extracting yaml data for config and tests
+        sudo snap install make yq
+        # remove the old yq
       fi
     
     show_heading "Setting up websocat" directly from executable download, in /usr/local/bin
