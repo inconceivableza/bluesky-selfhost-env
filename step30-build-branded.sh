@@ -8,6 +8,14 @@ set -o allexport
 . "$params_file"
 set +o allexport
 
+echo command-line args $# $@
+if [ $# -gt 0 ]
+  then
+    cmdlineDirs="$@"
+    show_info "Will only build services" $cmdlineDirs
+    REBRANDED_SERVICES="$cmdlineDirs"
+  fi
+
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
 show_heading "Cloning source code" "from the different repositories"
