@@ -32,6 +32,7 @@ services:
       - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER}
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER}
+      - CADDY_DNS_USED=${CADDY_DNS_USED}
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
       # CA certificates for self-signed. >>>
