@@ -3,10 +3,7 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
+source_env
 
 show_heading "Fetching unbranded containers" "for required services with generic builds"
 branded_services=$(yq '.services | to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}"))|$parent' docker-compose.yaml | cut -d'"' -f2)

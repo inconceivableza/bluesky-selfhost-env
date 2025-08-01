@@ -75,9 +75,8 @@ You can change the domain name by setting the environment variable as follows:
 ### <a id="ops0-configparams"/>0) Configure params and install tools for ops
 
 *Scripted:* This step is in `./step00-install-reqs.sh` and `./step01-check-params.sh`.
-The scripts expect you to define the environment variables in `bluesky-params.env`.
-You can also override this by setting the environment variable `params_file` to point to a different `.env` file
-(useful for if you are doing multiple brandings or want to keep in a separate git repo).
+Environment variables for bluesky-selfhost-env are shared with docker-compose and declared in `./.env`
+A helper script, `./params-file-util.sh` allows you to have different `.env files` defined and switch which one `.env` is currently pointing to as a symlink.
 Copy `bluesky-params.env.example` to start off.
 
 ```bash

@@ -3,11 +3,8 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
+source_env
 
-set -o allexport
-. "$params_file"
-set +o allexport
-
-show_heading "Running command with parameters" "$@"
+show_heading "Running command with parameters from .env" "$@"
 exec "$@"
 

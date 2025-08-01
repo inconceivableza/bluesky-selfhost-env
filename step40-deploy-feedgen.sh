@@ -3,10 +3,7 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
+source_env
 
 feedgen_file="data/accounts/${REBRANDING_NAME:-bluesky}-feedgen.did"
 grep '^null$' "$feedgen_file" >/dev/null 2>/dev/null && { sed -i '/^null/d' "$feedgen_file" ; show_warning "Nulls found" "in $feedgen_file; they have been removed" ; exit 1 ; }

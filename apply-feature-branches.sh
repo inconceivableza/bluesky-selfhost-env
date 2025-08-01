@@ -43,10 +43,8 @@ repoName="`basename "$repoDir"`"
 
 cd "$script_dir"
 . "$script_dir/utils.sh"
+source_env
 
-set -o allexport
-. "$params_file"
-set +o allexport
 cd "$repoDir"
 
 rulesFile="$script_dir/branch-rules.yml"
