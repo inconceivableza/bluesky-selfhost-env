@@ -236,7 +236,7 @@ services:
 
   pds:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}
     profiles: ['', 'atproto']
     ports:
       - 2583:2583
