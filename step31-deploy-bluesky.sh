@@ -6,8 +6,8 @@ script_dir="`dirname "$script_path"`"
 source_env
 
 show_heading "Fetching unbranded containers" "for required services with generic builds"
-branded_services=$(yq '.services | to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}"))|$parent' docker-compose.yaml | cut -d'"' -f2)
-unbranded_services=$(yq '.services | to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}") | not)|$parent' docker-compose.yaml | cut -d'"' -f2)
+branded_services=$(yq '.services' -o json docker-compose.yaml | jq 'to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}"))|$parent' | cut -d'"' -f2)
+unbranded_services=$(yq '.services' -o json docker-compose.yaml | jq 'to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}") | not)|$parent' | cut -d'"' -f2)
 echo branded $branded_services
 echo unbranded $unbranded_services
 make docker-pull-unbranded unbranded_services="${unbranded_services//$'\n'/ }" || { show_error "Fetching Containers failed:" "Please see error above" ; exit 1 ; }
