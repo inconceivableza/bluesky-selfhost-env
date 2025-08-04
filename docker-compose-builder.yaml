@@ -303,6 +303,7 @@ services:
 #     - PDS_BLOBSTORE_DISK_TMP_LOCATION=/pds/image/tmp
       - PDS_DID_PLC_URL=https://${plcFQDN}
       - PDS_EMAIL_FROM_ADDRESS=${PDS_EMAIL_FROM_ADDRESS}
+      - PDS_EMAIL_IMAGES_BASE_URL=${PDS_EMAIL_IMAGES_BASE_URL}
       - PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL}
       - PDS_ENABLE_DID_DOC_WITH_SESSION=true
       - PDS_HOSTNAME=${pdsFQDN}
@@ -318,6 +319,10 @@ services:
 #     - PDS_REPORT_SERVICE_URL=https://${ozoneFQDN}
 # ends: unset optional env for tesing ozone <<<<<<<
       - PDS_SERVICE_DID=did:web:${pdsFQDN}
+      - PDS_SOCIAL_APP_DESCRIPTION=${SOCIAL_APP_DESCRIPTION}
+      - PDS_SOCIAL_APP_EMOJI=${SOCIAL_APP_EMOJI}
+      - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_OTEL_ENABLED=true
