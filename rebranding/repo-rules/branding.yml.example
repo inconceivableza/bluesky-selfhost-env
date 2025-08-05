@@ -1,0 +1,39 @@
+code:
+  app_slug_scheme: 'bluesky'
+  apple_groups: 'group.app.bsky'
+  chat_api_did: 'did:web:api.bsky.chat#bsky_chat' # this is a fake DID - see https://github.com/bluesky-social/atproto/discussions/2811
+  ios_clip_name: 'BlueskyClip'
+  ios_nse_name: 'BlueskyNSE'
+  ios_share_with_name: 'Share-with-Bluesky'
+  expo_project_owner: 'blueskysocial'
+  expo_project_id: '87ab4766-b66c-489c-98ca-65e740fa205b'
+  google_service_project_name: blueskyweb # this is used in an example; the actual config should be in a proper google services json file
+  sentry_project_organization: 'blueskysocial'
+  web_bundle_name: bskyweb
+  web_package_id: xyz.blueskyweb.app
+  web_package_path: 'xyz/blueskyweb/app'
+atproto_accounts:
+  follow_default:
+    did: "did:plc:z72i7hdynmk6r22z27h6tvur"
+    varname: BSKY_APP_ACCOUNT_DID
+naming:
+  app_name: Bluesky # ATPROTO_APP_NAME
+styling:
+  additional_color_defs: "" # hack to get new colour names
+  # additional_color_defs: "orange1: '#e88627',\norange2: '#d04304',"
+  android_splash_background_color_dark: '#0c2a49'
+  android_splash_background_color_light: '#0c7cff'
+  background_color: '#1185FE'
+  ios_splash_background_color_dark: '#001429'
+  map_color_names:
+    []
+    # - {search: 'blue0', replace: 'orange2'}
+    # - {search: 'blue2', replace: 'orange2'}
+    # - {search: 'blue3', replace: 'orange1'}
+    # - {search: 'blue4', replace: 'orange1'}
+verbage:
+  app_description: "the social internet"
+  app_emoji: "🦋"
+  profile_description_placeholder: 'e.g. Artist, dog-lover, and avid reader.'
+  post_prompt: "What's up?"
+# domains are read in from the .env file as env.VARNAME

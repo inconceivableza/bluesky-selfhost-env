@@ -1,0 +1,505 @@
+rules:
+- id: public-api
+  patterns:
+    - pattern: 'https://public.api.bsky.app'
+  fix: 'https://{{ env.publicApiFQDN }}'
+  message: Update the public API to use our public app view (this will in due course select lexicons etc)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: non-public-api
+  patterns:
+    - pattern: 'https://api.bsky.app'
+  fix: 'https://{{ env.apiFQDN }}'
+  message: Update the non-public API to use our authenticated app view (this will in due course select lexicons etc)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: web-view
+  patterns:
+    - pattern: 'https://bsky.app'
+  fix: 'https://{{ env.socialappFQDN }}'
+  message: Update the web view to use the compiled web instance of social-app
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - 'src/state/geolocation.tsx' # this is calling the ip-country-code service at /ipcc which we don't run separately
+
+- id: chat-domain
+  patterns:
+    - pattern: 'did:web:api.bsky.chat#bsky_chat'
+  fix: '{{ code.chat_api_did }}'
+  message: Update to use our chat server domain (ths is a fake DID)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: hosting-provider
+  patterns:
+    - pattern: 'https://bsky.social'
+  fix: 'https://{{ env.pdsFQDN }}'
+  message: Update the website for bluesky handles / data storage. bsky.social is also a webpage, but the key here is *.${website-domain} which are handles.
+  languages:
+    - generic
+  severity: WARNING
+
+- id: hosting-provider-name
+  patterns:
+    - pattern: 'bsky.social'
+  fix: '{{ env.pdsFQDN }}'
+  message: Update the website for bluesky handles / data storage. bsky.social is also a webpage, but the key here is *.${website-domain} which are handles.
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude: # these files all include references to individual bluesky handles
+      - src/view/screens/Profile.tsx
+      - src/view/shell/Drawer.tsx
+      - src/view/shell/desktop/RightNav.tsx
+
+# FIXME: these changes to feeds should be a change to source code
+- id: default-feeds
+  patterns:
+    - pattern: '[DISCOVER_SAVED_FEED, TIMELINE_SAVED_FEED]'
+  fix: '[TIMELINE_SAVED_FEED]'
+  message: Update the default feeds for a new user to just be the timeline feed
+  languages:
+    - typescript
+  severity: WARNING
+  paths:
+    include:
+      - src/lib/constants.ts
+
+- id: default-feeds-2
+  patterns:
+    - pattern: '[{...DISCOVER_SAVED_FEED,id: ...}, ...]'
+  fix-regex:
+    regex: '(?ms:[{][^.]*[.][.][.]DISCOVER_SAVED_FEED[^}]*[}],)'
+    replacement: ''
+  message: Update the default feeds for a new user to just be the timeline feed
+  languages:
+    - typescript
+  severity: WARNING
+  paths:
+    include:
+      - src/screens/Onboarding/StepFinished.tsx
+
+- id: xyz-web-package
+  patterns:
+    - pattern: 'xyz.blueskyweb.app'
+  fix: '{{ code.web_package_id }}'
+  message: Update the web package ID
+  languages:
+    - generic
+  severity: WARNING
+
+- id: google-services-adjust-url
+  patterns:
+    - pattern: 'blueskyweb'
+  fix: '{{ code.google_service_project_name }}'
+  message: Adjust dummy Google services url
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "google-services.json.example"
+      - "google-services.json"
+
+- id: app-domain
+  patterns:
+    - pattern: 'bsky.app'
+  fix: '{{ env.socialappFQDN }}'
+  message: Update the application domain
+  languages:
+    - generic
+  severity: WARNING
+
+- id: app-slug-scheme
+  patterns:
+    - pattern-either:
+      - pattern: "slug: 'bluesky'"
+      - pattern: "scheme: 'bluesky'"
+  fix-regex:
+    regex: "bluesky"
+    replacement: '{{ code.app_slug_scheme }}'
+  message: Update the slug and scheme for this social network
+  languages:
+    - javascript
+  severity: WARNING
+
+- id: rename-bluesky-app-urls
+  patterns:
+    - pattern-either:
+      - pattern: '"bluesky://"'
+      - pattern: '"bluesky:///"'
+  fix-regex:
+    regex: 'bluesky'
+    replacement: '{{ code.app_slug_scheme }}'
+  message: "Rename the url scheme used for app actions on smart devices"
+  languages:
+    - typescript
+  severity: WARNING
+  paths:
+    include:
+      - "src/"
+
+# TODO: should this be done in a code patch rather?
+- id: rename-bsky-app-urls
+  patterns:
+    - pattern: "'bsky://',"
+  fix: ""
+  message: "Remove the redundant bsky url scheme"
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "src/Navigation.tsx"
+
+- id: expo-project-owner
+  patterns:
+    - pattern: "owner: 'blueskysocial'"
+  fix: "owner: '{{ code.expo_project_owner }}'"
+  message: Update the expo project owner for this social network
+  languages:
+    - generic
+  severity: WARNING
+
+- id: expo-project-id
+  patterns:
+    - pattern: "55bd077a-d905-4184-9c7f-94789ba0f302"
+  fix: "{{ code.expo_project_id }}"
+  message: Update the expo project ID
+  languages:
+    - generic
+  severity: WARNING
+
+- id: sentry-project-organization
+  patterns:
+    - pattern: "organization: 'blueskyweb'"
+  fix: "organization: '{{ code.sentry_project_organization }}'"
+  message: Update the expo project owner for this social network
+  languages:
+    - generic
+  severity: WARNING
+
+- id: apple-groups
+  patterns:
+    - pattern: "group.app.bsky"
+  fix: "{{ code.apple_groups }}"
+  message: Update the permission groups used by Apple
+  languages:
+    - generic
+  severity: WARNING
+
+- id: app-name
+  patterns:
+    - pattern: "Bluesky"
+  fix: "{{ naming.app_name }}"
+  message: Update the application name
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - LICENSE
+
+- id: clip-module
+  patterns:
+    - pattern: "BlueskyClip"
+  fix: "{{ code.ios_clip_name }}"
+  message: Update the clip module name (requires RENAME)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: notification-service-extension
+  patterns:
+    - pattern: "BlueskyNSE"
+  fix: "{{ code.ios_nse_name }}"
+  message: Update the notification service extension (requires RENAME)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: share-with-module
+  patterns:
+    - pattern: "Share-with-Bluesky"
+  fix: "{{ code.ios_share_with_name }}"
+  message: Update the share-with module name (requires RENAME)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: web-bundle-name
+  patterns:
+    - pattern: "bskyweb"
+  fix: "{{ code.web_bundle_name }}"
+  message: Update the bundled web service name
+  languages:
+    - generic
+  severity: WARNING
+
+- id: background-color
+  patterns:
+    - pattern: "#1185FE"
+  fix: "{{ styling.background_color }}"
+  message: Background theme colour
+  languages:
+    - generic
+  severity: WARNING
+
+- id: android-splash-background-color-light
+  patterns:
+    - pattern: "#0c7cff"
+  fix: "{{ styling.android_splash_background_color_light }}"
+  message: Android background splash colour (light)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: android-splash-background-color-dark
+  patterns:
+    - pattern: "#0c2a49"
+  fix: "{{ styling.android_splash_background_color_dark }}"
+  message: Android background splash colour (dark)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: ios-splash-background-color-dark
+  patterns:
+    - pattern: "#001429"
+  fix: "{{ styling.ios_splash_background_color_dark }}"
+  message: iOS background splash colour (dark)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: style-color-names
+  patterns:
+    - pattern: "unreadNotifBg"
+  fix: "  {{ styling.additional_color_defs }}\nunreadNotifBg"
+  message: Add in additional style colours
+  languages:
+    - generic
+  paths:
+    include:
+      - src/lib/styles.ts
+  severity: WARNING
+
+{{#styling.map_color_names}}
+- id: style-color-usage-{{search}}-{{replace}}
+  patterns:
+    - pattern: "colors.{{search}}"
+  fix: "colors.{{replace}}"
+  message: replace color {{search}} with {{replace}}
+  languages:
+    - typescript
+  severity: WARNING
+
+{{/styling.map_color_names}}
+
+- id: post-prompt
+  patterns:
+    - pattern: "What's up?"
+  fix: "{{ verbage.post_prompt }}"
+  message: Adjust the prompt for a post
+  languages:
+    - generic
+  severity: WARNING
+
+- id: profile-description-placeholder
+  patterns:
+    - pattern: '_(msg`e.g. Artist, dog-lover, and avid reader.`)'
+  fix: "_(msg`{{ verbage.profile_description_placeholder }}`)"
+  message: "Update profile description placeholder"
+  languages:
+    - typescript
+  paths:
+    include:
+      - view/com/modals/EditProfile.tsx
+  severity: WARNING
+
+# TODO: work out what feed following should be done in code vs patching
+- id: follow-welcome-app
+  patterns:
+    - pattern: "export const BSKY_APP_ACCOUNT_DID = 'did:plc:z72i7hdynmk6r22z27h6tvur'"
+  fix: |
+    export const BSKY_APP_ACCOUNT_DID = 'did:plc:z72i7hdynmk6r22z27h6tvur'
+    export const {{ atproto_accounts.follow_default.varname }} = '{{ atproto_accounts.follow_default.did }}'
+  message: "Supply this app's welcome account rather than the Bluesky account as the default to follow"
+  languages:
+    - typescript
+  paths:
+    include:
+      - "src/lib/constants.ts"
+  severity: WARNING
+
+- id: default-account-welcome
+  pattern-either:
+    - patterns:
+        - pattern: 'BSKY_APP_ACCOUNT_DID'
+  fix: "{{ atproto_accounts.follow_default.varname }}"
+  message: "Use this app's welcome account rather than the Bluesky account as the default to follow"
+  languages:
+    - generic
+  paths:
+    include:
+      - "screens/Onboarding/StepFinished.tsx"
+  severity: WARNING
+
+- id: rename-bluesky-in-app-actions
+  patterns:
+    - pattern: 'bluesky'
+  fix: '{{ code.app_slug_scheme }}'
+  message: "Rename the core ID used for app actions on smart devices"
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "modules/"
+#       - "modules/expo-receive-android-intents/"
+
+
+rename_paths:
+- src_path: "modules/Share-with-Bluesky"
+  dest_path: "modules/{{ code.ios_share_with_name }}"
+- src_path: "modules/{{ code.ios_share_with_name }}/Share-with-Bluesky.entitlements"
+  dest_path: "modules/{{ code.ios_share_with_name }}/{{ code.ios_share_with_name }}.entitlements"
+- src_path: "modules/BlueskyNSE"
+  dest_path: "modules/{{ code.ios_nse_name }}"
+- src_path: "modules/{{ code.ios_nse_name }}/BlueskyNSE.entitlements"
+  dest_path: "modules/{{ code.ios_nse_name }}/{{ code.ios_nse_name }}.entitlements"
+- src_path: "modules/BlueskyClip"
+  dest_path: "modules/{{ code.ios_clip_name }}"
+- src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb/app"
+  dest_path: "modules/expo-receive-android-intents/android/src/main/java/{{ code.web_package_path }}"
+- src_path: "bskyweb"
+  dest_path: "{{ code.web_bundle_name }}"
+- src_path: "{{ code.web_bundle_name }}/cmd/bskyweb"
+  dest_path: "{{ code.web_bundle_name }}/cmd/{{ code.web_bundle_name }}"
+
+copy_files:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/"
+  files:
+    - "default-avatar.png"
+    - "favicon.png"
+    - "icon-android-background.png"
+    - "icon-android-foreground.png"
+    - "icon-android-notification.png"
+    - "icon.png"
+    - "logo.png"
+    - "splash-dark.png"
+    - "splash.png"
+    - "splash-android-icon-dark.png"
+    - "splash-android-icon.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "{{ code.web_bundle_name }}/static/"
+  files:
+    - "favicon.png"
+    - "favicon-16x16.png"
+    - "favicon-32x32.png"
+    - "apple-touch-icon.png"
+    - "safari-pinned-tab.svg" # TODO: make this get the compact one
+    - "social-card-default.png"
+    - "social-card-default-gradient.png"
+    - "email_mark_light.png"
+    - "email_mark_dark.png"
+    - "email_logo_default.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/app-icons/"
+  files:
+    - "android_icon_core_aurora.png"
+    - "android_icon_core_bonfire.png"
+    - "android_icon_core_classic.png"
+    - "android_icon_core_flat_black.png"
+    - "android_icon_core_flat_blue.png"
+    - "android_icon_core_flat_white.png"
+    - "android_icon_core_midnight.png"
+    - "android_icon_core_sunrise.png"
+    - "android_icon_core_sunset.png"
+    - "android_icon_default_dark.png"
+    - "android_icon_default_light.png"
+    - "ios_icon_core_aurora.png"
+    - "ios_icon_core_bonfire.png"
+    - "ios_icon_core_classic.png"
+    - "ios_icon_core_flat_black.png"
+    - "ios_icon_core_flat_blue.png"
+    - "ios_icon_core_flat_white.png"
+    - "ios_icon_core_midnight.png"
+    - "ios_icon_core_sunrise.png"
+    - "ios_icon_core_sunset.png"
+    - "ios_icon_default_dark.png"
+    - "ios_icon_default_light.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyembed/assets/"
+  files:
+    - "logo.svg"
+
+svg_html_subst:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "web"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "index.html"
+      view_box: "0 0 512 512"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "{{ code.web_bundle_name }}/templates/"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "base.html"
+      view_box: "0 0 512 512"
+
+svg_tsx_subst:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "src/view/icons"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "Logo.tsx"
+      view_box: "0 0 512 512"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{_fill};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+    - src: "logo.compact.svg"
+      dest: "Logomark.tsx"
+      view_box: "0 0 512 512"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{fill || pal.text.color};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+    - src: "Logotype.compact.svg"
+      dest: "Logotype.tsx"
+      view_box: "0 0 700 190"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{fill || pal.text.color};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "src/"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "Splash.tsx"
+      view_box: "0 0 512 512"
+
+# note that src/components/icons/TEMPLATE.tsx has a globe icon in it, doesn't need replacing
+
