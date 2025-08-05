@@ -45,11 +45,6 @@ elif [ "$REBRANDING_SCRIPT" == "" ]
     echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
     exit 1
   else
-    if [ "$REBRANDED_REPOS" == "" ]
-      then
-        show_error "REBRANDED_REPOS undefined:" "please adjust your .env file"
-        exit 1
-      fi
     show_heading "Rebranding repos: $REBRANDED_REPOS" "by scripted changes"
     REBRANDING_SCRIPT_ABS="`realpath "$REBRANDING_SCRIPT"`"
     [ "$REBRANDING_NAME" == "" ] && { show_error "Brand name undefined:" "please set REBRANDING_NAME in $params_file" ; exit 1 ; }

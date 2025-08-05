@@ -153,3 +153,7 @@ export auto_watchlog=false
 # these are the bluesky repositories we clone and use - no different from what's in the makefile
 # export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc"
 export npm_config_yes=true # stop npx eas-cli from asking whether to install itself; see https://stackoverflow.com/a/69006263
+# These can be overridden in the env file, but generally shouldn't be - they affect which things we branch for branding in which way
+export REBRANDED_REPOS=social-app
+export REBRANDED_SERVICES=social-app
+export CUSTOM_SERVICES="pds palomar plc bgs bsky"
