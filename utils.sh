@@ -14,19 +14,23 @@ purple_color=$(printf '\e[1;35m')
 reset_color=$(printf '\e[1;0m')
 
 function show_heading {
-  echo
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$blue_color""$start_bold"$1 "$clear_bold"
   shift 1
   echo "$@""$clear_text"
-  echo
+  [ "$oneline" == "true" ] || echo
 }
 
 function show_info {
-  echo
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$start_italic"$1 "$clear_italic"
   shift 1
   echo "$@""$clear_text"
-  echo
+  [ "$oneline" == "true" ] || echo
 }
 
 function show_error {
