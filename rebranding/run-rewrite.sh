@@ -4,6 +4,7 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 BRAND_CONFIG_DIR="$1"
 REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
+export MANUAL_REBRANDED_REPOS="$REBRANDED_REPOS"
 . $script_dir/../utils.sh
 
 main_rebranding_dir="$script_dir"
@@ -69,7 +70,6 @@ if [ "$os" == "macos" ]
 echo "BRAND_CONFIG_DIR=${BRAND_CONFIG_DIR}" >> "$BRAND_TMP_ENV_FILE" 
 echo "BRAND_IMAGES_DIR=${BRAND_CONFIG_DIR}" >> "$BRAND_TMP_ENV_FILE" 
 
-export MANUAL_REBRANDED_REPOS="$REBRANDED_REPOS"
 [ -f "$params_file" ] && { set -a ; . "$params_file" ; set +a ; }
 # this can be overridden from a parent script via command-line arguments
 [ "$MANUAL_REBRANDED_REPOS" != "" ] && export REBRANDED_REPOS="$MANUAL_REBRANDED_REPOS"
