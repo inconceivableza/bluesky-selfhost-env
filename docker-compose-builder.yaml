@@ -228,7 +228,7 @@ services:
 
   plc:
 #   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof}
     profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
@@ -268,7 +268,7 @@ services:
 
   pds:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof}
     profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
@@ -343,7 +343,7 @@ services:
       - caddy
 
   bgs:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-bgs:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -387,7 +387,7 @@ services:
 
   bsky:
     # appview(api)
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-bsky:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof}
     profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
@@ -456,7 +456,7 @@ services:
 
   social-app:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof}-${DOMAIN}
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
@@ -500,7 +500,7 @@ services:
     restart: always
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/

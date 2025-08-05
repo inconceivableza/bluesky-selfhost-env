@@ -204,7 +204,7 @@ services:
 
   plc:
 #   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-did-method-plc:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof}
     profiles: ['', 'did-method-plc']
     ports:
       - 2582:2582
@@ -236,7 +236,7 @@ services:
 
   pds:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-pds:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof}
     profiles: ['', 'atproto']
     ports:
       - 2583:2583
@@ -303,7 +303,7 @@ services:
       - caddy
 
   bgs:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-bgs:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof}
     profiles: ['', 'indigo']
     ports:
       - 2470:2470
@@ -339,7 +339,7 @@ services:
 
   bsky:
     # appview(api)
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-bsky:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof}
     profiles: ['', 'atproto']
     ports:
       - 2584:2584
@@ -400,7 +400,7 @@ services:
 
   social-app:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/bluesky-social-app:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof}-${DOMAIN}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -432,7 +432,7 @@ services:
     restart: always
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-palomar:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof}
     profiles: ['', 'indigo']
     ports:
       - 3999:3999
