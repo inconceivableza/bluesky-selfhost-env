@@ -284,7 +284,7 @@ rules:
 - id: style-color-names
   patterns:
     - pattern: "unreadNotifBg"
-  fix: "  {{ styling.additional_color_defs }}\nunreadNotifBg"
+  fix: "  {{#styling.additional_color_defs}}{{.}},\n{{/styling.additional_color_defs}}unreadNotifBg"
   message: Add in additional style colours
   languages:
     - generic
@@ -379,7 +379,7 @@ rename_paths:
   dest_path: "modules/{{ code.ios_nse_name }}/{{ code.ios_nse_name }}.entitlements"
 - src_path: "modules/BlueskyClip"
   dest_path: "modules/{{ code.ios_clip_name }}"
-- src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb/app"
+- src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb/"
   dest_path: "modules/expo-receive-android-intents/android/src/main/java/{{ code.web_package_path }}"
 - src_path: "bskyweb"
   dest_path: "{{ code.web_bundle_name }}"

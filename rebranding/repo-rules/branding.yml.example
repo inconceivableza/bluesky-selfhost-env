@@ -11,7 +11,7 @@ code:
   sentry_project_organization: 'blueskysocial'
   web_bundle_name: bskyweb
   web_package_id: xyz.blueskyweb.app
-  web_package_path: 'xyz/blueskyweb/app'
+  web_package_path: 'xyz/blueskyweb' # this has a /app at the end, but to make renames easier we just assume that
 atproto_accounts:
   follow_default:
     did: "did:plc:z72i7hdynmk6r22z27h6tvur"
@@ -19,8 +19,10 @@ atproto_accounts:
 naming:
   app_name: Bluesky # ATPROTO_APP_NAME
 styling:
-  additional_color_defs: "" # hack to get new colour names
-  # additional_color_defs: "orange1: '#e88627',\norange2: '#d04304',"
+  additional_color_defs: # hack to get new colour names
+    []
+    # - "orange1: '#e88627'"
+    # - "orange2: '#d04304'"
   android_splash_background_color_dark: '#0c2a49'
   android_splash_background_color_light: '#0c7cff'
   background_color: '#1185FE'
