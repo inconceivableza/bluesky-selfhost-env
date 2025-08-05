@@ -34,7 +34,7 @@ def main():
             template = f.read()
         
         # Render the template with config variables
-        renderer = pystache.Renderer()
+        renderer = pystache.Renderer(escape=lambda u: u)
         rendered_content = renderer.render(template, config_vars)
         
         # Write the output YAML file
