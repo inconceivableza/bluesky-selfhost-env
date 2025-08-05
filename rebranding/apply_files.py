@@ -1,7 +1,6 @@
 #!/usr/bin/env -S sh -c 'exec "`dirname "$0"`/venv/bin/python" "$0" "$@"'
 
 import argparse
-import configparser
 import logging
 import os
 from os.path import join
@@ -10,22 +9,8 @@ import subprocess
 import yaml
 import replace_svg_in_tsx
 import re
+from env_utils import read_env, replace_env
 
-env_parser = configparser.RawConfigParser(delimiters=('=',), comment_prefixes=('#',), inline_comment_prefixes=('#',))
-env_parser.optionxform = lambda option: option
-dummy_header_prefix = f'[{env_parser.default_section}]\n'
-
-def read_env(filename):
-   with open(filename, 'r') as f:
-       env_src = f.read()
-   env_parser.read_string(dummy_header_prefix + env_src)
-   return dict(env_parser[env_parser.default_section].items())
-
-def replace_env(src, env):
-    """This replaces ${keyname} with values in src wherever keyname is defined in env, but otherwise leaves unchanged"""
-    for key, value in sorted(env.items()):
-        src = src.replace('${%s}' % key, value)
-    return src
 
 def rename_files(config, env, dry_run=False, git_mv=False):
     def get_config(node, key):

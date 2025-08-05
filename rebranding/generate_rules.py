@@ -4,11 +4,12 @@ import argparse
 import yaml
 import pystache
 import sys
-from pathlib import Path
+from env_utils import read_env
 
 def main():
     parser = argparse.ArgumentParser(description='Generate YAML files from Mustache templates using config variables')
     parser.add_argument('-c', '--config', required=True, help='YAML config file with variables')
+    parser.add_argument('-e', '--env', action='append', default=[], help='Environment file (can specify multiple)')
     parser.add_argument('input_file', help='Input Mustache template file')
     parser.add_argument('output_file', help='Output YAML file')
     
@@ -18,6 +19,15 @@ def main():
         # Load config variables from YAML file
         with open(args.config, 'r') as f:
             config_vars = yaml.safe_load(f)
+        
+        # Load environment variables from env files
+        env_vars = {}
+        for env_file in args.env:
+            env_vars.update(read_env(env_file, interpolate=True))
+        
+        # Add env variables under 'env' key
+        if env_vars:
+            config_vars['env'] = env_vars
         
         # Read the Mustache template
         with open(args.input_file, 'r') as f:
