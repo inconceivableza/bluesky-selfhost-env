@@ -395,12 +395,17 @@ copy_files:
     - "icon-android-background.png"
     - "icon-android-foreground.png"
     - "icon-android-notification.png"
-    - "icon.png"
     - "logo.png"
     - "splash-dark.png"
     - "splash.png"
     - "splash-android-icon-dark.png"
     - "splash-android-icon.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/"
+  git_add: True
+  files:
+    - "icon.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "{{ code.web_bundle_name }}/static/"
@@ -412,6 +417,11 @@ copy_files:
     - "safari-pinned-tab.svg" # TODO: make this get the compact one
     - "social-card-default.png"
     - "social-card-default-gradient.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "{{ code.web_bundle_name }}/static/"
+  git_add: True
+  files:
     - "email_mark_light.png"
     - "email_mark_dark.png"
     - "email_logo_default.png"

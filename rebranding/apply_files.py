@@ -75,6 +75,7 @@ def copy_files(config, env, dry_run=False):
         src_dir = get_config(copy_config, 'src_dir')
         dest_dir = get_config(copy_config, 'dest_dir')
         copy_files = copy_config.get('files') or []
+        do_git_add = copy_config.get('git_add', False)
         logging.info(f"Copying {len(copy_files)} files from {src_dir} to {dest_dir}")
         for filename_def in copy_files:
             filename = replace_env(filename_def, env)
@@ -83,6 +84,8 @@ def copy_files(config, env, dry_run=False):
             logging.info(f"Copying {filename}")
             if not dry_run:
                 shutil.copy2(src_filename, dest_filename)
+                if do_git_add:
+                    subprocess.call(["git", "add", filename], cwd=dest_dir)
 
 width_height_re = re.compile('width="[^"]*" height="[^"]*"')
 view_box_re = re.compile('viewBox="[^"]*"')

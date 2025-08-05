@@ -109,6 +109,7 @@ for branded_repo in $REBRANDED_REPOS
       [ -f "google-services.json.example" ] && cp google-services.json.example google-services.json  # this is for social-app
       python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/${branded_repo}.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
       echo "app_name=${REBRANDING_NAME}" > branding.env
+      git add branding.env
       # git diff
     ) || { show_error "Patching ${branded_repo} failed:" "examine above error messages and correct" ; exit 1 ; }
   done
