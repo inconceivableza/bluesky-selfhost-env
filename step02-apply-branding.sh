@@ -13,7 +13,6 @@ missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir
 show_heading "Cloning source code" "from the different repositories"
 make cloneAll
 
-echo command-line args $# $@
 if [ $# -gt 0 ]
   then
     cmdlineDirs="$@"

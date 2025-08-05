@@ -63,8 +63,9 @@ Then review the details and see what needs adjusting.
 Running from Parent
 ===================
 
-The script in the parent directory, `../step30-build-branded.sh`, can run these branding changes
+The script in the parent directory, `../step02-apply-branding.sh`, can run these branding changes
 To use it, in the `bluesky-params.env` you create, set `REBRANDING_SCRIPT` to `rebranding/run-rewrite.sh`,
+`REBRANDING_PARAMS` to a directory containing the custom branding image and `branding.yml` rules,
 and set `REBRANDING_NAME` to match the name you chose to replace `opensky-local-com`.
 
 Running Manually

@@ -187,7 +187,8 @@ make    docker-stop-with-clean f=./docker-compose-debug-caddy.yaml
 *Scripted:* For a local test environment, you don't need to make branding changes to the social-app.
 For a public environment you do.
 To be consistent, the scripted environment is set up to build your own social app.
-You can automate this with `./step30-build-branded.sh` to make the branding changes (or not, if disabled)
+You can automate this with `./step02-apply-branding.sh` to set up a new branch of `social-app` with the branding changes,
+`./step03-build-branded.sh` to build the new docker images,
 and then `./step31-deploy-bluesky.sh` to pull and deploy the docker images.
 
 This section first outlines deploying bluesky with prebuilt images.<BR>
