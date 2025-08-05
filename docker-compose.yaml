@@ -285,8 +285,8 @@ services:
       - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
-      - DD_SERVICE=pds # the package.json misconfigures this as plc-service
       - DD_TRACE_OTEL_ENABLED=true
+      - DD_SERVICE=pds # the package.json misconfigures this as plc-service
       - DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
