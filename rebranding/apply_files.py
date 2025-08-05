@@ -9,6 +9,7 @@ import subprocess
 import yaml
 import replace_svg_in_tsx
 import re
+import sys
 from env_utils import read_env, replace_env
 
 
@@ -21,6 +22,44 @@ def rename_files(config, env, dry_run=False, git_mv=False):
         dest_path = get_config(rename_config, 'dest_path')
         if os.path.exists(dest_path):
             logging.error(f"Destination path {dest_path} already exists; rename will fail. Please remove and rerun")
+            
+            # Show detailed information about source and destination
+            print(f"\nSource path info:")
+            subprocess.run(["ls", "-ld", src_path])
+            
+            print(f"\nDestination path info:")
+            subprocess.run(["ls", "-ld", dest_path])
+            
+            print(f"\nContents of destination directory:")
+            if os.path.isdir(dest_path):
+                subprocess.run(["ls", "-la", dest_path])
+            else:
+                print("(destination is not a directory)")
+            
+            # Prompt user for action
+            while True:
+                choice = input(f"\nDestination '{dest_path}' already exists. What would you like to do?\n"
+                              f"  [r] Remove destination and continue\n"
+                              f"  [c] Continue without removing (may cause errors)\n" 
+                              f"  [q] Quit\n"
+                              f"Choice (r/c/q): ").lower().strip()
+                
+                if choice == 'r':
+                    try:
+                        shutil.rmtree(dest_path)
+                        print(f"Removed {dest_path}")
+                        break
+                    except Exception as e:
+                        print(f"Error removing {dest_path}: {e}")
+                        continue
+                elif choice == 'c':
+                    print("Continuing without removing destination...")
+                    break
+                elif choice == 'q':
+                    print("Quitting...")
+                    sys.exit(1)
+                else:
+                    print("Invalid choice. Please enter 'r', 'c', or 'q'.")
         logging.info(f"Renaming {src_path} to {dest_path}")
         if not dry_run:
             if git_mv:
