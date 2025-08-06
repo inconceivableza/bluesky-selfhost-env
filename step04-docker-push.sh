@@ -20,8 +20,7 @@ repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
 
 show_info "Querying docker" "for available images"
-docker_images_file=`mktemp 'docker-images-XXXXXXX.json'`
-docker image ls --format json > $docker_images_file || { echo Error listing docker images >&2 ; exit 1 ; }
+docker_images_json="$(docker image ls --format json)" || { echo Error listing docker images >&2 ; exit 1 ; }
 
 failures=""
 for built_service in $BUILT_SERVICES
@@ -30,11 +29,11 @@ for built_service in $BUILT_SERVICES
     if [ "${REBRANDED_SERVICES/${built_service}/}" != "${REBRANDED_SERVICES}" ]
       then
         description="customized for $REBRANDING_NAME and domain $DOMAIN"
-        json="$(cat "$docker_images_file" | jq "select(.Repository == \"$BRANDED_NAMESPACE/${image_name}\" and .Tag == \"$branded_asof-$DOMAIN\")")" || failures="$failures $built_service"
+        json="$(echo "$docker_images_json" | jq "select(.Repository == \"$BRANDED_NAMESPACE/${image_name}\" and .Tag == \"$branded_asof-$DOMAIN\")")" || failures="$failures $built_service"
         target_name="$BRANDED_NAMESPACE/${image_name}:${branded_asof}-${DOMAIN}"
       else
         description="customized for $REBRANDING_NAME"
-        json="$(cat "$docker_images_file" | jq "select(.Repository == \"$BRANDED_NAMESPACE/${image_name}\" and .Tag == \"$branded_asof\")")" || failures="$failures $built_service"
+        json="$(echo "$docker_images_json" | jq "select(.Repository == \"$BRANDED_NAMESPACE/${image_name}\" and .Tag == \"$branded_asof\")")" || failures="$failures $built_service"
         target_name="$BRANDED_NAMESPACE/${image_name}:${branded_asof}"
       fi
       show_heading "Publishing $built_service" "$description to $target_name"
