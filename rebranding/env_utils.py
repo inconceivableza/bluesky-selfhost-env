@@ -2,12 +2,18 @@
 
 import configparser
 
-env_parser = configparser.RawConfigParser(delimiters=('=',), comment_prefixes=('#',), inline_comment_prefixes=('#',))
-env_parser.optionxform = lambda option: option
-dummy_header_prefix = f'[{env_parser.default_section}]\n'
+def create_env_parser():
+    """Create a new environment parser instance"""
+    parser = configparser.RawConfigParser(delimiters=('=',), comment_prefixes=('#',), inline_comment_prefixes=('#',))
+    parser.optionxform = lambda option: option
+    return parser
 
 def read_env(filename, interpolate=False):
     """Read environment file in docker format with support for comments and variable interpolation"""
+    # Use a fresh parser instance each time to avoid state persistence
+    env_parser = create_env_parser()
+    dummy_header_prefix = f'[{env_parser.default_section}]\n'
+    
     with open(filename, 'r') as f:
         env_src = f.read()
     env_parser.read_string(dummy_header_prefix + env_src)
