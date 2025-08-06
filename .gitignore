@@ -3,10 +3,12 @@ repos/**
 data/**
 certs/**
 config/**secret**
+!config/**secret**.example
 **/__pycache__
 **/node_modules/**
 **/venv*/**
 **/package-lock.json
+**/*.egg-info/**
 *.env
 .*.sw*
 *.apk

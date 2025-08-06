@@ -1,2 +1,4 @@
 PyYaml
 pystache
+# Link to ops-helper directory to allow imports
+-e ../ops-helper

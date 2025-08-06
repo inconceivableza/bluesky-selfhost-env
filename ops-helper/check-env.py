@@ -6,8 +6,6 @@ import sys
 import re
 from pathlib import Path
 
-# Add parent directory to path to import env_utils
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'rebranding'))
 from env_utils import read_env, replace_env
 
 def get_file_info(filepath):
