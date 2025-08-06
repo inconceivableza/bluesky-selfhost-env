@@ -19,19 +19,28 @@ def get_file_info(filepath):
         return str(path.resolve())
 
 def parse_env_with_order(filepath):
-    """Parse env file and preserve variable order"""
+    """Parse env file and preserve variable order, including optional variables"""
     variables = []
+    optional_variables = []
     try:
         with open(filepath, 'r') as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
-                if line and not line.startswith('#'):
-                    if '=' in line:
+                if line:
+                    # Check for optional variables (commented out)
+                    if line.startswith('# ') and '=' in line:
+                        # Extract variable name from commented line
+                        uncommented = line[2:]  # Remove '# '
+                        if '=' in uncommented:
+                            key = uncommented.split('=', 1)[0].strip()
+                            optional_variables.append(key)
+                    # Check for regular variables
+                    elif not line.startswith('#') and '=' in line:
                         key = line.split('=', 1)[0]
                         variables.append(key)
     except FileNotFoundError:
         pass
-    return variables
+    return variables, optional_variables
 
 def extract_variable_references(value):
     """Extract variable references like ${varname} from a value"""
@@ -103,8 +112,11 @@ def main():
         sys.exit(1)
     
     # Get variable order from both files
-    example_order = parse_env_with_order(args.template_file)
-    target_order = parse_env_with_order(args.env_file)
+    example_order, example_optional = parse_env_with_order(args.template_file)
+    target_order, target_optional = parse_env_with_order(args.env_file)
+    
+    # Combine all known variables (required + optional) from example
+    example_all_vars = set(example_order + example_optional)
     
     # Create combined order: example variables first, then target-only variables
     all_vars = []
@@ -112,6 +124,12 @@ def main():
     
     # Add example variables in order
     for var in example_order:
+        if var not in seen:
+            all_vars.append(var)
+            seen.add(var)
+    
+    # Add example optional variables in order
+    for var in example_optional:
         if var not in seen:
             all_vars.append(var)
             seen.add(var)
@@ -137,7 +155,7 @@ def main():
         target_val = target_env.get(var)
         target_resolved = target_env_resolved.get(var) if target_val else None
         
-        # Always show missing variables (in example but not in target)
+        # Always show missing REQUIRED variables (in example but not optional and not in target)
         if var in example_env and var not in target_env:
             has_issues = True
             has_missing_vars = True
@@ -170,7 +188,7 @@ def main():
             continue
         
         # Check for exposed passwords (secret variables in environment file)
-        if (var not in example_env and var in target_env and var in secret_vars):
+        if (var not in example_all_vars and var in target_env and var in secret_vars):
             has_issues = True
             has_exposed_passwords = True
             if not args.silent:
@@ -180,9 +198,9 @@ def main():
                     print(f"🚨 EXPOSED PASSWORD: {var}. Value: {target_val}")
             continue
         
-        # Show extra variables in target (unless hidden)
+        # Show extra variables in target (unless hidden) - but skip optional variables
         if (not args.hide_extra_vars and 
-            var not in example_env and var in target_env):
+            var not in example_all_vars and var in target_env):
             has_issues = True
             if not args.silent:
                 if target_resolved != target_val:
