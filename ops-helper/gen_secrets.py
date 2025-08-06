@@ -66,44 +66,92 @@ def main():
         # Parse template to get secret configuration
         secret_config = parse_secret_template(args.template_file)
         
-        # Read existing secrets if file exists
+        # Read existing secrets and file content if file exists
         existing_vars = {}
+        existing_content = ""
         if os.path.exists(args.secrets_file):
             existing_vars = read_env(args.secrets_file, interpolate=False)
+            with open(args.secrets_file, 'r') as f:
+                existing_content = f.read()
         
-        # Generate secrets
-        output_vars = {}
+        # Generate only new secrets that don't exist
+        new_secrets = {}
+        external_secrets = []
         
         for var_name, config in secret_config.items():
+            # Skip if variable already exists in file
+            if var_name in existing_vars:
+                continue
+                
             secret_type = config['type']
             fixed_value = config['fixed_value']
             
-            if var_name in existing_vars:
-                # Preserve existing value
-                output_vars[var_name] = existing_vars[var_name]
-            elif secret_type == SecretType.FIXED_VALUE and fixed_value:
+            if secret_type == SecretType.FIXED_VALUE and fixed_value:
                 # Use fixed value
-                output_vars[var_name] = fixed_value
+                new_secrets[var_name] = fixed_value
+            elif secret_type == SecretType.EXTERNAL:
+                # External secrets need manual intervention
+                external_secrets.append(var_name)
+                new_secrets[var_name] = ""  # Empty placeholder
             else:
                 # Generate new secret
                 generator = get_secret_generator(secret_type)
                 if generator:
-                    output_vars[var_name] = generator()
+                    new_secrets[var_name] = generator()
                 else:
                     print(f"Warning: Unknown secret type '{secret_type}' for {var_name}", file=sys.stderr)
-                    output_vars[var_name] = ""
+                    new_secrets[var_name] = ""
         
-        # Output results
-        output_lines = []
-        for var_name in secret_config.keys():  # Preserve order from template
-            output_lines.append(f"{var_name}={output_vars[var_name]}")
-        
-        output_content = '\n'.join(output_lines) + '\n'
+        # Build final content: existing content + new secrets
+        if existing_content:
+            # Start with existing content
+            output_content = existing_content
+            # Ensure it ends with a newline
+            if not output_content.endswith('\n'):
+                output_content += '\n'
+            
+            # Add new secrets if any
+            if new_secrets:
+                for var_name in secret_config.keys():  # Preserve template order for new variables
+                    if var_name in new_secrets:
+                        output_content += f"{var_name}={new_secrets[var_name]}\n"
+        else:
+            # No existing file, create from scratch
+            output_lines = []
+            for var_name, config in secret_config.items():
+                secret_type = config['type']
+                fixed_value = config['fixed_value']
+                
+                if secret_type == SecretType.FIXED_VALUE and fixed_value:
+                    value = fixed_value
+                elif secret_type == SecretType.EXTERNAL:
+                    if var_name not in external_secrets:
+                        external_secrets.append(var_name)
+                    value = ""
+                else:
+                    generator = get_secret_generator(secret_type)
+                    value = generator() if generator else ""
+                
+                output_lines.append(f"{var_name}={value}")
+            
+            output_content = '\n'.join(output_lines) + '\n'
         
         # Write to the secrets file
         with open(args.secrets_file, 'w') as f:
             f.write(output_content)
-        print(f"Secrets written to {args.secrets_file}", file=sys.stderr)
+        # Report what was done
+        if new_secrets:
+            print(f"Added {len(new_secrets)} new secrets to {args.secrets_file}", file=sys.stderr)
+        else:
+            print(f"All secrets already exist in {args.secrets_file}", file=sys.stderr)
+        
+        # Notify user about external secrets that need manual setup
+        if external_secrets:
+            print("\n❌  EXTERNAL SECRETS REQUIRED:", file=sys.stderr)
+            print("The following secrets are externally generated and must be manually added:", file=sys.stderr)
+            for var_name in external_secrets:
+                print(f"  - {var_name}: Edit {args.secrets_file} to provide this value", file=sys.stderr)
+            print(f"\nPlease edit {args.secrets_file} and set values for these external secrets.", file=sys.stderr)
             
     except Exception as e:
         print(f"Error generating secrets: {e}", file=sys.stderr)

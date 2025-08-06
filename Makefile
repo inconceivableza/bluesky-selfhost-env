@@ -207,7 +207,7 @@ delRepoDirAll:
 # generate secrets for test env
 genSecrets: ${passfile}
 ${passfile}: ./config/gen-secrets.sh
-	wDir=${wDir} ./config/gen-secrets.sh > $@
+	wDir=${wDir} ./config/gen-secrets.sh
 	cat $@
 	@echo "secrets generated and stored in $@"
 

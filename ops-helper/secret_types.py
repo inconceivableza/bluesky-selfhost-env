@@ -18,6 +18,7 @@ class SecretType(Enum):
     SHORT_HEX = "short_hex"  
     COMPLEX_PASSWORD = "complex_password"
     FIXED_VALUE = "fixed_value"
+    EXTERNAL = "external"
 
 def parse_secret_template(template_file):
     """

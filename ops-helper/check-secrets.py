@@ -85,6 +85,11 @@ def validate_secret_strength(var_name, value, secret_config):
         if expected and value != expected:
             return f"should be '{expected}', got '{value}'"
     
+    elif secret_type == SecretType.EXTERNAL:
+        # External secrets just need to have a value (can't validate content)
+        if not value.strip():
+            return "external secret must be manually set (currently empty)"
+    
     return None
 
 def main():
