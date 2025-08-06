@@ -38,32 +38,66 @@ rDir ?=${wDir}/repos
 # file path to store generated passwords with openssl, during ops.
 passfile ?=${wDir}/config/secrets-passwords.env
 
-# derived secrets files that limit the scope of secrets
-config/bgs-secrets.env: ${passfile}
-	grep -h '^BGS_ADMIN_KEY=' $^ > $@
+# List of all secret env files that can be generated
+SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env
 
-config/bsky-secrets.env: ${passfile}
+# derived secrets files that limit the scope of secrets
+config/backup-secrets.env: ${passfile} config/db-secrets.env
+	grep -h '^\(RESTIC_PASSWORD\|RESTIC_REMOTE_PASSWORD[123]=\|RESTIC_AWS_SECRET_ACCESS_KEY\)' $^ > $@
+	cat config/db-secrets.env >> $@
+	grep -h '^RESTIC_\(AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY)=' $^ | sed 's/^RESTIC_//' > $@
+
+config/bgs-secrets.env: ${passfile} config/db-secrets.env
+	grep -h '^BGS_ADMIN_KEY=' $^ > $@
+	cat config/db-secrets.env >> $@
+	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	echo 'CARSTORE_DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/carstore' >> $@
+	echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/bgs' >> $@
+
+config/bsky-secrets.env: ${passfile} config/db-secrets.env
 	grep -h '^\(BSKY_ADMIN_PASSWORDS\|BSKY_SERVICE_SIGNING_KEY\|BSKY_STATSIG_KEY\)=' $^ > $@
+	cat config/db-secrets.env >> $@
+	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	echo 'BSKY_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/bsky' >> $@
+
+config/db-secrets.env: ${passfile}
+	grep -h '^POSTGRES_PASSWORD=' $^ > $@
 
 config/opensearch-secrets.env: ${passfile}
 	grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ > $@
 
-config/ozone-secrets.env: ${passfile}
+config/ozone-secrets.env: ${passfile} config/db-secrets.env
 	grep -h '^\(OZONE_ADMIN_PASSWORD\|OZONE_SIGNING_KEY_HEX\)=' $^ > $@
+	cat config/db-secrets.env >> $@
+	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	echo 'OZONE_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/ozone' >> $@
 
 config/palomar-secrets.env: config/opensearch-secrets.env
 	cat $^ > $@
 	grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ | sed 's/OPENSEARCH_INITIAL_ADMIN_PASSWORD/ES_PASSWORD/' >> $@
+	cat config/db-secrets.env >> $@
+	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/palomar' >> $@
 
 config/pds-secrets.env: ${passfile}
 	grep -h '^\(PDS_ADMIN_PASSWORD\|PDS_JWT_SECRET\|PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX\)=' $^ > $@
 
-secret-envs: config/bgs-secrets.env
-secret-envs: config/bsky-secrets.env
-secret-envs: config/opensearch-secrets.env
-secret-envs: config/ozone-secrets.env
-secret-envs: config/palomar-secrets.env
-secret-envs: config/pds-secrets.env
+config/plc-secrets.env: config/db-secrets.env
+	cat $^ > $@
+	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/plc' >> $@
+	echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+	echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+
+clean-secret-envs:
+	rm -f $(SECRET_ENV_FILES)
+
+secret-envs: $(SECRET_ENV_FILES)
 
 # docker-compose file
 f ?=${wDir}/docker-compose.yaml

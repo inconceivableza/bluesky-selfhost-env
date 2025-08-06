@@ -126,8 +126,6 @@ services:
     env_file: config/bgs-secrets.env
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -146,12 +144,13 @@ services:
     image: postgres:16-bookworm
     ports:
       - 5432:5432
+    env_file:
+      - config/db-secrets.env
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=healthcheck
     volumes:
       - ./config/init-postgres:/docker-entrypoint-initdb.d/
@@ -211,10 +210,10 @@ services:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
+    env_file:
+      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
+      - config/plc-secrets.env
     environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/plc
-      - DB_CREDS_JSON={"username":"${POSTGRES_USER}","password":"${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}
-      - DB_MIGRATE_CREDS_JSON={"username":"${POSTGRES_USER}","password":"${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
       - GOINSECURE=${GOINSECURE}
@@ -306,11 +305,9 @@ services:
       - 2470:2470
       - 2471:2471
     command: ['/bigsky', '--db-tracing']
-    env_file: config/bgs-secrets.env
+    env_file: config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -357,7 +354,6 @@ services:
       - BSKY_DATAPLANE_PORT=3001
       - BSKY_DATAPLANE_URLS=http://bsky:3001
       - BSKY_DB_POSTGRES_SCHEMA=bsky
-      - BSKY_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bsky
       - BSKY_DID_PLC_URL=https://${plcFQDN}
       - BSKY_LABELS_FROM_ISSUER_DIDS=${BSKY_LABELS_FROM_ISSUER_DIDS}
       - BSKY_PUBLIC_URL=https://${bskyFQDN}
@@ -441,7 +437,6 @@ services:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/palomar
 #     - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
@@ -506,7 +501,6 @@ services:
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
       - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS}
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DB_POSTGRES_SCHEMA=ozone
       - OZONE_DB_MIGRATE=1
       - OZONE_DID_PLC_URL=https://${plcFQDN}
@@ -553,7 +547,6 @@ services:
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DEV_MODE=true
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
@@ -591,7 +584,6 @@ services:
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DEV_MODE=true
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
@@ -671,7 +663,6 @@ services:
       - PGHOST=database
       - PGPORT=5432
       - PGUSER=${POSTGRES_USER}
-      - PGPASSWORD=${POSTGRES_PASSWORD}
       - RESTIC_REPOSITORY=/restic-repo
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
       - RESTIC_PASSWORD=${RESTIC_PASSWORD}
