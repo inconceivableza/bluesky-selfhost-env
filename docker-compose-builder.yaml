@@ -56,6 +56,7 @@ services:
       - 443:443
       - 443:443/udp
       # - 9000:9000 # internal CA server; doesn't need to be public
+    env_file: config/bsky-secrets.env
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -63,7 +64,6 @@ services:
       - socialappFQDN=${socialappFQDN}
       - pdsFQDN=${pdsFQDN}
       - EMAIL4CERTS=${EMAIL4CERTS}
-      - BSKY_ADMIN_PASSWORDS=${BSKY_ADMIN_PASSWORDS}
       - bgsFQDN=${bgsFQDN}
       - bskyFQDN=${bskyFQDN}
       - feedgenFQDN=${feedgenFQDN}
@@ -136,9 +136,9 @@ services:
        - no_proxy=${no_proxy}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     command: tail -f /dev/null
+    env_file: config/bgs-secrets.env
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - BGS_ADMIN_KEY=${BGS_ADMIN_KEY}
       - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
@@ -174,7 +174,7 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     ports:
-      - 54321:80
+      - 127.0.0.1:54321:80
     environment:
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
@@ -204,11 +204,11 @@ services:
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS}
     ports:
       - 9200:9200
+    env_file: config/opensearch-secrets.env
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       - bootstrap.memory_lock=true
       - cluster.name=docker-cluster
       - discovery.type=single-node
@@ -283,6 +283,7 @@ services:
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. >>>>
     user: root
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. <<<<
+    env_file: config/pds-secrets.env
     environment:
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -291,7 +292,6 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-      - PDS_ADMIN_PASSWORD=${PDS_ADMIN_PASSWORD}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
       - PDS_BSKY_APP_VIEW_URL=https://${bskyFQDN}
@@ -307,8 +307,6 @@ services:
       - PDS_HOSTNAME=${pdsFQDN}
       - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
-      - PDS_JWT_SECRET=${PDS_JWT_SECRET}
-      - PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX}
       - PDS_PORT=2583
 # starts: unset optional env for tesing ozone >>>>>>>
 #     - PDS_MOD_SERVICE_DID=did:web:${ozoneFQDN}
@@ -355,9 +353,9 @@ services:
       - 2470:2470
       - 2471:2471
     command: ['/bigsky', '--db-tracing']
+    env_file: config/bgs-secrets.env
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - BGS_ADMIN_KEY=${BGS_ADMIN_KEY}
       - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
@@ -403,8 +401,8 @@ services:
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. >>>>
     user: root
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. <<<<
+    env_file: config/bsky-secrets.env
     environment:
-      - BSKY_ADMIN_PASSWORDS=${BSKY_ADMIN_PASSWORDS}
       - BSKY_BLOB_CACHE_LOC=/cache/
       - BSKY_BSYNC_HTTP_VERSION=1.1
       - BSKY_BSYNC_PORT=3002
@@ -421,8 +419,6 @@ services:
       - BSKY_REPO_PROVIDER=wss://${bgsFQDN}
       - BSKY_SEARCH_URL=https://${palomarFQDN}
       - BSKY_SERVER_DID=did:web:${bskyFQDN}
-      - BSKY_SERVICE_SIGNING_KEY=${BSKY_SERVICE_SIGNING_KEY}
-      - BSKY_STATSIG_KEY=${BSKY_STATSIG_KEY}
       - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV}
       - DEBUG_MODE=1
       - DID_PLC_URL=https://${plcFQDN}
@@ -517,17 +513,16 @@ services:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
+    env_file: config/palomar-secrets.env
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/palomar
 #     - ES_CERT_FILE=
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
-      - ES_HOSTS=http://admin:${OPENSEARCH_INITIAL_ADMIN_PASSWORD}@opensearch:9200
+      - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
-      - ES_PASSWORD=
-      - ES_USERNAME=
+      - ES_USERNAME=admin
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
@@ -587,6 +582,7 @@ services:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
 #     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+    env_file: config/ozone-secrets.env
     environment:
 #     https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
       - LOG_ENABLED=1
@@ -603,8 +599,6 @@ services:
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
       - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS}
-      - OZONE_ADMIN_PASSWORD=${OZONE_ADMIN_PASSWORD}
-      - OZONE_SIGNING_KEY_HEX=${OZONE_SIGNING_KEY_HEX}
       - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DB_POSTGRES_SCHEMA=ozone
       - OZONE_DB_MIGRATE=1
@@ -645,6 +639,7 @@ services:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
 #     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+    env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -655,7 +650,6 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
-      - OZONE_ADMIN_PASSWORD=${OZONE_ADMIN_PASSWORD}
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
@@ -669,7 +663,6 @@ services:
       - OZONE_PORT=3000
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_SERVER_DID=did:web:${ozoneFQDN}
-      - OZONE_SIGNING_KEY_HEX=${OZONE_SIGNING_KEY_HEX}
       - OZONE_TRIAGE_DIDS=
     restart: always
     depends_on:
@@ -692,6 +685,7 @@ services:
       # supporting self-signed certificates, easiest way >>>>
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
+    env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -702,7 +696,6 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
-      - OZONE_ADMIN_PASSWORD=${OZONE_ADMIN_PASSWORD}
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
@@ -716,7 +709,6 @@ services:
       - OZONE_PORT=3000
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_SERVER_DID=did:web:${ozoneFQDN}
-      - OZONE_SIGNING_KEY_HEX=${OZONE_SIGNING_KEY_HEX}
       - OZONE_TRIAGE_DIDS=
     restart: always
     depends_on:
