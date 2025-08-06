@@ -829,14 +829,17 @@ services:
       - METRICS_STORAGE_TYPE=prometheus
       - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
-      - "14250:14250"   # jaeger-agent spans gRPC
-      - "14268:14268"   # thrift_http receiver and sampling
-      - "14269:14269"   # admin port: health check at / and metrics at /metrics
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
+      # - "14250:14250"   # legacy jaeger-agent spans gRPC protobuf
+      # - "14268:14268"   # legacy thrift_http receiver and sampling
+      - "127.0.0.1:14269:14269"   # admin port: health check at / and metrics at /metrics
       # - "4317:4317"     # otlp collector over gRPC
       # - "4318:4318"     # otlp collector over http
-      - "6831:6831/udp"
-      - "16686:16686"   # Jaeger UI
-      - "16685:16685"
+      # - "6831:6831/udp" # legacy thrift in compact thrift protocol
+      # - "6832:6832/udp" # legacy thrift in binary thrift protocol
+      # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
+      - "127.0.0.1:16686:16686"   # Jaeger UI
+      # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -846,15 +849,16 @@ services:
       - "--config=/etc/otelcol/otel-collector-config.yml"
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
-      - "8888:8888"   # Prometheus metrics
-      - "8889:8889"   # Prometheus exporter metrics
-      - "13133:13133" # health_check extension
-      - "55679:55679" # ZPages for direct view
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
+      # - "4317:4317"   # OTLP gRPC receiver
+      # - "4318:4318"   # OTLP HTTP receiver
+      # - "8888:8888"   # Prometheus metrics
+      # - "8889:8889"   # Prometheus exporter metrics
+      # - "13133:13133" # health_check extension
+      - "127.0.0.1:55679:55679" # ZPages for direct view
       # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
-      - "14278:14278" # alternate jaeger thrift_http receiver
-      - "8126:8126"   # datadog receiver for services instrumented with ddtrace
+      # - "14278:14278" # alternate jaeger thrift_http receiver
+      # - "8126:8126"   # datadog receiver for services instrumented with ddtrace
     depends_on:
       - jaeger
       - prometheus
@@ -865,7 +869,8 @@ services:
       - "./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml"
       # - "./data/prometheus:/prometheus"
     ports:
-      - "9090:9090"
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
+      - "127.0.0.1:9090:9090"
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       # - "--storage.tsdb.path=/prometheus"
