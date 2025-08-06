@@ -37,9 +37,16 @@ def parse_env_with_order(filepath):
                     # Check for regular variables
                     elif not line.startswith('#') and '=' in line:
                         key = line.split('=', 1)[0]
-                        variables.append(key)
+                        if re.match('^[a-zA-Z0-9_]+$', key):
+                            if key.startswith('_'):
+                                optional_variables.append(key)
+                            else:
+                                variables.append(key)
     except FileNotFoundError:
         pass
+    # optional variables that are also real variables aren't really optional
+    for non_optional in set(variables).intersection(optional_variables):
+        optional_variables.remove(non_optional)
     return variables, optional_variables
 
 def extract_variable_references(value):
@@ -156,7 +163,7 @@ def main():
         target_resolved = target_env_resolved.get(var) if target_val else None
         
         # Always show missing REQUIRED variables (in example but not optional and not in target)
-        if var in example_env and var not in target_env:
+        if var in example_env and var not in target_env and var not in example_optional:
             has_issues = True
             has_missing_vars = True
             if not args.silent:
