@@ -19,35 +19,56 @@ def get_file_info(filepath):
         return str(path.resolve())
 
 def parse_env_with_order(filepath):
-    """Parse env file and preserve variable order, including optional variables"""
+    """Parse env file and preserve variable order, including optional variables with values"""
     variables = []
     optional_variables = []
+    optional_values = {}  # Store optional variable values from comments
+    
     try:
         with open(filepath, 'r') as f:
             for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if line:
-                    # Check for optional variables (commented out)
-                    if line.startswith('# ') and '=' in line:
-                        # Extract variable name from commented line
-                        uncommented = line[2:]  # Remove '# '
+                original_line = line.strip()
+                if original_line:
+                    # Check for optional variables (commented out) - format: # key=value  # optional comment
+                    if original_line.startswith('# ') and '=' in original_line:
+                        # Remove initial '# ' and split on first '='
+                        uncommented = original_line[2:]  # Remove '# '
                         if '=' in uncommented:
-                            key = uncommented.split('=', 1)[0].strip()
+                            # Split on first '=' to get key and value part
+                            key, value_part = uncommented.split('=', 1)
+                            key = key.strip()
+                            
+                            # Handle case where there's a comment after the value: value # comment
+                            if '#' in value_part:
+                                value = value_part.split('#', 1)[0].strip()
+                            else:
+                                value = value_part.strip()
+                            
                             optional_variables.append(key)
+                            optional_values[key] = value
                     # Check for regular variables
-                    elif not line.startswith('#') and '=' in line:
-                        key = line.split('=', 1)[0]
+                    elif not original_line.startswith('#') and '=' in original_line:
+                        key = original_line.split('=', 1)[0]
                         if re.match('^[a-zA-Z0-9_]+$', key):
                             if key.startswith('_'):
                                 optional_variables.append(key)
+                                # For underscore variables, also extract their value
+                                value = original_line.split('=', 1)[1]
+                                if '#' in value:
+                                    value = value.split('#', 1)[0].strip()
+                                optional_values[key] = value
                             else:
                                 variables.append(key)
     except FileNotFoundError:
         pass
-    # optional variables that are also real variables aren't really optional
+    
+    # Remove variables from optional list if they're real variables, but keep their optional values
+    # This allows optional values to serve as alternative acceptable values for comparison
     for non_optional in set(variables).intersection(optional_variables):
         optional_variables.remove(non_optional)
-    return variables, optional_variables
+        # Keep the optional_values - they can be used for value comparison
+    
+    return variables, optional_variables, optional_values
 
 def extract_variable_references(value):
     """Extract variable references like ${varname} from a value"""
@@ -119,8 +140,8 @@ def main():
         sys.exit(1)
     
     # Get variable order from both files
-    example_order, example_optional = parse_env_with_order(args.template_file)
-    target_order, target_optional = parse_env_with_order(args.env_file)
+    example_order, example_optional, example_optional_values = parse_env_with_order(args.template_file)
+    target_order, target_optional, target_optional_values = parse_env_with_order(args.env_file)
     
     # Combine all known variables (required + optional) from example
     example_all_vars = set(example_order + example_optional)
@@ -185,14 +206,21 @@ def main():
             continue
         
         # Show value changes if requested (plain values, no variable substitution)
+        # But don't report a difference if the value matches an optional value defined in a comment
         if (args.show_value_changes and 
             var in example_env and var in target_env and
             not extract_variable_references(example_val) and  # example doesn't use variables
             example_val != target_val):  # but values are different
-            has_issues = True
-            if not args.silent:
-                print(f"📝 VALUE CHANGE: {var}. Example: {example_val}, Target: {target_val}")
-            continue
+            
+            # Check if target value matches an optional value from example comments
+            optional_match = (var in example_optional_values and 
+                            target_val == example_optional_values[var])
+            
+            if not optional_match:
+                has_issues = True
+                if not args.silent:
+                    print(f"📝 VALUE CHANGE: {var}. Example: {example_val}, Target: {target_val}")
+                continue
         
         # Check for exposed passwords (secret variables in environment file)
         if (var not in example_all_vars and var in target_env and var in secret_vars):
