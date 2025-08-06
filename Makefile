@@ -1,6 +1,12 @@
 ##########################################################################################
 # starts: definitions, need to care in especial.
 
+# Include the .env file, which can be a symlink pointing to an env - see params-file-util.sh
+ifeq (,$(wildcard ./.env))
+    $(error .env file not found. Please create one based on bluesky-params.env.example and symlink to .env)
+endif
+include .env
+
 # domain of self-hosting bluesky (care TLD, otherwise get failure, ie: NG=>mysky.local)
 DOMAIN ?=mysky.local.com
 # this is used for identifying restic backups; try to get as specifica a FQDN name as possible
