@@ -84,6 +84,32 @@ rDir ?=${wDir}/repos
 # file path to store generated passwords with openssl, during ops.
 passfile ?=${wDir}/config/secrets-passwords.env
 
+config/bgs-secrets.env: ${passfile}
+	grep -h '^BGS_ADMIN_KEY=' $^ > $@
+
+config/bsky-secrets.env: ${passfile}
+	grep -h '^\(BSKY_ADMIN_PASSWORDS\|BSKY_SERVICE_SIGNING_KEY\|BSKY_STATSIG_KEY\)=' $^ > $@
+
+config/opensearch-secrets.env: ${passfile}
+	grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ > $@
+
+config/ozone-secrets.env: ${passfile}
+	grep -h '^\(OZONE_ADMIN_PASSWORD\|OZONE_SIGNING_KEY_HEX\)=' $^ > $@
+
+config/palomar-secrets.env: config/opensearch-secrets.env
+	cat $^ > $@
+	grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ | sed 's/OPENSEARCH_INITIAL_ADMIN_PASSWORD/ES_PASSWORD/' >> $@
+
+config/pds-secrets.env: ${passfile}
+	grep -h '^\(PDS_ADMIN_PASSWORD\|PDS_JWT_SECRET\|PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX\)=' $^ > $@
+
+secret-envs: config/bgs-secrets.env
+secret-envs: config/bsky-secrets.env
+secret-envs: config/opensearch-secrets.env
+secret-envs: config/ozone-secrets.env
+secret-envs: config/palomar-secrets.env
+secret-envs: config/pds-secrets.env
+
 # docker-compose file
 f ?=${wDir}/docker-compose.yaml
 #f ?=${wDir}/docker-compose-builder.yaml
@@ -206,6 +232,8 @@ ${passfile}: ./config/gen-secrets.sh
 	wDir=${wDir} ./config/gen-secrets.sh > $@
 	cat $@
 	@echo "secrets generated and stored in $@"
+
+genSecrets: secret-envs
 
 setupdir:
 	mkdir -p ${aDir}

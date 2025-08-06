@@ -4,47 +4,8 @@ dockerCompose ?= docker compose
 auto_watchlog ?= true
 COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
 
-_dockerUp: _silent_load_vars _dockerUP_network
+_dockerUp: secret-envs _dockerUP_network
 	${_envs} ${dockerCompose} -f ${f} up -d ${services}
-
-# _env := passfile + below listup vars. cf. sed '1i' command inserts given chars to stdin.
-_silent_load_vars:
-	$(eval _envs=$(shell echo '\
-DOMAIN=${DOMAIN} \
-HOST_HOSTNAME=${HOST_HOSTNAME} \
-bgsFQDN=${bgsFQDN} \
-bskyFQDN=${bskyFQDN} \
-feedgenFQDN=${feedgenFQDN} \
-jetstreamFQDN=${jetstreamFQDN} \
-ozoneFQDN=${ozoneFQDN} \
-palomarFQDN=${palomarFQDN} \
-pdsFQDN=${pdsFQDN} \
-plcFQDN=${plcFQDN} \
-publicApiFQDN=${publicApiFQDN} \
-socialappFQDN=${socialappFQDN} \
-docker_network=${docker_network} \
-asof=${asof} \
-branded_asof=${branded_asof} \
-dDir=${dDir} \
-rDir=${rDir} \
-GOINSECURE=${GOINSECURE} \
-NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED} \
-LOG_LEVEL_DEFAULT=${LOG_LEVEL_DEFAULT} \
-EMAIL4CERTS=${EMAIL4CERTS} \
-PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL} \
-FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID} \
-FEEDGEN_PUBLISHER_HANDLE=${FEEDGEN_PUBLISHER_HANDLE} \
-OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE} \
-OZONE_ADMIN_EMAIL=${OZONE_ADMIN_EMAIL} \
-OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS} \
-OZONE_SERVER_DID=${OZONE_SERVER_DID} \
-PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL} \
-PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED} \
-' ; cat ${passfile}))
-
-_load_vars: _silent_load_vars
-_load_vars:
-	@echo ${_envs} | sed 's/ /\n/g' | awk -F= '{print $$1,"=",$$2}' | sed 's/ //g'
 
 _dockerUP_network:
 	-docker network create ${docker_network}
@@ -118,11 +79,11 @@ docker-rm-all:
 	-docker volume ls | tail -n +2 | awk '{print $$2}' | xargs docker volume rm -f
 	-docker system prune -f
 
-docker-exec: _silent_load_vars
+docker-exec: secret-envs
 docker-exec:
 	@${_envs} docker ${cmd}
 
-docker-compose-exec: _silent_load_vars
+docker-compose-exec: secret-envs
 docker-compose-exec:
 	@${_envs} ${dockerCompose} --env-file=${params_file} ${cmd}
 
