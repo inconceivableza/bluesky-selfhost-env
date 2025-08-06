@@ -771,7 +771,7 @@ services:
     image: creativeprojects/resticprofile:0.29.0 # wait until restic issue #5324 fix is released before upgrading
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
     volumes:
-      - ./ops-helper/backup-scripts:/scripts:ro
+      - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
       - ./data/accounts/backup-credentials:/resticprofile/credentials/remote:ro
       - pds:/data/pds:rw

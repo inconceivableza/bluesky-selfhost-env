@@ -2,7 +2,7 @@
 
 """This is a script to check the correlations between atproto/bluesky/brightsun user accounts, dids, profiles, handles etc
 It relies on all the data being in a directory in JSON format, as extracted by the account data script in brightsun's
-bluesky-selfhost-env under ops-helper/backup-scripts/accounts-health-check.sh"""
+bluesky-selfhost-env under selfhost_scripts/backup-scripts/accounts-health-check.sh"""
 
 import json
 import os

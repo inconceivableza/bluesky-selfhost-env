@@ -105,7 +105,7 @@ export FEEDGEN_EMAIL=feedgen@example.com
 
 ## Install required tools (if missing).
 apt install -y make pwgen
-(cd ops-helper/apiImpl ; npm install)
+(cd selfhost_scripts/apiImpl ; npm install)
 (sudo curl -o /usr/local/bin/websocat -L https://github.com/vi/websocat/releases/download/v1.13.0/websocat.x86_64-unknown-linux-musl; sudo chmod a+x /usr/local/bin/websocat)
 
 # 4) Check configuration.
@@ -243,8 +243,8 @@ make api_CreateAccount_ozone                    email=your-valid@email.address.c
 make docker-start-bsky-ozone  OZONE_SERVER_DID=did:plc:  OZONE_ADMIN_DIDS=did:plc:
 
 # 3) Run the workaround tool to index label assignments into the appview DB through subscribeLabels.
-# ./ops-helper/apiImpl/subscribeLabels2BskyDB.ts --help
-./ops-helper/apiImpl/subscribeLabels2BskyDB.ts
+# ./selfhost_scripts/apiImpl/subscribeLabels2BskyDB.ts --help
+./selfhost_scripts/apiImpl/subscribeLabels2BskyDB.ts
 
 # 4) [Required occasionally] Refresh the DidDoc prior to ozone sign-in (required since asof-2024-07-05)
 #    First, request and get PLC signature by email
@@ -501,8 +501,8 @@ find repos -type f | grep -v -e /.git -e /tests/ -e /__ -e Makefile -e .yaml$ -e
 This task uses the result(/tmp/envs.txt) of [the above](#hack-EnvVars-Sources) as input.
 
 ```bash
-# Create table showing { env x container => value } with the ops-helper script.
-cat ./docker-compose-builder.yaml | ./ops-helper/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
+# Create table showing { env x container => value } with the selfhost_scripts script.
+cat ./docker-compose-builder.yaml | ./selfhost_scripts/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
 ```
 
 [back to top](#top)

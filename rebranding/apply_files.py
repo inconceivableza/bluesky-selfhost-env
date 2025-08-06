@@ -11,7 +11,7 @@ import replace_svg_in_tsx
 import re
 import sys
 
-# Import from ops-helper via requirements.txt link
+# Import from selfhost_scripts via requirements.txt link
 from env_utils import read_env, replace_env
 
 def rename_files(config, env, dry_run=False, git_mv=False):

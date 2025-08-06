@@ -48,13 +48,13 @@ api_ozone_member_add:
 
 #HINT: make api_ozone_reqPlcSign handle=... password=...
 api_ozone_reqPlcSign: getOzoneUserinfo
-	./ops-helper/apiImpl/reqPlcOpeSign.ts --pdsURL ${pdsURL} --handle ${handle} --password ${password}
+	./selfhost_scripts/apiImpl/reqPlcOpeSign.ts --pdsURL ${pdsURL} --handle ${handle} --password ${password}
 	@echo "########## check email for ${handle}, token sent #########"
 
 #HINT: make api_ozone_updateDidDoc   plcSignToken=...  ozoneURL=...  handle=... password=...
 api_ozone_updateDidDoc: getOzoneUserinfo
 	$(eval signkey=$(shell cat ${passfile} | grep OZONE_SIGNING_KEY_HEX | awk -F= '{ print $$2}'))
-	./ops-helper/apiImpl/updateDidDoc-labeler.ts --plcSignToken ${plcSignToken} --signingKeyHex ${signkey} --pdsURL ${pdsURL} --handle ${handle} --password ${password} --labelerURL=${ozoneURL}
+	./selfhost_scripts/apiImpl/updateDidDoc-labeler.ts --plcSignToken ${plcSignToken} --signingKeyHex ${signkey} --pdsURL ${pdsURL} --handle ${handle} --password ${password} --labelerURL=${ozoneURL}
 
 _sendMsg:
 	@curl -k -L -X ${method} ${url} ${header} ${msg} | tee -a ${resp}

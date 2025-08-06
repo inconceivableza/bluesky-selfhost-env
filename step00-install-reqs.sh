@@ -112,22 +112,22 @@ show_info "Checking yarn" in node $NODE_VER
   which yarn > /dev/null || npm install -g yarn
 )
 
-show_heading "Building internal tool" "ops-helper/apiImpl" 
+show_heading "Building internal tool" "selfhost_scripts/apiImpl" 
 (
-  cd ops-helper/apiImpl
+  cd selfhost_scripts/apiImpl
   nvm use 20
   npm install
 )
 
-show_heading "Setting up environment" "for ops-helper/compose2envtable"
+show_heading "Setting up environment" "for selfhost_scripts/compose2envtable"
 (
-  cd ops-helper/compose2envtable
+  cd selfhost_scripts/compose2envtable
   setup_python_venv_with_requirements
 )
 
-show_heading "Setting up environment" "for ops-helper/utils"
+show_heading "Setting up environment" "for selfhost_scripts/utils"
 (
-  cd ops-helper/utils
+  cd selfhost_scripts/utils
   setup_python_venv_with_requirements
 )
 

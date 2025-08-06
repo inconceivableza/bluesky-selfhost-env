@@ -7,9 +7,9 @@ ifeq (,$(wildcard ./.env))
 endif
 
 # Validate .env file has all required variables
-ENV_CHECK_RESULT := $(shell ./ops-helper/check-env.py -s 2>/dev/null; echo $$?)
+ENV_CHECK_RESULT := $(shell ./selfhost_scripts/check-env.py -s 2>/dev/null; echo $$?)
 ifneq ($(ENV_CHECK_RESULT),0)
-    $(error .env file is missing required variables. Run './ops-helper/check-env.py' to see what is missing and correct it)
+    $(error .env file is missing required variables. Run './selfhost_scripts/check-env.py' to see what is missing and correct it)
 endif
 
 include .env

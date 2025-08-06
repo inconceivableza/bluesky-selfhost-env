@@ -1,4 +1,4 @@
 PyYaml
 pystache
-# Link to ops-helper directory to allow imports
--e ../ops-helper
+# Link to selfhost_scripts directory to allow imports
+../selfhost_scripts
