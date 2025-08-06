@@ -105,7 +105,13 @@ for branded_repo in $REBRANDED_REPOS
       echo patching $branded_repo in `pwd` with $(basename ${BRAND_CONFIG_DIR})
       git reset --hard
       python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/${branded_repo}.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
-      semgrep scan --config ${BRAND_CONFIG_DIR}/${branded_repo}.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
+      (
+        # semgrep can't handle empty versions of these variables
+        [ "$http_proxy" == "" ] && unset http_proxy
+        [ "$https_proxy" == "" ] && unset https_proxy
+        [ "$no_proxy" == "" ] && unset no_proxy
+        semgrep scan --config ${BRAND_CONFIG_DIR}/${branded_repo}.yml -a || { echo error running semgrep >&2 ; exit 1 ; }
+      ) || exit 1
       [ -f "google-services.json.example" ] && cp google-services.json.example google-services.json  # this is for social-app
       python ${script_dir}/apply_files.py --config "$BRAND_CONFIG_DIR"/${branded_repo}.yml --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" -a copy -a svg-html -a svg-tsx || { echo error running apply-files >&2 ; exit 1 ; }
       echo "app_name=${REBRANDING_NAME}" > branding.env
