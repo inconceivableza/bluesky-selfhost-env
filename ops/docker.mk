@@ -64,7 +64,8 @@ docker-stop-with-clean:
 	docker volume  prune -f
 	docker system  prune -f
 	docker network rm -f ${docker_network}
-	rm -rf ${dDir}
+	@echo You may want to remove the data directory:
+	@echo rm -rf ${dDir}
 
 docker-watchlog:
 	-${dockerCompose} -f ${f} logs -f || true
