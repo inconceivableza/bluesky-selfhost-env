@@ -656,6 +656,7 @@ services:
       - bsky:/data/bsky:rw
       - backup-staging:/staging
       - backup-repo:/restic-repo
+    env_file: config/backup-secrets.repo
     environment:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
@@ -665,18 +666,14 @@ services:
       - PGUSER=${POSTGRES_USER}
       - RESTIC_REPOSITORY=/restic-repo
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
-      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+      # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
       - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1}
       - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2}
       - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3}
-      - RESTIC_REMOTE_PASSWORD1=${RESTIC_REMOTE_PASSWORD1}
-      - RESTIC_REMOTE_PASSWORD2=${RESTIC_REMOTE_PASSWORD2}
-      - RESTIC_REMOTE_PASSWORD3=${RESTIC_REMOTE_PASSWORD3}
       - RESTIC_LOGDIR=/var/log
       # if any of these keys are needed for the remote storage services, they can be configured in the environment
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${RESTIC_AWS_SECRET_ACCESS_KEY}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
     entrypoint: ["/bin/sh"]

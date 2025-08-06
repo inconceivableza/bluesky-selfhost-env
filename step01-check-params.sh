@@ -18,5 +18,5 @@ show_heading "Showing configuration"
 make echo
 
 show_heading "Generating secrets"
-make genSecrets
+make genSecrets secret-envs
 

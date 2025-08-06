@@ -46,13 +46,12 @@ SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky
 # lots of the other files incorporate the contents of db-secrets.env
 config/db-secrets.env: ${passfile}
 	@grep -h '^POSTGRES_PASSWORD=' $^ > $@
-	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
-	echo "POSTGRES_USER=${POSTGRES_USER}" >> $@
+	@echo "POSTGRES_USER=${POSTGRES_USER}" >> $@ # this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
 
 config/backup-secrets.env: ${passfile} config/db-secrets.env
-	@grep -h '^\(RESTIC_PASSWORD\|RESTIC_REMOTE_PASSWORD[123]=\|RESTIC_AWS_SECRET_ACCESS_KEY\)' $^ > $@
-	@cat config/db-secrets.env >> $@
-	@grep -h '^RESTIC_\(AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY)=' $^ | sed 's/^RESTIC_//' > $@
+	@cat config/db-secrets.env > $@
+	@grep -h '^\(RESTIC_PASSWORD\|RESTIC_REMOTE_PASSWORD[123]=\|RESTIC_AWS_SECRET_ACCESS_KEY\)' $^ >> $@
+	@grep -h '^RESTIC_\(AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY\)=' $^ | sed 's/^RESTIC_//' >> $@
 
 config/bgs-secrets.env: ${passfile} config/db-secrets.env
 	@grep -h '^BGS_ADMIN_KEY=' $^ > $@
@@ -84,7 +83,6 @@ config/pds-secrets.env: ${passfile}
 
 config/plc-secrets.env: config/db-secrets.env
 	@cat $^ > $@
-	# this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
 	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/plc' >> $@
 	@echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
 	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
