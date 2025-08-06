@@ -1,62 +1,22 @@
 ##########################################################################################
 # starts: definitions, need to care in especial.
 
-# domain of self-hosting bluesky (care TLD, otherwise get failure, ie: NG=>mysky.local)
-DOMAIN ?=mysky.local.com
+# Include the .env file, which can be a symlink pointing to an env - see params-file-util.sh
+ifeq (,$(wildcard ./.env))
+    $(error .env file not found. Please create one based on bluesky-params.env.example and symlink to .env)
+endif
+
+# Validate .env file has all required variables
+ENV_CHECK_RESULT := $(shell ./ops-helper/check-env.py -s 2>/dev/null; echo $$?)
+ifneq ($(ENV_CHECK_RESULT),0)
+    $(error .env file is missing required variables. Run './ops-helper/check-env.py' to see what is missing and correct it)
+endif
+
+include .env
+
 # this is used for identifying restic backups; try to get as specifica a FQDN name as possible
 HOST_HOSTNAME ?= $(shell { hostname -A 2>/dev/null | sed 's/ /\n/g' | sed 's/.internal//g' ; hostname ; } | head -n 1)
 
-# FQDN of your self hosting bsky components.  DO NOT CHANGE THOSE, FOR USUAL CASES.
-# CHANGING THESE WITHOUT UNDERSTANDING WHAT YOU DOING, GETTING TROUBLES.
-# - these parameters aim to intergration test for your hosting env and official bluesky components, like fediverse.
-# - it is strongly recommended that FQDNs should be renamed only if the components provided by the fediverse/integration partner.
-# - take care for avoiding confusion, you may need to change other codes according to your trial.
-
-bgsFQDN       ?=bgs.${DOMAIN}
-bskyFQDN      ?=bsky.${DOMAIN}
-feedgenFQDN   ?=feed-generator.${DOMAIN}
-jetstreamFQDN ?=jetstream.${DOMAIN}
-ozoneFQDN     ?=ozone.${DOMAIN}
-palomarFQDN   ?=palomar.${DOMAIN}
-pdsFQDN       ?=pds.${DOMAIN}
-plcFQDN       ?=plc.${DOMAIN}
-publicApiFQDN ?=public.api.${DOMAIN}
-socialappFQDN ?=social-app.${DOMAIN}
-
-# email address to get public-signed certs ("internal" for self-signed certs by caddy)
-EMAIL4CERTS ?=internal
-
-# mail account, which PDS wants.
-PDS_EMAIL_SMTP_URL ?= smtps://change:me@smtp.gmail.com
-
-# feed-generator account in bluesky to send posts ( last part may need to be equal to PDS_HOSTNAME)
-FEEDGEN_PUBLISHER_HANDLE ?=feedgen.${pdsFQDN}
-FEEDGEN_EMAIL ?=feedgen@example.com
-
-# ozone account in bluesky for moderation
-OZONE_ADMIN_HANDLE ?=ozone-admin.${pdsFQDN}
-OZONE_ADMIN_EMAIL  ?=ozone-admin@example.com
-
-# settings for invite codes
-PDS_INVITE_INTERVAL ?= 604800000
-PDS_INVITE_REQUIRED ?= false
-
-# datetime to distinguish docker images and sources (date in %Y-%m-%d or 'latest' in docker image naming manner)
-asof ?=latest
-#asof ?=2024-04-03
-#asof ?=$(shell date +'%Y-%m-%d')
-branded_asof ?= ${asof}
-
-ifeq ($(EMAIL4CERTS), internal)
-GOINSECURE :=${DOMAIN},*.${DOMAIN}
-NODE_TLS_REJECT_UNAUTHORIZED :=0
-else
-GOINSECURE ?=
-NODE_TLS_REJECT_UNAUTHORIZED ?=1
-endif
-
-# ends: definitions, need to care in especial.
-##########################################################################################
 ##########################################################################################
 # other definitions
 
@@ -78,6 +38,60 @@ rDir ?=${wDir}/repos
 # file path to store generated passwords with openssl, during ops.
 passfile ?=${wDir}/config/secrets-passwords.env
 
+# List of all secret env files that can be generated
+SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env
+
+# derived secrets files that limit the scope of secrets
+
+# lots of the other files incorporate the contents of db-secrets.env
+config/db-secrets.env: ${passfile}
+	@grep -h '^POSTGRES_PASSWORD=' $^ > $@
+	@echo "POSTGRES_USER=${POSTGRES_USER}" >> $@ # this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
+
+config/backup-secrets.env: ${passfile} config/db-secrets.env
+	@cat config/db-secrets.env > $@
+	@grep -h '^\(RESTIC_PASSWORD\|RESTIC_REMOTE_PASSWORD[123]=\|RESTIC_AWS_SECRET_ACCESS_KEY\)' $^ >> $@
+	@grep -h '^RESTIC_\(AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY\)=' $^ | sed 's/^RESTIC_//' >> $@
+
+config/bgs-secrets.env: ${passfile} config/db-secrets.env
+	@grep -h '^BGS_ADMIN_KEY=' $^ > $@
+	@cat config/db-secrets.env >> $@
+	@echo 'CARSTORE_DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/carstore' >> $@
+	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/bgs' >> $@
+
+config/bsky-secrets.env: ${passfile} config/db-secrets.env
+	@grep -h '^\(BSKY_ADMIN_PASSWORDS\|BSKY_SERVICE_SIGNING_KEY\|BSKY_STATSIG_KEY\)=' $^ > $@
+	@cat config/db-secrets.env >> $@
+	@echo 'BSKY_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/bsky' >> $@
+
+config/opensearch-secrets.env: ${passfile}
+	@grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ > $@
+
+config/ozone-secrets.env: ${passfile} config/db-secrets.env
+	@grep -h '^\(OZONE_ADMIN_PASSWORD\|OZONE_SIGNING_KEY_HEX\)=' $^ > $@
+	@cat config/db-secrets.env >> $@
+	@echo 'OZONE_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/ozone' >> $@
+
+config/palomar-secrets.env: config/opensearch-secrets.env
+	@cat $^ > $@
+	@grep -h '^OPENSEARCH_INITIAL_ADMIN_PASSWORD=' $^ | sed 's/OPENSEARCH_INITIAL_ADMIN_PASSWORD/ES_PASSWORD/' >> $@
+	@cat config/db-secrets.env >> $@
+	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/palomar' >> $@
+
+config/pds-secrets.env: ${passfile}
+	@grep -h '^\(PDS_ADMIN_PASSWORD\|PDS_JWT_SECRET\|PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX\)=' $^ > $@
+
+config/plc-secrets.env: config/db-secrets.env
+	@cat $^ > $@
+	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/plc' >> $@
+	@echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+
+clean-secret-envs:
+	rm -f $(SECRET_ENV_FILES)
+
+secret-envs: $(SECRET_ENV_FILES)
+
 # docker-compose file
 f ?=${wDir}/docker-compose.yaml
 #f ?=${wDir}/docker-compose-builder.yaml
@@ -97,12 +111,6 @@ gh_git ?=$(addsuffix :, git@github.com)
 # origin repo prefix to clone source, points code owner(org). DO NOT CHANGE THESE, FOR USUAL CASES. these are features for experts.
 origin_repo_bsky_prefix ?=${gh}bluesky-social/
 origin_repo_did_prefix  ?=${gh}did-method-plc/
-
-fork_repo_prefix ?=
-#fork_repo_prefix =${gh_git}itaru2622/bluesky-
-
-# default log level.
-LOG_LEVEL_DEFAULT ?=debug
 
 # services to start in N-step ops, with single docker-compose file.
 # by these parameters, you can tune which components to start
@@ -197,9 +205,11 @@ delRepoDirAll:
 # generate secrets for test env
 genSecrets: ${passfile}
 ${passfile}: ./config/gen-secrets.sh
-	wDir=${wDir} ./config/gen-secrets.sh > $@
+	wDir=${wDir} ./config/gen-secrets.sh
 	cat $@
 	@echo "secrets generated and stored in $@"
+
+genSecrets: secret-envs
 
 setupdir:
 	mkdir -p ${aDir}

@@ -6,17 +6,13 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
+source_env
 
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
 show_heading "Cloning source code" "from the different repositories"
 make cloneAll
 
-echo command-line args $# $@
 if [ $# -gt 0 ]
   then
     cmdlineDirs="$@"
@@ -49,11 +45,6 @@ elif [ "$REBRANDING_SCRIPT" == "" ]
     echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
     exit 1
   else
-    if [ "$REBRANDED_REPOS" == "" ]
-      then
-        show_error "REBRANDED_REPOS undefined:" "please adjust your .env file"
-        exit 1
-      fi
     show_heading "Rebranding repos: $REBRANDED_REPOS" "by scripted changes"
     REBRANDING_SCRIPT_ABS="`realpath "$REBRANDING_SCRIPT"`"
     [ "$REBRANDING_NAME" == "" ] && { show_error "Brand name undefined:" "please set REBRANDING_NAME in $params_file" ; exit 1 ; }

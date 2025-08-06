@@ -14,19 +14,23 @@ purple_color=$(printf '\e[1;35m')
 reset_color=$(printf '\e[1;0m')
 
 function show_heading {
-  echo
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$blue_color""$start_bold"$1 "$clear_bold"
   shift 1
   echo "$@""$clear_text"
-  echo
+  [ "$oneline" == "true" ] || echo
 }
 
 function show_info {
-  echo
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$start_italic"$1 "$clear_italic"
   shift 1
   echo "$@""$clear_text"
-  echo
+  [ "$oneline" == "true" ] || echo
 }
 
 function show_error {
@@ -64,6 +68,13 @@ function show_failure_n {
   echo -n "${red_color}Fail${reset_color}"
 }
 
+function source_env {
+  # exports variables in the .env file into the current context
+  set -o allexport
+  . "${params_file:-$script_dir/.env}"
+  set +o allexport
+}
+
 function wait_for_container {
   container_name=$1
   # might need to look up the name outside docker compose
@@ -94,8 +105,8 @@ function setup_python_venv_with_requirements {
   venv_target=venv
   [ -d $venv_target ] || python3 -m venv $venv_target
   . $venv_target/bin/activate
-  python -m pip install -U pip
-  python -m pip install -r requirements.txt
+  python -m pip install -U pip | { grep -v "^Requirement already satisfied" ; true ; }
+  python -m pip install -r requirements.txt | { grep -v "^Requirement already satisfied" ; true ; }
 }
 
 uname_os=$(uname)
@@ -115,33 +126,38 @@ function maybe_show_info {
 
 maybe_show_info "OS detected" $os
 
-if [ "$params_file" == "" ]
+if [[ "$params_file" != "" && "$(realpath "$params_file")" != "$(realpath "$selfhost_dir/.env")" ]]
   then
-    export params_file="$selfhost_dir/bluesky-params.env"
+    show_warning "Params file variable" "\$params_file is no longer supported; rather use ./params-file-util.sh to switch .env symlink"
+    show_info "params_file was set to" "$params_file"
+    export params_file="$selfhost_dir/.env"
+    show_info "params_file reset to" "$params_file"
   else
-    maybe_show_info "Custom Parameters File" "using environment variable: $params_file"
-    if [ -f "$params_file" ]
+    export params_file="$selfhost_dir/.env"
+    if [ -h "$params_file" ]
       then
-        export params_file="`realpath "$params_file"`"
-    elif [ -f "$selfhost_dir/$params_file" ]
-      then
-        export params_file="`realpath "$selfhost_dir/$params_file"`"
-    fi
+        actual_params_file="`readlink -f "$params_file"`"
+        maybe_show_info "Effective Environment File" "$actual_params_file"
+      fi
+  fi
+
+if [ ! -e "$params_file" ]
+  then
+    show_error "Environment File Missing" "should be in $params_file"
+    # this will quit the calling script
+    exit 1
   fi
 
 export bluesky_utils_imported=1
-
-# this will quit the calling script
-[ -f "$params_file" ] || {
-  show_error "Params file not found:" "$params_file"
-  show_info "Please supply one:" "set params_file to point to the filename if not bluesky-params.env; use bluesky-params.env.example as template. See README.md for further info"
-  exit 1
-}
 
 # our params file can override this to true if it is desired, but it messes with the scripting
 export auto_watchlog=false
 # these are things we currently aren't patching - for ops/patch.mk. Uncomment if you want to adjust
 # export _nopatch="did-method-plc pds"
-# these are the bluesky repositories we clone and use
-export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc pds"
+# these are the bluesky repositories we clone and use - no different from what's in the makefile
+# export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc"
 export npm_config_yes=true # stop npx eas-cli from asking whether to install itself; see https://stackoverflow.com/a/69006263
+# These can be overridden in the env file, but generally shouldn't be - they affect which things we branch for branding in which way
+export REBRANDED_REPOS=social-app
+export REBRANDED_SERVICES=social-app
+export CUSTOM_SERVICES="pds palomar plc bgs bsky"

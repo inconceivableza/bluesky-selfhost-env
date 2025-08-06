@@ -3,10 +3,7 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
+source_env
 
 ozone_file="data/accounts/${REBRANDING_NAME:-bluesky}-ozone.did"
 grep '^null$' "$ozone_file" >/dev/null 2>/dev/null && { sed -i '/^null/d' "$ozone_file" ; show_warning "Nulls found" "in $ozone_file; they have been removed" ; exit 1 ; }

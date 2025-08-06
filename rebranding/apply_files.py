@@ -1,7 +1,6 @@
 #!/usr/bin/env -S sh -c 'exec "`dirname "$0"`/venv/bin/python" "$0" "$@"'
 
 import argparse
-import configparser
 import logging
 import os
 from os.path import join
@@ -10,22 +9,10 @@ import subprocess
 import yaml
 import replace_svg_in_tsx
 import re
+import sys
 
-env_parser = configparser.RawConfigParser(delimiters=('=',), comment_prefixes=('#',), inline_comment_prefixes=('#',))
-env_parser.optionxform = lambda option: option
-dummy_header_prefix = f'[{env_parser.default_section}]\n'
-
-def read_env(filename):
-   with open(filename, 'r') as f:
-       env_src = f.read()
-   env_parser.read_string(dummy_header_prefix + env_src)
-   return dict(env_parser[env_parser.default_section].items())
-
-def replace_env(src, env):
-    """This replaces ${keyname} with values in src wherever keyname is defined in env, but otherwise leaves unchanged"""
-    for key, value in sorted(env.items()):
-        src = src.replace('${%s}' % key, value)
-    return src
+# Import from ops-helper via requirements.txt link
+from env_utils import read_env, replace_env
 
 def rename_files(config, env, dry_run=False, git_mv=False):
     def get_config(node, key):
@@ -36,6 +23,44 @@ def rename_files(config, env, dry_run=False, git_mv=False):
         dest_path = get_config(rename_config, 'dest_path')
         if os.path.exists(dest_path):
             logging.error(f"Destination path {dest_path} already exists; rename will fail. Please remove and rerun")
+            
+            # Show detailed information about source and destination
+            print(f"\nSource path info:")
+            subprocess.run(["ls", "-ld", src_path])
+            
+            print(f"\nDestination path info:")
+            subprocess.run(["ls", "-ld", dest_path])
+            
+            print(f"\nContents of destination directory:")
+            if os.path.isdir(dest_path):
+                subprocess.run(["ls", "-la", dest_path])
+            else:
+                print("(destination is not a directory)")
+            
+            # Prompt user for action
+            while True:
+                choice = input(f"\nDestination '{dest_path}' already exists. What would you like to do?\n"
+                              f"  [r] Remove destination and continue\n"
+                              f"  [c] Continue without removing (may cause errors)\n" 
+                              f"  [q] Quit\n"
+                              f"Choice (r/c/q): ").lower().strip()
+                
+                if choice == 'r':
+                    try:
+                        shutil.rmtree(dest_path)
+                        print(f"Removed {dest_path}")
+                        break
+                    except Exception as e:
+                        print(f"Error removing {dest_path}: {e}")
+                        continue
+                elif choice == 'c':
+                    print("Continuing without removing destination...")
+                    break
+                elif choice == 'q':
+                    print("Quitting...")
+                    sys.exit(1)
+                else:
+                    print("Invalid choice. Please enter 'r', 'c', or 'q'.")
         logging.info(f"Renaming {src_path} to {dest_path}")
         if not dry_run:
             if git_mv:
@@ -51,6 +76,7 @@ def copy_files(config, env, dry_run=False):
         src_dir = get_config(copy_config, 'src_dir')
         dest_dir = get_config(copy_config, 'dest_dir')
         copy_files = copy_config.get('files') or []
+        do_git_add = copy_config.get('git_add', False)
         logging.info(f"Copying {len(copy_files)} files from {src_dir} to {dest_dir}")
         for filename_def in copy_files:
             filename = replace_env(filename_def, env)
@@ -59,6 +85,8 @@ def copy_files(config, env, dry_run=False):
             logging.info(f"Copying {filename}")
             if not dry_run:
                 shutil.copy2(src_filename, dest_filename)
+                if do_git_add:
+                    subprocess.call(["git", "add", filename], cwd=dest_dir)
 
 width_height_re = re.compile('width="[^"]*" height="[^"]*"')
 view_box_re = re.compile('viewBox="[^"]*"')

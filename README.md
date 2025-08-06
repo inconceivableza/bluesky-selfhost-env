@@ -32,7 +32,7 @@ This repository aims to get self-hosted a bluesky environment easy, with:
  - Simplicity: all bluesky components run on one host, powered by docker-compose.
  - Minimal remapping: the simplest possible mapping rules between FQDN, reverse proxy, and docker-container, for easy understanding and tuning.
 
-Currently, my latest release is <strong>2025-05-31</strong>, based on the <strong>2025-05-31</strong> code from bluesky-social.<br>
+Currently, my latest release is <strong>2025-08-02</strong>, based on the <strong>2025-08-02</strong> code from bluesky-social.<br>
 
 ## <a id="status"/>Current status regarding self-hosting
 
@@ -75,9 +75,8 @@ You can change the domain name by setting the environment variable as follows:
 ### <a id="ops0-configparams"/>0) Configure params and install tools for ops
 
 *Scripted:* This step is in `./step00-install-reqs.sh` and `./step01-check-params.sh`.
-The scripts expect you to define the environment variables in `bluesky-params.env`.
-You can also override this by setting the environment variable `params_file` to point to a different `.env` file
-(useful for if you are doing multiple brandings or want to keep in a separate git repo).
+Environment variables for bluesky-selfhost-env are shared with docker-compose and declared in `./.env`
+A helper script, `./params-file-util.sh` allows you to have different `.env files` defined and switch which one `.env` is currently pointing to as a symlink.
 Copy `bluesky-params.env.example` to start off.
 
 ```bash
@@ -88,8 +87,8 @@ Copy `bluesky-params.env.example` to start off.
 export DOMAIN=whatever.yourdomain.com
 
 # 2) Set 'asof' date (YYYY-MM-DD or 'latest') to select docker images and sources.
-#    Example: 2025-05-31 (latest prebuild) or 'latest' (following docker image naming).
-export asof=2025-05-31
+#    Example: 2025-08-02 (latest prebuild) or 'latest' (following docker image naming).
+export asof=2025-08-02
 
 # 3) Set email addresses:
 
@@ -188,7 +187,8 @@ make    docker-stop-with-clean f=./docker-compose-debug-caddy.yaml
 *Scripted:* For a local test environment, you don't need to make branding changes to the social-app.
 For a public environment you do.
 To be consistent, the scripted environment is set up to build your own social app.
-You can automate this with `./step30-build-branded.sh` to make the branding changes (or not, if disabled)
+You can automate this with `./step02-apply-branding.sh` to set up a new branch of `social-app` with the branding changes,
+`./step03-build-branded.sh` to build the new docker images,
 and then `./step31-deploy-bluesky.sh` to pull and deploy the docker images.
 
 This section first outlines deploying bluesky with prebuilt images.<BR>

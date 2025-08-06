@@ -3,10 +3,7 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-
-set -o allexport
-. "$params_file"
-set +o allexport
+source_env
 
 echo command-line args $# $@
 if [ $# -gt 0 ]
