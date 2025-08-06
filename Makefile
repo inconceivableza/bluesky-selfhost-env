@@ -45,7 +45,7 @@ SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky
 
 # lots of the other files incorporate the contents of db-secrets.env
 config/db-secrets.env: ${passfile}
-	@grep -h '^POSTGRES_PASSWORD=' $^ > $@
+	@grep -h '^POSTGRES_PASSWORD=' $^ > $@ || echo postgres password not found >&2
 	@echo "POSTGRES_USER=${POSTGRES_USER}" >> $@ # this will persist the POSTGRES_USER from the current .env; that and the password are then used in subsequent variables
 
 config/backup-secrets.env: ${passfile} config/db-secrets.env

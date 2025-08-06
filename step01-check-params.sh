@@ -6,6 +6,10 @@ script_dir="`dirname "$script_path"`"
 
 cd "$script_dir"
 
+show_heading "Generating secrets" "if any are missing"
+$script_dir/config/gen-secrets.sh
+make secret-envs
+
 show_heading "Checking for missing params" "in environment"
 python "$script_dir"/ops-helper/check-env.py || { show_error "Missing params:" "please correct" ; exit 1 ;}
 
@@ -16,7 +20,4 @@ source_env
 
 show_heading "Showing configuration"
 make echo
-
-show_heading "Generating secrets"
-make genSecrets secret-envs
 
