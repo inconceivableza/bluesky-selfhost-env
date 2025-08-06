@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import configparser
+import re
 
 def create_env_parser():
     """Create a new environment parser instance"""
@@ -33,7 +34,28 @@ def read_env(filename, interpolate=False):
     return env_dict
 
 def replace_env(src, env):
-    """Replace ${keyname} with values in src wherever keyname is defined in env, but otherwise leaves unchanged"""
+    """Replace ${keyname} and ${keyname:-fallback} with values in src"""
+    if not isinstance(src, str):
+        return src
+    
+    # First handle ${VARNAME:-fallback} syntax
+    def replace_fallback(match):
+        var_name = match.group(1)
+        fallback = match.group(2)
+        
+        # Use the variable value if it exists and is not empty, otherwise use fallback
+        var_value = env.get(var_name, '')
+        if var_value:
+            return var_value
+        else:
+            return fallback
+    
+    # Pattern to match ${VARNAME:-fallback}
+    fallback_pattern = r'\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}'
+    src = re.sub(fallback_pattern, replace_fallback, src)
+    
+    # Then handle regular ${VARNAME} syntax for remaining variables
     for key, value in sorted(env.items()):
         src = src.replace('${%s}' % key, value)
+    
     return src

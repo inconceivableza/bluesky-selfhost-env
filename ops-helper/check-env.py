@@ -71,10 +71,20 @@ def parse_env_with_order(filepath):
     return variables, optional_variables, optional_values
 
 def extract_variable_references(value):
-    """Extract variable references like ${varname} from a value"""
+    """Extract variable references like ${varname} and ${varname:-fallback} from a value"""
     if not value:
         return []
-    return re.findall(r'\$\{([^}]+)\}', value)
+    # Find all ${...} patterns and extract the variable names
+    matches = re.findall(r'\$\{([^}]+)\}', value)
+    var_names = []
+    for match in matches:
+        # For ${VAR:-fallback}, extract just the VAR part
+        if ':-' in match:
+            var_name = match.split(':-')[0]
+            var_names.append(var_name)
+        else:
+            var_names.append(match)
+    return var_names
 
 def compare_variable_definitions(example_val, target_val):
     """Compare variable definitions - return True if example uses variables and strings differ"""
@@ -141,7 +151,7 @@ def main():
     
     # Get variable order from both files
     example_order, example_optional, example_optional_values = parse_env_with_order(args.template_file)
-    target_order, target_optional, target_optional_values = parse_env_with_order(args.env_file)
+    target_order, _target_optional, _target_optional_values = parse_env_with_order(args.env_file)
     
     # Combine all known variables (required + optional) from example
     example_all_vars = set(example_order + example_optional)
