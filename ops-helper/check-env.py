@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from env_utils import read_env, replace_env
+from secret_types import parse_secret_template
 
 def get_file_info(filepath):
     """Get information about a file, including symlink resolution"""
@@ -63,6 +64,8 @@ def main():
                        help='Hide variables in target that are not in example (default: show them)')
     parser.add_argument('-s', '--silent', action='store_true',
                        help='Silent mode - no output, just exit codes (0=match, 1=differences)')
+    parser.add_argument('--secrets-template', default='config/secrets-passwords.env.example',
+                       help='Secrets template file to check for exposed passwords')
     
     args = parser.parse_args()
     
@@ -82,12 +85,19 @@ def main():
         print(f"  Example: {get_file_info(args.template_file)}")
         print()
     
-    # Read environment files
+    # Read environment files and secret variable names
     try:
         example_env = read_env(args.template_file, interpolate=False)
         example_env_resolved = read_env(args.template_file, interpolate=True)
         target_env = read_env(args.env_file, interpolate=False)
         target_env_resolved = read_env(args.env_file, interpolate=True)
+        
+        # Load secret variable names if secrets template exists
+        secret_vars = set()
+        if os.path.exists(args.secrets_template):
+            secret_config = parse_secret_template(args.secrets_template)
+            secret_vars = set(secret_config.keys())
+        
     except Exception as e:
         print(f"Error reading environment files: {e}", file=sys.stderr)
         sys.exit(1)
@@ -112,9 +122,10 @@ def main():
             all_vars.append(var)
             seen.add(var)
     
-    # Track issues and missing variables specifically
+    # Track issues and critical errors (missing vars + exposed passwords)  
     has_issues = False
     has_missing_vars = False
+    has_exposed_passwords = False
     
     if not args.silent:
         print("=== ANALYSIS ===\n")
@@ -158,6 +169,17 @@ def main():
                 print(f"📝 VALUE CHANGE: {var}. Example: {example_val}, Target: {target_val}")
             continue
         
+        # Check for exposed passwords (secret variables in environment file)
+        if (var not in example_env and var in target_env and var in secret_vars):
+            has_issues = True
+            has_exposed_passwords = True
+            if not args.silent:
+                if target_resolved != target_val:
+                    print(f"🚨 EXPOSED PASSWORD: {var}. Value: {target_val} -> {target_resolved}")
+                else:
+                    print(f"🚨 EXPOSED PASSWORD: {var}. Value: {target_val}")
+            continue
+        
         # Show extra variables in target (unless hidden)
         if (not args.hide_extra_vars and 
             var not in example_env and var in target_env):
@@ -171,8 +193,12 @@ def main():
     if not args.silent and not has_issues:
         print("✅ All variables match between files!")
     
-    # Exit with error code if there are missing variables
-    if has_missing_vars:
+    # Exit with error code if there are missing variables or exposed passwords
+    if has_missing_vars or has_exposed_passwords:
+        if not args.silent:
+            print(f"❌ Error: there are {'missing variables' if has_missing_vars else ''}"
+                  f"{' and ' if has_missing_vars and has_exposed_passwords else ''}"
+                  f"{'exposed passwords' if has_exposed_passwords else ''} in this file")
         sys.exit(1)
 
 if __name__ == '__main__':
