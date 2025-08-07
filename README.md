@@ -347,7 +347,7 @@ make build DOMAIN= f=./docker-compose-builder.yaml
 [back to top](#top)
 ### <a id="hack-ops-development"/>Streamlined Development Using Your Remote Fork Repository
 
-By setting the fork_repo_prefix variable before cloneAll, it registers your remote fork repository with `git remote add fork ....`
+By setting the `fork_repo_prefix` and `fork` variables before cloneAll, it registers your remote fork repository with `git remote add ${fork_repo_name} ....`
 then you have additional easy operations against multiple repositores, as below.
 
 ```bash
@@ -356,12 +356,12 @@ export fork_repo_prefix=git@github.com:YOUR_GITHUB_ACCOUNT/
 make cloneAll
 
 # Easily manage (push and pull) branches and tags for all repositories with a single command targeting your remote fork repositories.
-make exec under=./repos/* cmd='git push fork branch'
+make exec under=./repos/* cmd='git push ${fork_repo_name} branch'
 make exec under=./repos/* cmd='git tag -a "asof-XXXX-XX-XX" '
-make exec under=./repos/* cmd='git push fork --tags'
+make exec under=./repos/* cmd='git push ${fork_repo_name} --tags'
 
 # Push your develop-branch in justOneRepo working folder to your remote fork repository.
-make exec under=./repos/justOneRepo cmd='git push fork develop-branch'
+make exec under=./repos/justOneRepo cmd='git push ${fork_repo_name} develop-branch'
 
 # See the Makefile for complete details and usage examples.
 ```

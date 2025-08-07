@@ -100,6 +100,7 @@ f ?=${wDir}/docker-compose.yaml
 #_nrepo  ?=atproto indigo social-app feed-generator did-method-plc pds ozone jetstream
 _nrepo   ?=atproto indigo social-app feed-generator did-method-plc ozone jetstream
 repoDirs ?=$(addprefix ${rDir}/, ${_nrepo})
+_nofork  ?=feed-generator ozone jetstream
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # other parameters
@@ -140,61 +141,91 @@ endif
 
 
 # get all sources from github
-cloneAll:   ${repoDirs}
+cloneAll:   ${repoDirs} remoteForks
+
+ifeq (${fork_repo_name},)
+_frn := fork
+else
+_frn := ${fork_repo_name}
+endif
+
+ifneq ($(fork_repo_prefix),)
+_prepr ?=$(filter-out ${_nofork},${_nrepo})
+remoteForks: $(addprefix ${rDir}/,$(addsuffix /.git/refs/remotes/${fork_repo_name},${_prepr}))
+else
+remoteForks:
+	$(warning define fork_repo_prefix in .env (and optionally fork_repo_name) for remoteForks to be fetched)
+endif
 
 ${rDir}/atproto:
 	git clone ${origin_repo_bsky_prefix}atproto.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}atproto.git; git remote update fork)
+${rDir}/atproto/.git/refs/remotes/$(_frn)/:
+	-(cd ${rDir}//atproto/; git remote add ${_frn} ${fork_repo_prefix}atproto.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/indigo:
 	git clone ${origin_repo_bsky_prefix}indigo.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}indigo.git; git remote update fork)
+${rDir}/indigo/.git/refs/remotes/brightsun/:
+	-(cd ${rDir}/indigo; git remote add ${_frn} ${fork_repo_prefix}indigo.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/social-app:
 	git clone ${origin_repo_bsky_prefix}social-app.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}social-app.git; git remote update fork)
+${rDir}/social-app/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir}/social-app; git remote add ${_frn} ${fork_repo_prefix}social-app.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/feed-generator:
 	git clone ${origin_repo_bsky_prefix}feed-generator.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}feed-generator.git; git remote update fork)
+${rDir}/feed-generator/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir}/feed-generator; git remote add ${_frn} ${fork_repo_prefix}feed-generator.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/pds:
 	git clone ${origin_repo_bsky_prefix}pds.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}pds.git; git remote update fork)
+${rDir}/pds/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir/pds}; git remote add ${_frn} ${fork_repo_prefix}pds.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/ozone:
 	git clone ${origin_repo_bsky_prefix}ozone.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}ozone.git; git remote update fork)
+${rDir}/ozone/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir}/ozone; git remote add ${_frn} ${fork_repo_prefix}ozone.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/did-method-plc:
 	git clone ${origin_repo_did_prefix}did-method-plc.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}did-method-plc.git; git remote update fork)
+${rDir}/did-method-plc/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir}/did-method-plc; git remote add ${_frn} ${fork_repo_prefix}did-method-plc.git; git remote update ${_frn})
 endif
 
 
 ${rDir}/jetstream:
 	git clone ${origin_repo_bsky_prefix}jetstream.git $@
+
 ifneq ($(fork_repo_prefix),)
-	-(cd $@; git remote add fork ${fork_repo_prefix}jetstream.git; git remote update fork)
+${rDir}/jetstream/.git/refs/remotes/${_frn}/:
+	-(cd ${rDir}/jetstream; git remote add ${_frn} ${fork_repo_prefix}jetstream.git; git remote update ${_frn})
 endif
 
 
@@ -227,9 +258,9 @@ include ops/api-bsky.mk
 # HINT: make exec under=./repos/* cmd='git status                        | cat'  => show        git status for all repos.
 # HINT: make exec under=./repos/* cmd='git branch --show-current         | cat'  => show        current branch for all repos
 # HINT: make exec under=./repos/* cmd='git log --decorate=full | head -3 | cat ' => show        last commit log for all repos
-# HINT: make exec under=./repos/* cmd='git remote update fork            | cat'  => update      remote named fork for all repos
+# HINT: make exec under=./repos/* cmd='git remote update ${fork_repo_name:-fork}            | cat'  => update      remote named ${fork_repo_name:-fork} for all repos
 # HINT: make exec under=./repos/* cmd='git checkout work                 | cat'  => checkout to work branch for all repos.
-# HINT: make exec under=./repos/* cmd='git push fork --tags              | cat'  => push        tags to remote named fork
+# HINT: make exec under=./repos/* cmd='git push ${fork_repo_name:-fork} --tags              | cat'  => push        tags to remote named ${fork_repo_name:-fork}
 exec: ${under}
 	for d in ${under}; do \
 		r=`basename $${d})`; \
@@ -275,6 +306,7 @@ echo:
 	@echo "repoDirs: ${repoDirs}"
 	@echo "f:        ${f}"
 	@echo "gh:       ${gh}"
+	@echo "fork_repo_name: ${fork_repo_name}"
 	@echo "fork_repo_prefix: ${fork_repo_prefix}"
 	@echo ""
 	@echo "LOG_LEVEL_DEFAULT=${LOG_LEVEL_DEFAULT}"

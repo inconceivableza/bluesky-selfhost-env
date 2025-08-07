@@ -152,7 +152,8 @@ export bluesky_utils_imported=1
 
 # our params file can override this to true if it is desired, but it messes with the scripting
 export auto_watchlog=false
-# these are things we currently aren't patching - for ops/patch.mk. Uncomment if you want to adjust
+# these are things we currently aren't forking or patching - for ops/patch.mk. Uncomment if you want to adjust
+# export _nofork="feed-generator ozone jetstream"
 # export _nopatch="did-method-plc pds"
 # these are the bluesky repositories we clone and use - no different from what's in the makefile
 # export _nrepo="atproto indigo social-app ozone jetstream feed-generator did-method-plc"
