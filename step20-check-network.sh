@@ -7,6 +7,11 @@ source_env
 
 show_heading "Checking DNS" configuration
 public_ip=`curl -s api.ipify.org/`
+[ "$#" -ge 1 ] && {
+  show_info "Overriding IP to check" "from $public_ip to $1"
+  public_ip="$1"
+}
+
 echo "Expected IP address is $public_ip"
 if [ "$CADDY_DNS_RESOLVER" == "" ]
   then
