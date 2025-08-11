@@ -5,10 +5,10 @@ auto_watchlog ?= true
 COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
 
 _dockerUp: secret-envs _dockerUP_network
-	${_envs} ${dockerCompose} -f ${f} up --pull ${dockerPullPolicy} -d ${services}
+	${dockerCompose} -f ${f} up --pull ${dockerPullPolicy} -d ${services}
 
 _dockerUP_network:
-	-docker network create ${docker_network}
+	@docker network inspect ${docker_network} >/dev/null 2>&1 || docker network create ${docker_network}
 docker-pull:
 	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull --policy ${dockerPullPolicy}
 docker-pull-unbranded:
@@ -82,11 +82,11 @@ docker-rm-all:
 
 docker-exec: secret-envs
 docker-exec:
-	@${_envs} docker ${cmd}
+	docker ${cmd}
 
 docker-compose-exec: secret-envs
 docker-compose-exec:
-	@${_envs} ${dockerCompose} --env-file=${params_file} ${cmd}
+	${dockerCompose} --env-file=${params_file} ${cmd}
 
 
 _gen_compose_for_binary:
