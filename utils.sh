@@ -104,7 +104,14 @@ function get_linux_os {
 function setup_python_venv_with_requirements {
   venv_target=venv
   [ -d $venv_target ] || python3 -m venv $venv_target
-  . $venv_target/bin/activate
+  . $venv_target/bin/activate || {
+    show_error "Could not activate" "virtual environment in `realpath $venv_target`"
+    exit 1
+  }
+  [ "$(dirname $(which python))" == "$(realpath $venv_target/bin)" ] || {
+    show_error "Malformed virtual environment" "in $(realpath $venv_target). Recreate manually"
+    exit 1
+  }
   python -m pip install -U pip | { grep -v "^Requirement already satisfied" ; true ; }
   python -m pip install -r requirements.txt | { grep -v "^Requirement already satisfied" ; true ; }
 }
