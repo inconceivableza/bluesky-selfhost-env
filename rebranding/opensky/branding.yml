@@ -1,0 +1,32 @@
+code:
+  app_slug_scheme: 'opensky'
+  apple_groups: 'group.app.opensky'
+  chat_api_did: 'did:web:api.chat.opensky.local.com#opensky_chat'
+  ios_clip_name: 'OpenskyClip'
+  ios_nse_name: 'OpenskyNSE'
+  ios_share_with_name: 'Share-with-Opensky'
+  expo_project_owner: 'davidfinc-org'
+  expo_project_id: '19a6f1d0-201b-434e-affb-e4bdd025cd58'
+  google_service_project_name: openskyweb
+  sentry_project_organization: 'openskysocial'
+  web_bundle_name: openskyweb
+  web_package_id: xyz.opensky.app
+  web_package_path: 'xyz/openskyweb'
+atproto_accounts:
+  follow_default:
+    did: "did:plc:z72i7hdynmk6r22z27h6tvur" # This would need to be updated for opensky
+    varname: OPENSKY_APP_ACCOUNT_DID
+naming:
+  app_name: Opensky
+styling:
+  additional_color_defs: []
+  android_splash_background_color_dark: '#3a4a5a'
+  android_splash_background_color_light: '#6A87A5'
+  background_color: '#6A87A5'
+  ios_splash_background_color_dark: '#2a3a4a'
+  map_color_names: []
+verbage:
+  app_description: "the bland social internet"
+  app_emoji: "☁️"
+  profile_description_placeholder: 'e.g. Artist, dog-lover, and avid reader.'
+  post_prompt: "What's going down"
