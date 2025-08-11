@@ -36,6 +36,14 @@ volumes:
 # palomar:
 # social-app:
 
+x-definitions:
+  certificate-volumes: &certificate-volumes
+    # CA certificates for self-signed, or a dummy directory if that's not being used
+    volumes:
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+
 networks:
  default:
     name: ${docker_network}
@@ -80,12 +88,13 @@ services:
       - CADDY_DNS_USED=${CADDY_DNS_USED}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
+    <<: *certificate-volumes
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
-      # CA certificates for self-signed. >>>
+      # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
       - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
-      # CA certificates for self-signed. <<<
+      # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
       # the social app's static website
@@ -103,8 +112,7 @@ services:
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    volumes:
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    <<: *certificate-volumes
 # to generate HTTPS certifications on-demand <<<<<
 
 # debug for caddy>>> 
@@ -139,8 +147,6 @@ services:
     env_file: config/bgs-secrets.env
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -150,8 +156,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    volumes:
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    <<: *certificate-volumes
 
 # debug for bluesky with indigo subcmds <<<
 
@@ -159,12 +164,13 @@ services:
     image: postgres:16-bookworm
     ports:
       - 5432:5432
+    env_file:
+      - config/db-secrets.env
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=healthcheck
     volumes:
       - ./config/init-postgres:/docker-entrypoint-initdb.d/
@@ -178,8 +184,7 @@ services:
     environment:
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
-      #   volumes:
-      #      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+      #   <<: *certificate-volumes
     depends_on:
       - database
 
@@ -236,16 +241,14 @@ services:
        - https_proxy=${https_proxy}
        - no_proxy=${no_proxy}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --enable-source-maps index.js'
     ports:
       - 2582:2582
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
+    <<: *certificate-volumes
+    env_file:
+      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
+      - config/plc-secrets.env
     environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/plc
-      - DB_CREDS_JSON={"username":"${POSTGRES_USER}","password":"${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}
-      - DB_MIGRATE_CREDS_JSON={"username":"${POSTGRES_USER}","password":"${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
       - GOINSECURE=${GOINSECURE}
@@ -267,6 +270,7 @@ services:
   pds:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof}
+    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     profiles: ['', 'atproto']
     build:
       context: ./repos/atproto/
@@ -328,10 +332,8 @@ services:
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    <<: *certificate-volumes
     volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
       - pds:/pds
     restart: always
     depends_on:
@@ -352,12 +354,10 @@ services:
     ports:
       - 2470:2470
       - 2471:2471
-    command: ['/bigsky', '--db-tracing']
-    env_file: config/bgs-secrets.env
+    command: "sh -c '${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
+    env_file: config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
-      - CARSTORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/carstore
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bgs
       - DATA_DIR=/data/bigsky
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -371,10 +371,8 @@ services:
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    <<: *certificate-volumes
     volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
       - bgs:/data/bigsky
     restart: always
     depends_on:
@@ -397,7 +395,7 @@ services:
       - 2584:2584
     expose:
       - 2584
-    command: node --enable-source-maps api.js
+    command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. >>>>
     user: root
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. <<<<
@@ -412,7 +410,6 @@ services:
       - BSKY_DATAPLANE_PORT=3001
       - BSKY_DATAPLANE_URLS=http://bsky:3001
       - BSKY_DB_POSTGRES_SCHEMA=bsky
-      - BSKY_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/bsky
       - BSKY_DID_PLC_URL=https://${plcFQDN}
       - BSKY_LABELS_FROM_ISSUER_DIDS=${BSKY_LABELS_FROM_ISSUER_DIDS}
       - BSKY_PUBLIC_URL=https://${bskyFQDN}
@@ -436,10 +433,8 @@ services:
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    <<: *certificate-volumes
     volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
       - bsky:/cache/
 #     - ./repos/atproto/services/bsky/api.js:/app/services/bsky/api.js:ro
     restart: always
@@ -470,11 +465,8 @@ services:
        - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL}
     ports:
       - 8100:8100
-    command: /bin/sh -c "/usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
+    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
+    <<: *certificate-volumes
     environment:
       # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 >>>>
       - ATP_APPVIEW_HOST=https://${publicApiFQDN}
@@ -509,16 +501,12 @@ services:
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
+    <<: *certificate-volumes
     env_file: config/palomar-secrets.env
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/palomar
 #     - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
@@ -577,10 +565,8 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     ports:
       - 3000:3000
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
+    <<: *certificate-volumes
+    volumes: []
 #     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
@@ -599,7 +585,6 @@ services:
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
       - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS}
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DB_POSTGRES_SCHEMA=ozone
       - OZONE_DB_MIGRATE=1
       - OZONE_DID_PLC_URL=https://${plcFQDN}
@@ -634,11 +619,9 @@ services:
     command: node --enable-source-maps api.js
     ports:
       - 3000:3000
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
-#     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+    <<: *certificate-volumes
+#    volumes:
+#      - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1
@@ -654,7 +637,6 @@ services:
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DEV_MODE=true
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
@@ -681,10 +663,7 @@ services:
        - no_proxy=${no_proxy}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
     command: node --enable-source-maps daemon.js
-    volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
+    <<: *certificate-volumes
     env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1
@@ -700,7 +679,6 @@ services:
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_APPVIEW_URL=https://${bskyFQDN}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DB_POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database/ozone
       - OZONE_DEV_MODE=true
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
@@ -749,10 +727,8 @@ services:
       timeout: 10s
       interval: 10s
       retries: 5
+    <<: *certificate-volumes
     volumes:
-      # supporting self-signed certificates, easiest way >>>>
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-      # supporting self-signed certificates, easiest way <<<<
       - feed-generator:/data/
 #     - ${rDir}/feed-generator:/app
 
@@ -781,6 +757,7 @@ services:
       - bsky:/data/bsky:rw
       - backup-staging:/staging
       - backup-repo:/restic-repo
+    env_file: config/backup-secrets.env
     environment:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
@@ -788,21 +765,16 @@ services:
       - PGHOST=database
       - PGPORT=5432
       - PGUSER=${POSTGRES_USER}
-      - PGPASSWORD=${POSTGRES_PASSWORD}
       - RESTIC_REPOSITORY=/restic-repo
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
-      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
+      # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
       - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1}
       - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2}
       - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3}
-      - RESTIC_REMOTE_PASSWORD1=${RESTIC_REMOTE_PASSWORD1}
-      - RESTIC_REMOTE_PASSWORD2=${RESTIC_REMOTE_PASSWORD2}
-      - RESTIC_REMOTE_PASSWORD3=${RESTIC_REMOTE_PASSWORD3}
       - RESTIC_LOGDIR=/var/log
       # if any of these keys are needed for the remote storage services, they can be configured in the environment
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${RESTIC_AWS_SECRET_ACCESS_KEY}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
     entrypoint: ["/bin/sh"]

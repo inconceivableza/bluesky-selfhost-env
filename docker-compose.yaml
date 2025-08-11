@@ -86,9 +86,10 @@ services:
     <<: *certificate-volumes
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
       - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
-      # CA certificates for self-signed. <<<
+      # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
       # the social app's static website
