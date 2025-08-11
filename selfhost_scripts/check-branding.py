@@ -68,7 +68,7 @@ def compare_yaml_values(example_data, target_data, path="", show_value_changes=F
 def main():
     parser = argparse.ArgumentParser(description='Compare branding.yml file with example template')
     parser.add_argument('-b', '--branding-file', 
-                       help='Branding YAML file to check (default: derived from .env REBRANDING_PARAMS)')
+                       help='Branding YAML file to check (default: derived from .env REBRANDING_DIR)')
     parser.add_argument('-e', '--env-file', default='.env', 
                        help='Environment file to read (default: .env)')
     parser.add_argument('-t', '--template-file', default='rebranding/repo-rules/branding.yml.example',
@@ -93,23 +93,20 @@ def main():
             # Use env_utils to read the environment file
             env_vars = read_env(args.env_file, interpolate=False)
             
-            if 'REBRANDING_PARAMS' not in env_vars:
+            if 'REBRANDING_DIR' not in env_vars:
                 if not args.silent:
-                    print("Error: Could not find REBRANDING_PARAMS in environment file", file=sys.stderr)
+                    print("Error: Could not find REBRANDING_DIR in environment file", file=sys.stderr)
                     print("Please specify branding file with -b/--branding-file", file=sys.stderr)
                 sys.exit(1)
             
-            # Parse REBRANDING_PARAMS to get the first parameter (directory)
-            params_value = env_vars['REBRANDING_PARAMS'].strip('"')
-            # Split on whitespace to get the first parameter
-            params_parts = params_value.split()
-            if not params_parts:
+            # Get the branding directory
+            branding_dir = env_vars['REBRANDING_DIR'].strip('"')
+            if not branding_dir:
                 if not args.silent:
-                    print("Error: REBRANDING_PARAMS is empty", file=sys.stderr)
+                    print("Error: REBRANDING_DIR is empty", file=sys.stderr)
                     print("Please specify branding file with -b/--branding-file", file=sys.stderr)
                 sys.exit(1)
             
-            branding_dir = params_parts[0]
             args.branding_file = f"{branding_dir}/branding.yml"
                 
         except Exception as e:

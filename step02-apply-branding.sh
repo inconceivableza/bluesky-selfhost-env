@@ -39,12 +39,19 @@ if [ "$REBRANDING_DISABLED" == "true" ]
   then
     show_warning "Not Rebranding:" "ensure that you don't make this available publicly until rebranded, in order to comply with bluesky-social/social-app guidelines"
     echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
-elif [ "$REBRANDING_SCRIPT" == "" ]
-  then
-    show_error "Rebranding Undefined:" "either define REBRANDING_DISABLED=true or set REBRANDING_SCRIPT in environment, in order to comply with bluesky-social/social-app guidelines"
-    echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
-    exit 1
   else
+    # Default REBRANDING_SCRIPT if not set
+    if [ "$REBRANDING_SCRIPT" == "" ]; then
+      REBRANDING_SCRIPT="$script_dir/rebranding/run-rewrite.sh"
+    fi
+    
+    if [ ! -f "$REBRANDING_SCRIPT" ]; then
+      show_error "Rebranding Script Not Found:" "please check REBRANDING_SCRIPT path: $REBRANDING_SCRIPT"
+      show_info "To disable rebranding," "set REBRANDING_DISABLED=true in $params_file"
+      echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
+      exit 1
+    fi
+    
     show_heading "Rebranding repos: $REBRANDED_REPOS" "by scripted changes"
     REBRANDING_SCRIPT_ABS="`realpath "$REBRANDING_SCRIPT"`"
     [ "$REBRANDING_NAME" == "" ] && { show_error "Brand name undefined:" "please set REBRANDING_NAME in $params_file" ; exit 1 ; }
@@ -57,7 +64,7 @@ elif [ "$REBRANDING_SCRIPT" == "" ]
         )
       done
     show_info "Rebranding for $REBRANDING_NAME" "by scripted changes"
-    "$REBRANDING_SCRIPT_ABS" $REBRANDING_PARAMS || { show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS $REBRANDING_PARAMS" ; exit 1 ; }
+    "$REBRANDING_SCRIPT_ABS" "$REBRANDING_DIR" || { show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS \"$REBRANDING_DIR\"" ; exit 1 ; }
     for branded_repo in $REBRANDED_REPOS
       do
         (
