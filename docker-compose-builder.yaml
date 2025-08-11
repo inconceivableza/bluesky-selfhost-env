@@ -58,7 +58,7 @@ services:
       context: .
       dockerfile: ops/caddy-Dockerfile
       args:
-        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC}
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
     ports:
       - 80:80
       - 443:443
@@ -82,10 +82,10 @@ services:
       - plcFQDN=${plcFQDN}
       - publicApiFQDN=${publicApiFQDN}
       - socialappFQDN=${socialappFQDN}
-      - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER}
-      - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN}
-      - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER}
-      - CADDY_DNS_USED=${CADDY_DNS_USED}
+      - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER-}
+      - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
+      - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
+      - CADDY_DNS_USED=${CADDY_DNS_USED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     <<: *certificate-volumes
@@ -139,10 +139,10 @@ services:
        context: ./repos/indigo/
        dockerfile: Dockerfile
        args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: tail -f /dev/null
     env_file: config/bgs-secrets.env
     environment:
@@ -201,12 +201,12 @@ services:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
 # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
-       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS}
+       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     ports:
       - 9200:9200
     env_file: config/opensearch-secrets.env
@@ -237,10 +237,10 @@ services:
       context: ./repos/did-method-plc/
       dockerfile: packages/server/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: sh -c '${UPDATE_CERTS_CMD:-true}; node --enable-source-maps index.js'
     ports:
       - 2582:2582
@@ -276,10 +276,10 @@ services:
       context: ./repos/atproto/
       dockerfile: services/pds/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 2583:2583
     expose:
@@ -309,7 +309,7 @@ services:
       - PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL}
       - PDS_ENABLE_DID_DOC_WITH_SESSION=true
       - PDS_HOSTNAME=${pdsFQDN}
-      - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL}
+      - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
       - PDS_PORT=2583
 # starts: unset optional env for tesing ozone >>>>>>>
@@ -347,10 +347,10 @@ services:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 2470:2470
       - 2471:2471
@@ -387,10 +387,10 @@ services:
       context: ./repos/atproto/
       dockerfile: services/bsky/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 2584:2584
     expose:
@@ -416,7 +416,7 @@ services:
       - BSKY_REPO_PROVIDER=wss://${bgsFQDN}
       - BSKY_SEARCH_URL=https://${palomarFQDN}
       - BSKY_SERVER_DID=did:web:${bskyFQDN}
-      - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV}
+      - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV-}
       - DEBUG_MODE=1
       - DID_PLC_URL=https://${plcFQDN}
       - ENABLE_MIGRATIONS=false
@@ -453,16 +453,16 @@ services:
       context: ./repos/social-app/
       dockerfile: Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
-       - SENTRY_ORG=${SENTRY_ORG}
-       - SENTRY_PROJECT=${SENTRY_PROJECT}
-       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT}
-       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN}
-       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY}
-       - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+       - SENTRY_ORG=${SENTRY_ORG-}
+       - SENTRY_PROJECT=${SENTRY_PROJECT-}
+       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT-}
+       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN-}
+       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY-}
+       - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL-}
     ports:
       - 8100:8100
     command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
@@ -478,7 +478,7 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
-      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       - IPCC_HOST=http://ipcc:8080
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
@@ -494,10 +494,10 @@ services:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
@@ -529,10 +529,10 @@ services:
       context: ./repos/jetstream/
       dockerfile: Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 6008:6008
       # - 6009:6009 metrics address
@@ -559,10 +559,10 @@ services:
       context: ./repos/ozone/
       dockerfile: Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 3000:3000
     <<: *certificate-volumes
@@ -581,15 +581,15 @@ services:
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
       - OZONE_PORT=3000
-      - OZONE_SERVER_DID=${OZONE_SERVER_DID}
+      - OZONE_SERVER_DID=${OZONE_SERVER_DID-}
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
-      - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS}
+      - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS-}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
       - OZONE_DB_MIGRATE=1
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - NEXT_PUBLIC_PLC_DIRECTORY_URL=https://${plcFQDN}
-      - NEXT_PUBLIC_OZONE_SERVICE_DID=${OZONE_SERVER_DID}
+      - NEXT_PUBLIC_OZONE_SERVICE_DID=${OZONE_SERVER_DID-}
       - NEXT_PUBLIC_OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - NEXT_PUBLIC_SOCIAL_APP_DOMAIN=${socialappFQDN}
       - NEXT_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
@@ -612,10 +612,10 @@ services:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: node --enable-source-maps api.js
     ports:
       - 3000:3000
@@ -658,10 +658,10 @@ services:
       context: ./repos/atproto/
       dockerfile: services/ozone/Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: node --enable-source-maps daemon.js
     <<: *certificate-volumes
     env_file: config/ozone-secrets.env
@@ -702,17 +702,17 @@ services:
       context: ./repos/feed-generator/
       dockerfile: Dockerfile
       args:
-       - http_proxy=${http_proxy}
-       - https_proxy=${https_proxy}
-       - no_proxy=${no_proxy}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 2586:3000
     environment:
       - FEEDGEN_HOSTNAME=${feedgenFQDN}
       - FEEDGEN_LISTENHOST=0.0.0.0
       - FEEDGEN_PORT=3000
-      - FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID}
+      - FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID-}
       - FEEDGEN_SERVICE_DID=did:web:${feedgenFQDN}
       - FEEDGEN_SQLITE_LOCATION=/data/db.sqlite
       - FEEDGEN_PLC_URL=https://${plcFQDN}
@@ -769,14 +769,14 @@ services:
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
       # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
-      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1}
-      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2}
-      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3}
+      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1-}
+      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2-}
+      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3-}
       - RESTIC_LOGDIR=/var/log
       # if any of these keys are needed for the remote storage services, they can be configured in the environment
-      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
-      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
+      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
+      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
     restart: always

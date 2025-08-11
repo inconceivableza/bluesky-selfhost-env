@@ -77,10 +77,10 @@ services:
       - plcFQDN=${plcFQDN}
       - publicApiFQDN=${publicApiFQDN}
       - socialappFQDN=${socialappFQDN}
-      - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER}
-      - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN}
-      - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER}
-      - CADDY_DNS_USED=${CADDY_DNS_USED}
+      - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER-}
+      - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
+      - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
+      - CADDY_DNS_USED=${CADDY_DNS_USED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     <<: *certificate-volumes
@@ -270,7 +270,7 @@ services:
       - PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL}
       - PDS_ENABLE_DID_DOC_WITH_SESSION=true
       - PDS_HOSTNAME=${pdsFQDN}
-      - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL}
+      - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
       - PDS_PORT=2583
 # starts: unset optional env for tesing ozone >>>>>>>
@@ -361,7 +361,7 @@ services:
       - BSKY_REPO_PROVIDER=wss://${bgsFQDN}
       - BSKY_SEARCH_URL=https://${palomarFQDN}
       - BSKY_SERVER_DID=did:web:${bskyFQDN}
-      - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV}
+      - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV-}
       - DEBUG_MODE=1
       - DID_PLC_URL=https://${plcFQDN}
       - ENABLE_MIGRATIONS=false
@@ -409,7 +409,7 @@ services:
       - NODE_ENV=development
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
-      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       - IPCC_HOST=http://ipcc:8080
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
@@ -488,15 +488,15 @@ services:
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
       - OZONE_PORT=3000
-      - OZONE_SERVER_DID=${OZONE_SERVER_DID}
+      - OZONE_SERVER_DID=${OZONE_SERVER_DID-}
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
-      - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS}
+      - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS-}
       - OZONE_DB_POSTGRES_SCHEMA=ozone
       - OZONE_DB_MIGRATE=1
       - OZONE_DID_PLC_URL=https://${plcFQDN}
       - NEXT_PUBLIC_PLC_DIRECTORY_URL=https://${plcFQDN}
-      - NEXT_PUBLIC_OZONE_SERVICE_DID=${OZONE_SERVER_DID}
+      - NEXT_PUBLIC_OZONE_SERVICE_DID=${OZONE_SERVER_DID-}
       - NEXT_PUBLIC_OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - NEXT_PUBLIC_SOCIAL_APP_DOMAIN=${socialappFQDN}
       - NEXT_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
@@ -595,7 +595,7 @@ services:
       - FEEDGEN_HOSTNAME=${feedgenFQDN}
       - FEEDGEN_LISTENHOST=0.0.0.0
       - FEEDGEN_PORT=3000
-      - FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID}
+      - FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID-}
       - FEEDGEN_SERVICE_DID=did:web:${feedgenFQDN}
       - FEEDGEN_SQLITE_LOCATION=/data/db.sqlite
       - FEEDGEN_PLC_URL=https://${plcFQDN}
@@ -652,14 +652,14 @@ services:
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
       # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
-      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1}
-      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2}
-      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3}
+      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1-}
+      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2-}
+      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3-}
       - RESTIC_LOGDIR=/var/log
       # if any of these keys are needed for the remote storage services, they can be configured in the environment
-      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID}
-      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS}
+      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
+      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
     restart: always
