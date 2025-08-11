@@ -13,6 +13,9 @@ make secret-envs
 show_heading "Checking for missing params" "in environment"
 "$script_dir"/selfhost_scripts/check-env.py || { show_error "Missing params:" "please correct" ; exit 1 ;}
 
+show_heading "Checking for missing params" "in branding configuration"
+"$script_dir"/selfhost_scripts/check-branding.py || { show_error "Missing branding config:" "please correct" ; exit 1 ;}
+
 show_heading "Checking secrets configuration"
 "$script_dir"/selfhost_scripts/check-secrets.py || { show_error "Secrets issues:" "please review and correct" ; exit 1 ;}
 
