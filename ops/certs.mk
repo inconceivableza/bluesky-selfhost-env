@@ -19,10 +19,35 @@ getCAcert:
 	docker cp caddy:/data/caddy/pki/authorities/local/intermediate.key ${wDir}/certs/
 	docker rm -f caddy
 
+ifeq ($(shell uname),Darwin)
+# On MacOS, check if certificate is already in system keychain and if not install
+installCAcert:
+	@echo "install self-signed CA certificate into system keychain..."
+	@if ! security find-certificate -c "Caddy Local Authority" /System/Library/Keychains/SystemRootCertificates.keychain > /dev/null 2>&1 && \
+	   ! security find-certificate -c "Caddy Local Authority" /Library/Keychains/System.keychain > /dev/null 2>&1; then \
+		echo "Adding certificate to system keychain (will ask for user password to sudo on commandline and then in GUI)..."; \
+		sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ${wDir}/certs/root.crt; \
+	else \
+		echo "Certificate already exists in system keychain"; \
+	fi
+else
 installCAcert:
 	@echo "install self-signed CA certificate into this machine..."
 	sudo cp -p ${wDir}/certs/root.crt /usr/local/share/ca-certificates/testCA-caddy.crt
 	sudo update-ca-certificates
+endif
 
+ifeq ($(shell uname),Darwin)
 ${wDir}/certs/ca-certificates.crt:
+	@echo "Extracting system CA certificates from macOS keychains for Docker containers..."
+	@mkdir -p ${wDir}/certs
+	@# Export all certificates from system root certificates keychain
+	@security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > $@
+	@# Export all certificates from system keychain and append
+	@security find-certificate -a -p /Library/Keychains/System.keychain >> $@ 2>/dev/null || true
+	@echo "Exported $$(grep -c 'BEGIN CERTIFICATE' $@) certificates from macOS system keychains"
+else
+${wDir}/certs/ca-certificates.crt:
+	@echo "Extracting system CA certificates for Docker containers..."
 	cp -p /etc/ssl/certs/ca-certificates.crt $@
+endif
