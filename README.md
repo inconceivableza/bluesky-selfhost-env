@@ -128,7 +128,7 @@ Refer the [appendix](#sample-dns-config) for a sample DNS server (bind9) configu
 ```
 
 *Scripted:* You will need to make your own DNS records as described above.
-But you can check them with `./step10-check-network.sh`
+But you can check them with `./step20-check-network.sh`
 
 2) Generate and install a CA certificate (necessary for private/closed networks and when working with self-signed certificates).
     -  Once generated, copy the crt and key files to ./certs/root.{crt,key}
@@ -144,12 +144,12 @@ make installCAcert
 # Remember to install the certificate in your browser.
 ```
 
-*Scripted:* You can automate this with `./step11-setup-certs.sh`, but will need to install to the browser manually.
+*Scripted:* You can automate this with `./step21-setup-certs.sh`, but will need to install to the browser manually.
 If you don't set `EMAIL4CERTS` to `internal` in your environment file, this script won't create certificates and the later steps will do a Let's Encrypt setup.
 
 ### <a id="ops2-check"/>2) Check if it's ready to self-host bluesky
 
-*Scripted:* You can automate this with `./step20-test-web-hosting.sh`
+*Scripted:* You can automate this with `./step22-test-web-hosting.sh`
 
 ```bash
 # Check DNS server responses for your self-hosting domain
@@ -188,8 +188,8 @@ make    docker-stop-with-clean f=./docker-compose-debug-caddy.yaml
 For a public environment you do.
 To be consistent, the scripted environment is set up to build your own social app.
 You can automate this with `./step02-apply-branding.sh` to set up a new branch of `social-app` with the branding changes,
-`./step03-build-branded.sh` to build the new docker images,
-and then `./step31-deploy-bluesky.sh` to pull and deploy the docker images.
+`./step10-docker-build.sh` to build the new docker images,
+and then `./step30-docker-deploy.sh` to pull and deploy the docker images.
 
 This section first outlines deploying bluesky with prebuilt images.<BR>
 Refer [later](#hack-clone-and-build) for instructions on building images from sources independently.
@@ -213,7 +213,7 @@ make docker-start-bsky
 
 ### <a id="ops4-run-fg"/>4) Deploy the Feed Generator
 
-*Scripted:* You can automate this with `./step40-deploy-feedgen.sh`.
+*Scripted:* You can automate this with `./step31-deploy-feedgen.sh`.
 
 ```bash
 # 1) Verify that the social-app is ready to serve content.
@@ -231,7 +231,7 @@ make publishFeed
 
 ### <a id="ops4-run-ozone"/>4-2) Deploy Ozone
 
-*Scripted:* You can automate this with `./step41-deploy-ozone.sh` *(currently untested)*.
+*Scripted:* You can automate this with `./step32-deploy-ozone.sh` *(currently untested)*.
 
 ```bash
 # 1) Generate an account for the ozone service or administrator.
@@ -268,7 +268,7 @@ make docker-start-bsky-jetstream
 
 ### <a id="ops5-play"/>5) Play with self-hosted blusky.
 
-*Scripted:* you can automate this with `./step50-test-create-account.sh`
+*Scripted:* you can automate this with `./step40-test-create-account.sh`
 
 Access ```https://social-app.${DOMAIN}/``` (e.g., ```https://social-app.mysky.local.com/```) in your browser.
 
