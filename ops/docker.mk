@@ -1,17 +1,18 @@
 
 dockerCompose ?= docker compose
+dockerPullPolicy ?= missing
 auto_watchlog ?= true
 COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
 
 _dockerUp: secret-envs _dockerUP_network
-	${_envs} ${dockerCompose} -f ${f} up -d ${services}
+	${_envs} ${dockerCompose} -f ${f} up --pull ${dockerPullPolicy} -d ${services}
 
 _dockerUP_network:
 	-docker network create ${docker_network}
 docker-pull:
-	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull
+	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull --policy ${dockerPullPolicy}
 docker-pull-unbranded:
-	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull ${unbranded_services}
+	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull --policy ${dockerPullPolicy} ${unbranded_services}
 build:
 	COMPOSE_PROFILES=${COMPOSE_PROFILES} DOMAIN=${DOMAIN} asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} build ${services}
 
