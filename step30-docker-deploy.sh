@@ -6,10 +6,27 @@ script_dir="`dirname "$script_path"`"
 source_env
 
 show_heading "Fetching unbranded containers" "for required services with generic builds"
-branded_services=$(yq '.services' -o json docker-compose.yaml | jq 'to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}"))|$parent' | cut -d'"' -f2)
-unbranded_services=$(yq '.services' -o json docker-compose.yaml | jq 'to_entries | .[] | .key as $parent | select(.value["image"] | contains("${DOMAIN}") | not)|$parent' | cut -d'"' -f2)
-echo branded $branded_services
-echo unbranded $unbranded_services
+# Get all services defined in docker-compose.yaml
+all_services=$(yq '.services | keys | .[]' docker-compose.yaml)
+
+# Categorize services using utils.sh definitions
+branded_services=""
+custom_services=""
+unbranded_services=""
+
+for service in $all_services; do
+    if echo "$REBRANDED_SERVICES" | grep -q "\b$service\b"; then
+        branded_services="$branded_services $service"
+    elif echo "$CUSTOM_SERVICES" | grep -q "\b$service\b"; then
+        custom_services="$custom_services $service"
+    else
+        unbranded_services="$unbranded_services $service"
+    fi
+done
+
+echo "branded services: $branded_services"
+echo "custom services: $custom_services" 
+echo "unbranded services: $unbranded_services"
 make docker-pull-unbranded unbranded_services="${unbranded_services//$'\n'/ }" || { show_error "Fetching Containers failed:" "Please see error above" ; exit 1 ; }
 
 show_heading "Deploy required containers" "(database, caddy etc)"
