@@ -155,6 +155,29 @@ if [ ! -e "$params_file" ]
     exit 1
   fi
 
+# DNS lookup function from step20-check-network.sh
+if [ "$os" == "macos" ]
+  then
+    function dns_lookup() {
+      if [ $# -ge 2 ]
+        then
+          dig +short -t a -q "$1" "@$2" | tail -n 1
+        else
+          echo dscacheutil >&2
+          dscacheutil -q host -a name "$1" | grep 'ip_address:' | sed 's/^[a-z_]*: //' | tail -n 1
+        fi
+    }
+  else
+    function dns_lookup() {
+      if [ $# -ge 2 ]
+        then
+          dig +short -t a -q "$1" "@$2" | tail -n 1
+        else
+          dig +short -t a -q "$1" | tail -n 1
+        fi
+    }
+  fi
+
 export bluesky_utils_imported=1
 
 # our params file can override this to true if it is desired, but it messes with the scripting

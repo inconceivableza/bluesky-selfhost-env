@@ -20,28 +20,6 @@ if [ "$CADDY_DNS_RESOLVER" == "" ]
     show_info "Will check DNS" "against default from OS as well as $CADDY_DNS_RESOLVER"
   fi
 
-if [ "$os" == "macos" ]
-  then
-    function dns_lookup() {
-      if [ $# -ge 2 ]
-        then
-          dig +short -t a -q "$1" "@$2" | tail -n 1
-        else
-          echo dscacheutil >&2
-          dscacheutil -q host -a name "$1" | grep 'ip_address:' | sed 's/^[a-z_]*: //' | tail -n 1
-        fi
-    }
-  else
-    function dns_lookup() {
-      if [ $# -ge 2 ]
-        then
-          dig +short -t a -q "$1" "@$2" | tail -n 1
-        else
-          dig +short -t a -q "$1" | tail -n 1
-        fi
-    }
-  fi
-
 # TODO: requires bind9-dnsutils
 function check_dns_maps_to_here() {
   check_domain="$1"
