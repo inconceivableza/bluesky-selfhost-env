@@ -8,25 +8,55 @@ source_env
 show_heading "Checking DNS" configuration
 public_ip=`curl -s api.ipify.org/`
 echo "Expected IP address is $public_ip"
-show_info "Will check against default DNS as well as $CADDY_DNS_RESOLVER"
+if [ "$CADDY_DNS_RESOLVER" == "" ]
+  then
+    show_info "Will check DNS" "only against default from OS"
+  else
+    show_info "Will check DNS" "against default from OS as well as $CADDY_DNS_RESOLVER"
+  fi
+
+if [ "$os" == "macos" ]
+  then
+    function dns_lookup() {
+      if [ $# -ge 2 ]
+        then
+          dig +short -t a -q "$1" "@$2" | tail -n 1
+        else
+          echo dscacheutil >&2
+          dscacheutil -q host -a name "$1" | grep 'ip_address:' | sed 's/^[a-z_]*: //' | tail -n 1
+        fi
+    }
+  else
+    function dns_lookup() {
+      if [ $# -ge 2 ]
+        then
+          dig +short -t a -q "$1" "@$2" | tail -n 1
+        else
+          dig +short -t a -q "$1" | tail -n 1
+        fi
+    }
+  fi
 
 # TODO: requires bind9-dnsutils
 function check_dns_maps_to_here() {
   check_domain="$1"
   echo -n "Checking DNS for $check_domain... "
-  resolved_ip="`dig +short -t a -q "$1" @$CADDY_DNS_RESOLVER | tail -n 1`"
-  failure=
-  if [ "$resolved_ip" == "$public_ip" ]
+  if [ "$CADDY_DNS_RESOLVER" != "" ]
     then
-      echo -n "$resolved_ip "
-      show_success_n
-      echo -n " "
-    else
-      echo -n "$resolved_ip != $public_ip "
-      show_failure
-      return 1
+      resolved_ip="`dns_lookup "$1" "$CADDY_DNS_RESOLVER" | tail -n 1`"
+      failure=
+      if [ "$resolved_ip" == "$public_ip" ]
+        then
+          echo -n "$resolved_ip "
+          show_success_n
+          echo -n " "
+        else
+          echo -n "$resolved_ip != $public_ip "
+          show_failure
+          return 1
+        fi
     fi
-  resolved_ip="`dig +short -t a -q "$1" | tail -n 1`"
+  resolved_ip="`dns_lookup "$1" | tail -n 1`"
   if [ "$resolved_ip" == "$public_ip" ]
     then
       echo -n "$resolved_ip "
