@@ -5,5 +5,5 @@ script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 
 show_heading "Running docker logs" "$*"
-make docker-compose-exec cmd="logs $*" | ./selfhost_scripts/utils/log_formatter.py
+make docker-compose-exec cmd="logs $*" | ./selfhost_scripts/log_formatter.py
 
