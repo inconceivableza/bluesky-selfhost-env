@@ -39,6 +39,7 @@ volumes:
 x-definitions:
   certificate-volumes: &certificate-volumes
     # CA certificates for self-signed, or a dummy directory if that's not being used
+    # These can't be used if the service defines its own volumes, but at least it reduces reuse
     volumes:
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
@@ -82,13 +83,17 @@ services:
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
-    <<: *certificate-volumes
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
       # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
       - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
       # CA certificates for serving self-signed. <<<
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+      # <<<
       - caddy-data:/data
       - caddy-config:/config
       # the social app's static website
@@ -292,9 +297,12 @@ services:
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-    <<: *certificate-volumes
     volumes:
       - pds:/pds
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     restart: always
     depends_on:
       - database
@@ -323,9 +331,12 @@ services:
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-    <<: *certificate-volumes
     volumes:
       - bgs:/data/bigsky
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
@@ -382,10 +393,12 @@ services:
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
-    <<: *certificate-volumes
     volumes:
       - bsky:/cache/
-#     - ./repos/atproto/services/bsky/api.js:/app/services/bsky/api.js:ro
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     restart: always
     depends_on:
       - database
