@@ -6,7 +6,7 @@
 #  run caddy 
 #  HINT: make getCAcerts
 
-getCAcert: ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt ${wDir}/certs/ca-bundle-curl.crt ${wDir}/certs/ca-bundle-openssl.crt
+getCAcert: ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt CAbundles
 
 ${wDir}/certs/root.crt ${wDir}/certs/root.key ${wDir}/certs/intermediate.crt ${wDir}/certs/intermediate.key:
 	mkdir -p ${wDir}/certs
@@ -49,38 +49,55 @@ updateCAcert:
 	docker cp $$CADDY_CONTAINER:/data/caddy/pki/authorities/local/intermediate.key ${wDir}/certs/; \
 	$(MAKE) CAbundles
 
-# CA bundles built from existing certificates
-CAbundles: ${wDir}/certs/ca-bundle-curl.crt ${wDir}/certs/ca-bundle-openssl.crt
-
 ifeq ($(shell uname),Darwin)
 # On MacOS, check if certificate is already in system keychain and if not install
-installCAcert:
+systemRootCollection=/System/Library/Keychains/SystemRootCertificates.keychain
+systemCollection=/Library/Keychains/System.keychain
+
+$(systemCollection): ${wDir}/certs/root.crt
 	@echo "install self-signed CA certificate into system keychain..."
-	@if ! security find-certificate -c "Caddy Local Authority" /System/Library/Keychains/SystemRootCertificates.keychain > /dev/null 2>&1 && \
-	   ! security find-certificate -c "Caddy Local Authority" /Library/Keychains/System.keychain > /dev/null 2>&1; then \
+	@if ! security find-certificate -c "Caddy Local Authority" $(systemRootCollection) > /dev/null 2>&1 && \
+	   ! security find-certificate -c "Caddy Local Authority" $(systemCollection) > /dev/null 2>&1; then \
 		echo "Adding certificate to system keychain (will ask for user password to sudo on commandline and then in GUI)..."; \
-		sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ${wDir}/certs/root.crt; \
+		sudo security add-trusted-cert -d -r trustRoot -k $(systemCollection) ${wDir}/certs/root.crt; \
 	else \
 		echo "Certificate already exists in system keychain"; \
 	fi
+
+installCAcert: $(systemCollection)
 else
-installCAcert:
+installedCAfile=/usr/local/share/ca-certificates/testCA-caddy.crt
+systemCollection=/etc/ssl/certs/ca-certificates.crt
+
+$(installedCAfile): ${wDir}/certs/root.crt
 	@echo "install self-signed CA certificate into this machine..."
-	sudo cp -p ${wDir}/certs/root.crt /usr/local/share/ca-certificates/testCA-caddy.crt
-	sudo update-ca-certificates
+	@sudo cp -p ${wDir}/certs/root.crt $(installedCAfile)
+
+$(systemCollection): $(installedCAfile)
+	@echo "updating system certificates..."
+	@sudo update-ca-certificates
+
+installCAcert: $(installedCAfile) $(systemCollection)
 endif
 
 ifeq ($(shell uname),Darwin)
-${wDir}/certs/ca-certificates.crt:
+${wDir}/certs/ca-certificates.crt: $(systemRootCollection) $(systemCollection)
 	@echo "Extracting system CA certificates from macOS keychains for Docker containers..."
 	@mkdir -p ${wDir}/certs
 	@# Export all certificates from system root certificates keychain
-	@security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > $@
+	@security find-certificate -a -p $(systemRootCollection) > $@
 	@# Export all certificates from system keychain and append
-	@security find-certificate -a -p /Library/Keychains/System.keychain >> $@ 2>/dev/null || true
+	@security find-certificate -a -p $(systemCollection) >> $@ 2>/dev/null || true
 	@echo "Exported $$(grep -c 'BEGIN CERTIFICATE' $@) certificates from macOS system keychains"
 else
-${wDir}/certs/ca-certificates.crt:
+${wDir}/certs/ca-certificates.crt: $(systemCollection)
 	@echo "Extracting system CA certificates for Docker containers..."
-	cp -p /etc/ssl/certs/ca-certificates.crt $@
+	cp -p $^ $@
 endif
+
+# CA bundles built from existing certificates
+CAbundles: ${wDir}/certs/ca-bundle-curl.crt ${wDir}/certs/ca-bundle-openssl.crt
+
+# All certificate collections that derive from elsewhere
+certCollections: CAbundles ${wDir}/certs/ca-certificates.crt
+

@@ -10,7 +10,7 @@ if [ "$EMAIL4CERTS" == "internal" ]
     show_heading "Setting up CA" "for self-signed certificates"
 
     make getCAcert
-    [ "$NOINSTALLCERTS" != "true" ] && make installCAcert
+    [ "$NOINSTALLCERTS" != "true" ] && make installCAcert certCollections
 
     show_heading "Don't forget to install the certificate" "in $script_dir/certs/root.crt into your local web browser"
   else
