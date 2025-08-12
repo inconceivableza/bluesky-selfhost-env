@@ -6,7 +6,9 @@
 #  run caddy 
 #  HINT: make getCAcerts
 
-getCAcert:
+getCAcert: ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt ${wDir}/certs/ca-bundle-curl.crt ${wDir}/certs/ca-bundle-openssl.crt
+
+${wDir}/certs/root.crt ${wDir}/certs/root.key ${wDir}/certs/intermediate.crt ${wDir}/certs/intermediate.key:
 	mkdir -p ${wDir}/certs
 	@echo "start caddy as self-signed CA certificate generator."
 	docker run -it --rm -d --name caddy -v ${wDir}/config/caddy/Caddyfile4cert:/etc/caddy/Caddyfile caddy:2
@@ -18,12 +20,37 @@ getCAcert:
 	docker cp caddy:/data/caddy/pki/authorities/local/intermediate.crt ${wDir}/certs/
 	docker cp caddy:/data/caddy/pki/authorities/local/intermediate.key ${wDir}/certs/
 	docker rm -f caddy
-	@echo "generating standard CA bundle files..."
-	@# Create CA bundle for curl (intermediate first, then root)
+
+# CA bundle for curl (intermediate first, then root)
+${wDir}/certs/ca-bundle-curl.crt: ${wDir}/certs/intermediate.crt ${wDir}/certs/root.crt
+	@echo "generating CA bundle for curl..."
 	cat ${wDir}/certs/intermediate.crt ${wDir}/certs/root.crt > ${wDir}/certs/ca-bundle-curl.crt
-	@# Create CA bundle for OpenSSL (root first, then intermediate) 
+
+# CA bundle for OpenSSL (root first, then intermediate)
+${wDir}/certs/ca-bundle-openssl.crt: ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt
+	@echo "generating CA bundle for OpenSSL..."
 	cat ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt > ${wDir}/certs/ca-bundle-openssl.crt
-	@echo "CA bundle files created: ca-bundle-curl.crt, ca-bundle-openssl.crt"
+
+# Update certificates from running caddy container
+updateCAcert:
+	@echo "updating CA certificates from running caddy container..."
+	@if ! docker ps --format '{{.Names}}' | grep -E 'caddy$$|.*-caddy-[0-9]+$$' >/dev/null; then \
+		echo "Error: No running caddy container found"; \
+		echo "Available containers:"; \
+		docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'; \
+		exit 1; \
+	fi
+	@CADDY_CONTAINER=$$(docker ps --format '{{.Names}}' | grep -E 'caddy$$|.*-caddy-[0-9]+$$' | head -1); \
+	echo "Using caddy container: $$CADDY_CONTAINER"; \
+	mkdir -p ${wDir}/certs; \
+	docker cp $$CADDY_CONTAINER:/data/caddy/pki/authorities/local/root.crt ${wDir}/certs/; \
+	docker cp $$CADDY_CONTAINER:/data/caddy/pki/authorities/local/root.key ${wDir}/certs/; \
+	docker cp $$CADDY_CONTAINER:/data/caddy/pki/authorities/local/intermediate.crt ${wDir}/certs/; \
+	docker cp $$CADDY_CONTAINER:/data/caddy/pki/authorities/local/intermediate.key ${wDir}/certs/; \
+	$(MAKE) CAbundles
+
+# CA bundles built from existing certificates
+CAbundles: ${wDir}/certs/ca-bundle-curl.crt ${wDir}/certs/ca-bundle-openssl.crt
 
 ifeq ($(shell uname),Darwin)
 # On MacOS, check if certificate is already in system keychain and if not install
