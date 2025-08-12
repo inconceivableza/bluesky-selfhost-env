@@ -23,6 +23,12 @@ if [ "$previous_limit" == "$BGS_LIMIT" ]
   else
     curl  -L -X POST https://$bgsFQDN/admin/subs/setPerDayLimit?limit=500 -H "Authorization: Bearer ${BGS_ADMIN_KEY}"
     new_limit="$(curl -s -L https://$bgsFQDN/admin/subs/perDayLimit -H "Authorization: Bearer ${BGS_ADMIN_KEY}" | jq -r .limit)"
+    [ "$new_limit" == "" ] && {
+      show_error "Error setting new limit:" "will show debug output from querying it"
+      show_info "bgs admin key length" "$(echo -n ${BGS_ADMIN_KEY} | wc -c)"
+      curl -v -L https://$bgsFQDN/admin/subs/perDayLimit -H "Authorization: Bearer ${BGS_ADMIN_KEY}"
+      exit 1
+    }
     show_info --oneline "Relay crawl limit" "was $previous_limit, adjusted to $new_limit"
   fi
 
