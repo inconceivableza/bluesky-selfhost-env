@@ -99,6 +99,32 @@ def compare_variable_definitions(example_val, target_val):
     
     return False
 
+def check_ssl_configuration(target_env):
+    """Check SSL certificate configuration consistency"""
+    ssl_errors = []
+    
+    # Check if EMAIL4CERTS is set to 'internal' (self-signed certificates)
+    email4certs = target_env.get('EMAIL4CERTS', '').strip()
+    
+    if email4certs == 'internal':
+        # For self-signed certificates, these should be configured correctly
+        custom_certs_dir = target_env.get('CUSTOM_CERTS_DIR', '').strip()
+        update_certs_cmd = target_env.get('UPDATE_CERTS_CMD', '').strip()
+        
+        # Check CUSTOM_CERTS_DIR should be /etc/ssl/certs
+        if custom_certs_dir != '/etc/ssl/certs':
+            ssl_errors.append(('CUSTOM_CERTS_DIR', f"EMAIL4CERTS='internal' but CUSTOM_CERTS_DIR is '{custom_certs_dir}', should be '/etc/ssl/certs'"))
+        
+        # Check UPDATE_CERTS_CMD should contain update-ca-certificates
+        if 'update-ca-certificates' not in update_certs_cmd:
+            ssl_errors.append(('UPDATE_CERTS_CMD', f"EMAIL4CERTS='internal' but UPDATE_CERTS_CMD is '{update_certs_cmd}', should contain 'update-ca-certificates'"))
+        
+        # Also add the main EMAIL4CERTS error to indicate the inconsistency source
+        if ssl_errors:
+            ssl_errors.insert(0, ('EMAIL4CERTS', f"Set to 'internal' but certificate configuration is inconsistent"))
+    
+    return ssl_errors
+
 def main():
     parser = argparse.ArgumentParser(description='Compare .env file with bluesky-params.env.example')
     parser.add_argument('-e', '--env-file', default='.env', help='Environment file to check (default: .env)')
@@ -182,11 +208,15 @@ def main():
     # Check for syntax issues first
     syntax_issues = check_syntax_issues(args.env_file)
     
-    # Track issues and critical errors (missing vars + exposed passwords + syntax issues)  
+    # Check SSL configuration consistency
+    ssl_errors = check_ssl_configuration(target_env)
+    
+    # Track issues and critical errors (missing vars + exposed passwords + syntax issues + ssl errors)  
     has_issues = False
     has_missing_vars = False
     has_exposed_passwords = False
     has_syntax_issues = len(syntax_issues) > 0
+    has_ssl_errors = len(ssl_errors) > 0
     
     if not args.silent:
         print("=== ANALYSIS ===\n")
@@ -196,6 +226,12 @@ def main():
             for issue in syntax_issues:
                 print(f"🚨 SYNTAX: {issue}")
             print()  # Add blank line after syntax issues
+        
+        # Report SSL configuration errors
+        if ssl_errors:
+            for var_name, error_msg in ssl_errors:
+                print(f"🔒 SSL_ERROR: {var_name}. {error_msg}")
+            print()  # Add blank line after SSL errors
     
     # Process all variables in order
     for var in all_vars:
@@ -264,11 +300,11 @@ def main():
                 else:
                     print(f"ℹ️  EXTRA: {var}. Value: {target_val}")
     
-    if not args.silent and not has_issues and not has_syntax_issues:
+    if not args.silent and not has_issues and not has_syntax_issues and not has_ssl_errors:
         print("✅ All variables match between files!")
     
-    # Exit with error code if there are missing variables, exposed passwords, or syntax issues
-    if has_missing_vars or has_exposed_passwords or has_syntax_issues:
+    # Exit with error code if there are missing variables, exposed passwords, syntax issues, or SSL errors
+    if has_missing_vars or has_exposed_passwords or has_syntax_issues or has_ssl_errors:
         if not args.silent:
             error_parts = []
             if has_syntax_issues:
@@ -277,6 +313,8 @@ def main():
                 error_parts.append("missing variables")
             if has_exposed_passwords:
                 error_parts.append("exposed passwords")
+            if has_ssl_errors:
+                error_parts.append("inconsistent self-signed certificate configuration")
             
             error_msg = " and ".join(error_parts)
             print(f"❌ Error: there are {error_msg} in this file")
