@@ -326,6 +326,11 @@ services:
     <<: *certificate-volumes
     volumes:
       - bgs:/data/bigsky
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - database
