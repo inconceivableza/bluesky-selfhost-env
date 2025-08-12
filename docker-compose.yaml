@@ -330,9 +330,6 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
