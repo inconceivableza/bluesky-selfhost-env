@@ -1,4 +1,5 @@
-#!/usr/bin/env -S sh -c 'exec "`dirname "$0"`/venv/bin/python" "$0" "$@"'
+#!/bin/sh
+"exec" """$(dirname $0)/venv/bin/python""" "$0" "$@" # this is a shell exec which will drop down to the relative virtualenv's python
 
 import xml.etree.ElementTree as etree
 import logging
