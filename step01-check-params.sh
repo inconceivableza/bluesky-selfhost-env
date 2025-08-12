@@ -19,8 +19,6 @@ show_heading "Checking for missing params" "in branding configuration"
 show_heading "Checking secrets configuration"
 "$script_dir"/selfhost_scripts/check-secrets.py || { show_error "Secrets issues:" "please review and correct" ; exit 1 ;}
 
+show_heading "Sourcing the environment" "to verify that it doesn't show any errors"
 source_env
-
-show_heading "Showing configuration"
-make echo
 
