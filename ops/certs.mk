@@ -18,6 +18,12 @@ getCAcert:
 	docker cp caddy:/data/caddy/pki/authorities/local/intermediate.crt ${wDir}/certs/
 	docker cp caddy:/data/caddy/pki/authorities/local/intermediate.key ${wDir}/certs/
 	docker rm -f caddy
+	@echo "generating standard CA bundle files..."
+	@# Create CA bundle for curl (intermediate first, then root)
+	cat ${wDir}/certs/intermediate.crt ${wDir}/certs/root.crt > ${wDir}/certs/ca-bundle-curl.crt
+	@# Create CA bundle for OpenSSL (root first, then intermediate) 
+	cat ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt > ${wDir}/certs/ca-bundle-openssl.crt
+	@echo "CA bundle files created: ca-bundle-curl.crt, ca-bundle-openssl.crt"
 
 ifeq ($(shell uname),Darwin)
 # On MacOS, check if certificate is already in system keychain and if not install

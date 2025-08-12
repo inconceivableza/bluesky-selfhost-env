@@ -178,6 +178,22 @@ if [ "$os" == "macos" ]
     }
   fi
 
+# Function to generate CA bundle files from root and intermediate certificates
+function generate_ca_bundles() {
+  local certs_dir="${1:-`pwd`/certs}"
+  
+  if [ -f "$certs_dir/root.crt" ] && [ -f "$certs_dir/intermediate.crt" ]; then
+    # Create CA bundle for curl (intermediate first, then root)
+    cat "$certs_dir/intermediate.crt" "$certs_dir/root.crt" > "$certs_dir/ca-bundle-curl.crt"
+    # Create CA bundle for OpenSSL (root first, then intermediate) 
+    cat "$certs_dir/root.crt" "$certs_dir/intermediate.crt" > "$certs_dir/ca-bundle-openssl.crt"
+    echo "CA bundle files generated: ca-bundle-curl.crt, ca-bundle-openssl.crt"
+  else
+    echo "Warning: Cannot generate CA bundles - missing root.crt or intermediate.crt in $certs_dir"
+    return 1
+  fi
+}
+
 export bluesky_utils_imported=1
 
 # our params file can override this to true if it is desired, but it messes with the scripting
