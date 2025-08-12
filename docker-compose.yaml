@@ -231,6 +231,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
       # telemetry settings
@@ -262,6 +263,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
@@ -329,6 +331,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
@@ -388,6 +391,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2584
       - REDIS_HOST=redis
@@ -426,6 +430,7 @@ services:
       - HTTP_ADDRESS=:8100
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
@@ -503,6 +508,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
 #     - NODE_ENV=development
       - NODE_ENV=production
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
@@ -549,6 +555,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -583,6 +590,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -622,6 +630,7 @@ services:
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     restart: always
     healthcheck:
