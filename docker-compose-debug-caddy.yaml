@@ -90,6 +90,22 @@ services:
       - opts=--host 0.0.0.0 --port 2583
     working_dir: /opt/fastapi-samples/3catchall
 
+  client-test:
+    image: node:20.11-alpine3.18
+    command: sh -c 'apk add --no-cache wget; ${UPDATE_CERTS_CMD:-true}; tail -f /dev/null'
+    volumes:
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+      # Test files
+      - ./tests:/app/tests:ro
+    working_dir: /app
+    environment:
+      - CUSTOM_CERTS_DIR=${CUSTOM_CERTS_DIR}
+      - UPDATE_CERTS_CMD=${UPDATE_CERTS_CMD}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+
   bsky:
     image: itaru2622/fastapi:bookworm
     ports:

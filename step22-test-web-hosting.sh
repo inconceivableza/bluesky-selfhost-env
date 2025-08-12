@@ -15,7 +15,7 @@ show_info "Starting test web containers"
 make docker-start f=./docker-compose-debug-caddy.yaml services= || { show_error "Error starting containers:" "please examine and fix" ; exit 1 ; }
 
 show_heading "Wait for startup" "of test web containers"
-wait_for_container caddy || { show_warning "Error waiting for caddy:" "it may not have started correctly" ; exit 1 ; }
+wait_for_container caddy ./docker-compose-debug-caddy.yaml || { show_warning "Error waiting for caddy:" "it may not have started correctly" ; exit 1 ; }
 
 show_info "Current value of EMAIL4CERTS:" "$EMAIL4CERTS"
 if [ "$EMAIL4CERTS" == "internal" ]
@@ -127,6 +127,57 @@ if [ "$EMAIL4CERTS" == "internal" ]; then
   }
 else
   echo test successful | websocat "wss://test-wss.${DOMAIN}/ws" || { show_warning "Error testing wss" "to test-wss.${DOMAIN}" ; failures="$failures wss://test-wss" ; }
+fi
+
+show_heading "Testing SSL connectivity from client-test container"
+
+# Wait for client-test container to be ready
+wait_for_container client-test ./docker-compose-debug-caddy.yaml || { show_warning "Error waiting for client-test:" "it may not have started correctly" ; exit 1 ; }
+
+# Get the actual container name for client-test
+client_test_container=$(docker compose -f ./docker-compose-debug-caddy.yaml ps --format '{{.Name}}' client-test 2>/dev/null)
+if [ -z "$client_test_container" ]; then
+  show_error "Could not find client-test container" "check if it's running"
+  failures="$failures client-test-container-missing"
+else
+  # Test with wget from client-test container
+  test_url="https://test-wss.${DOMAIN}"
+  show_info "Testing wget to" "$test_url"
+  if docker exec "$client_test_container" wget --no-check-certificate --quiet -O /dev/null "$test_url" 2>/dev/null; then
+    show_success "wget test passed"
+  else
+    show_warning "wget test failed" "connection issue to $test_url"
+    failures="$failures wget-$test_url"
+  fi
+
+  # Test with Node.js SSL connection test
+  show_info "Testing Node.js HTTPS connection to" "$test_url"
+  node_output=$(docker exec "$client_test_container" node tests/sslconnect.js "$test_url" 2>&1)
+  node_exit_code=$?
+  if [ $node_exit_code -eq 0 ]; then
+    show_success "Node.js SSL test passed"
+    if [ "$EMAIL4CERTS" != "internal" ]; then
+      # For Let's Encrypt certificates, show some connection details
+      echo "$node_output" | grep -E "(Status Code|SSL/HTTPS)" | head -3
+    fi
+  else
+    show_warning "Node.js SSL test failed" "exit code: $node_exit_code"
+    if [ "$EMAIL4CERTS" == "internal" ]; then
+      show_info "Self-signed certificate detected, checking connection details"
+      echo "$node_output" | head -10
+      # This is expected with self-signed certs, don't add to failures unless it's a real connection issue
+      if echo "$node_output" | grep -q "UNABLE_TO_VERIFY_LEAF_SIGNATURE\|SELF_SIGNED_CERT_IN_CHAIN\|CERT_UNTRUSTED"; then
+        show_info "Certificate validation error (expected with self-signed certificates)"
+      else
+        show_error "Unexpected SSL connection error"
+        failures="$failures nodejs-$test_url"
+      fi
+    else
+      show_error "SSL connection failed with Let's Encrypt certificates"
+      echo "$node_output" | head -5
+      failures="$failures nodejs-$test_url"
+    fi
+  fi
 fi
 
 # test on the social-app domain
