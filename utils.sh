@@ -77,17 +77,30 @@ function source_env {
 
 function wait_for_container {
   container_name=$1
+  compose_file=${2:-docker-compose.yaml}
+  
   # might need to look up the name outside docker compose
   echo -n "Waiting for $container_name... "
-  until [ "$(docker inspect -f {{.State.Running}} $(docker compose ps --format '{{.Name}}' ${container_name} 2>/dev/null) 2>/dev/null)" == "true" ]
+  until [ "$(docker inspect -f {{.State.Running}} $(docker compose -f "$compose_file" ps --format '{{.Name}}' ${container_name} 2>/dev/null) 2>/dev/null)" == "true" ]
     do
       sleep 0.5
     done
   echo -n "started... "
-  until [ "$(docker inspect -f {{.State.Health.Status}} $(docker compose ps --format '{{.Name}}' ${container_name} 2>/dev/null) 2>/dev/null)" == "healthy" ]
-    do
-      sleep 0.5;
-    done
+  
+  # Check if the service has a health check defined in the compose file
+  if yq eval ".services.${container_name}.healthcheck // false" "$compose_file" >/dev/null 2>&1 && [ "$(yq eval ".services.${container_name}.healthcheck // false" "$compose_file")" != "false" ]; then
+    # Container has health check, wait for it to be healthy
+    until [ "$(docker inspect -f {{.State.Health.Status}} $(docker compose -f "$compose_file" ps --format '{{.Name}}' ${container_name} 2>/dev/null) 2>/dev/null)" == "healthy" ]
+      do
+        sleep 0.5;
+      done
+    echo -n "healthy... "
+  else
+    # Container has no health check, just wait a bit for it to be fully started
+    sleep 1
+    echo -n "ready... "
+  fi
+  
   show_success
 }
 
