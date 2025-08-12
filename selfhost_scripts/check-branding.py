@@ -6,7 +6,7 @@ import sys
 import yaml
 from pathlib import Path
 
-from env_utils import read_env
+from env_utils import read_env, check_syntax_issues
 
 def get_file_info(filepath):
     """Get information about a file, including symlink resolution"""
@@ -142,6 +142,11 @@ def main():
             print(f"Error loading YAML files: {e}", file=sys.stderr)
         sys.exit(1)
     
+    # Check for syntax issues in the environment file if we read it
+    env_syntax_issues = []
+    if not args.branding_file and os.path.exists(args.env_file):
+        env_syntax_issues = check_syntax_issues(args.env_file)
+    
     # Compare the YAML structures
     missing_keys, extra_keys, value_changes = compare_yaml_values(
         example_data, target_data, show_value_changes=args.show_value_changes
@@ -150,9 +155,17 @@ def main():
     # Track issues and critical errors (missing keys are always critical)
     has_issues = bool(missing_keys or extra_keys or value_changes)
     has_missing_keys = bool(missing_keys)
+    has_syntax_issues = len(env_syntax_issues) > 0
     
     if not args.silent:
         print("=== BRANDING ANALYSIS ===\n")
+        
+        # Report syntax issues in env file first
+        if env_syntax_issues:
+            print("Environment file syntax issues:")
+            for issue in env_syntax_issues:
+                print(f"🚨 SYNTAX: {issue}")
+            print()  # Add blank line after syntax issues
         
         # Always show missing keys
         for missing in missing_keys:
@@ -167,11 +180,20 @@ def main():
             for change in value_changes:
                 print(change)
         
-        if not has_issues:
+        if not has_issues and not has_syntax_issues:
             print("✅ All branding values match the template!")
     
-    # Exit with error code if there are missing keys (critical error)
-    if has_missing_keys:
+    # Exit with error code if there are missing keys or syntax issues (critical errors)
+    if has_missing_keys or has_syntax_issues:
+        if not args.silent:
+            error_parts = []
+            if has_syntax_issues:
+                error_parts.append("syntax errors")
+            if has_missing_keys:
+                error_parts.append("missing keys")
+            
+            error_msg = " and ".join(error_parts)
+            print(f"❌ Error: there are {error_msg} in this configuration")
         sys.exit(1)
 
 if __name__ == '__main__':

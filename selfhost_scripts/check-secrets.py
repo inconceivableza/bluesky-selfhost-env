@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 
-from env_utils import read_env
+from env_utils import read_env, check_syntax_issues
 
 # Import shared secret type definitions
 from secret_types import (
@@ -135,12 +135,22 @@ def main():
             print(f"Error reading files: {e}", file=sys.stderr)
         sys.exit(1)
     
+    # Check for syntax issues first
+    syntax_issues = check_syntax_issues(args.secrets_file)
+    
     # Track issues
     has_issues = False
     has_missing_vars = False
+    has_syntax_issues = len(syntax_issues) > 0
     
     if not args.silent:
         print("=== SECRETS ANALYSIS ===\n")
+        
+        # Report syntax issues first
+        if syntax_issues:
+            for issue in syntax_issues:
+                print(f"🚨 SYNTAX: {issue}")
+            print()  # Add blank line after syntax issues
     
     # Check each variable in template
     for var_name in secret_config.keys():
@@ -175,11 +185,20 @@ def main():
         if not args.silent:
             print(f"ℹ️  EXTRA VARIABLES: {', '.join(sorted(extra_vars))}")
     
-    if not args.silent and not has_issues:
+    if not args.silent and not has_issues and not has_syntax_issues:
         print("✅ All secrets are properly configured!")
     
-    # Exit with error code if there are missing variables (like check-env.py)
-    if has_missing_vars:
+    # Exit with error code if there are missing variables or syntax issues
+    if has_missing_vars or has_syntax_issues:
+        if not args.silent:
+            error_parts = []
+            if has_syntax_issues:
+                error_parts.append("syntax errors")
+            if has_missing_vars:
+                error_parts.append("missing variables")
+            
+            error_msg = " and ".join(error_parts)
+            print(f"❌ Error: there are {error_msg} in this file")
         sys.exit(1)
 
 if __name__ == '__main__':

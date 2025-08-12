@@ -6,7 +6,7 @@ import sys
 import re
 from pathlib import Path
 
-from env_utils import read_env, replace_env
+from env_utils import read_env, replace_env, check_syntax_issues
 from secret_types import parse_secret_template
 
 def get_file_info(filepath):
@@ -178,13 +178,23 @@ def main():
             all_vars.append(var)
             seen.add(var)
     
-    # Track issues and critical errors (missing vars + exposed passwords)  
+    # Check for syntax issues first
+    syntax_issues = check_syntax_issues(args.env_file)
+    
+    # Track issues and critical errors (missing vars + exposed passwords + syntax issues)  
     has_issues = False
     has_missing_vars = False
     has_exposed_passwords = False
+    has_syntax_issues = len(syntax_issues) > 0
     
     if not args.silent:
         print("=== ANALYSIS ===\n")
+        
+        # Report syntax issues first
+        if syntax_issues:
+            for issue in syntax_issues:
+                print(f"🚨 SYNTAX: {issue}")
+            print()  # Add blank line after syntax issues
     
     # Process all variables in order
     for var in all_vars:
@@ -253,15 +263,22 @@ def main():
                 else:
                     print(f"ℹ️  EXTRA: {var}. Value: {target_val}")
     
-    if not args.silent and not has_issues:
+    if not args.silent and not has_issues and not has_syntax_issues:
         print("✅ All variables match between files!")
     
-    # Exit with error code if there are missing variables or exposed passwords
-    if has_missing_vars or has_exposed_passwords:
+    # Exit with error code if there are missing variables, exposed passwords, or syntax issues
+    if has_missing_vars or has_exposed_passwords or has_syntax_issues:
         if not args.silent:
-            print(f"❌ Error: there are {'missing variables' if has_missing_vars else ''}"
-                  f"{' and ' if has_missing_vars and has_exposed_passwords else ''}"
-                  f"{'exposed passwords' if has_exposed_passwords else ''} in this file")
+            error_parts = []
+            if has_syntax_issues:
+                error_parts.append("syntax errors")
+            if has_missing_vars:
+                error_parts.append("missing variables")
+            if has_exposed_passwords:
+                error_parts.append("exposed passwords")
+            
+            error_msg = " and ".join(error_parts)
+            print(f"❌ Error: there are {error_msg} in this file")
         sys.exit(1)
 
 if __name__ == '__main__':

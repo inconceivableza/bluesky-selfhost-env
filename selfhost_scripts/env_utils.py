@@ -3,6 +3,36 @@
 import configparser
 import re
 
+def check_syntax_issues(filepath):
+    """Check for syntax issues like trailing spaces that Docker Compose would read into variables"""
+    syntax_issues = []
+    
+    try:
+        with open(filepath, 'r') as f:
+            for line_num, line in enumerate(f, 1):
+                # Skip commented out lines entirely (optional values)
+                if line.strip().startswith('#'):
+                    continue
+                
+                # Check for lines with variable assignments
+                if '=' in line:
+                    # Get the part before any comment
+                    line_before_comment = line.split('#')[0] if '#' in line else line
+                    
+                    # Remove newline but keep other whitespace to check for trailing spaces
+                    line_no_newline = line_before_comment.rstrip('\n\r')
+                    
+                    # Check for trailing spaces (but not newlines)
+                    if line_no_newline.rstrip() != line_no_newline:
+                        # Extract the variable name for the error
+                        var_name = line.split('=')[0].strip()
+                        syntax_issues.append(f"Line {line_num}: Variable '{var_name}' has trailing spaces that will be included in the value")
+    
+    except FileNotFoundError:
+        pass
+    
+    return syntax_issues
+
 def create_env_parser():
     """Create a new environment parser instance"""
     parser = configparser.RawConfigParser(delimiters=('=',), comment_prefixes=('#',), inline_comment_prefixes=('#',))
