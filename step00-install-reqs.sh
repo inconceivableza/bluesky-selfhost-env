@@ -119,6 +119,12 @@ show_heading "Building internal tool" "selfhost_scripts/apiImpl"
   npm install
 )
 
+show_heading "Setting up environment" "for selfhost_scripts"
+(
+  cd selfhost_scripts
+  setup_python_venv_with_requirements
+)
+
 show_heading "Setting up environment" "for selfhost_scripts/compose2envtable"
 (
   cd selfhost_scripts/compose2envtable

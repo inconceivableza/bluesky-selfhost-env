@@ -1,4 +1,3 @@
-rich
 deepdiff
 requests-openapi
 opentelemetry-api
