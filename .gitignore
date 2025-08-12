@@ -10,6 +10,7 @@ config/**secret**
 **/package-lock.json
 **/*.egg-info/**
 *.env
+.make-env
 .*.sw*
 *.apk
 *.apks
