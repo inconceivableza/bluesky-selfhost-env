@@ -12,8 +12,8 @@ ifneq ($(ENV_CHECK_RESULT),0)
     $(error .env file is missing required variables. Run './selfhost_scripts/check-env.py' to see what is missing and correct it)
 endif
 
-# Alter shell syntax for default fallback to Make macros
-$(shell sed 's#[$$][{]\([^}:=-]*\)[-=]\([^}]*\)}#$$(if $${\1},$${\1}, \2)#g' .env > .make-env)
+# Alter shell syntax for default fallback to Make macros, and to get rid of quotes that are unhelpful
+$(shell sed -e 's#[$$][{]\([^}:=-]*\)[-=]\([^}]*\)}#$$(if $${\1},$${\1}, \2)#g' -e 's@^\([A-Za-z0-9_]*\)="\([^"]*\)"$$@\1=\2@' -e 's@^\([A-Za-z0-9_]*\)='"'"'\(.*\)'"'"'$$@\1=\2@' .env > .make-env)
 include .make-env
 
 # this is used for identifying restic backups; try to get as specifica a FQDN name as possible
