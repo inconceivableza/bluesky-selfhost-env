@@ -1,4 +1,4 @@
 PyYaml
 pystache
-# Link to selfhost_scripts directory to allow imports
-../selfhost_scripts
+# Link to selfhost_scripts directory to allow imports; this is not done automatically so it can be handled selectively from step00-install-reqs.
+# ../selfhost_scripts

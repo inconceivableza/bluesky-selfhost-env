@@ -141,5 +141,6 @@ show_heading "Setting up environment" "for rebranding"
 (
   cd rebranding
   setup_python_venv_with_requirements
+  venv/bin/pip show -q selfhost_scripts || venv/bin/pip install -e ../selfhost_scripts
 )
 
