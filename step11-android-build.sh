@@ -9,14 +9,25 @@ show_heading "Building Android app" "using applied branding and domain name chan
 
 if [ "$JAVA_HOME" == "" ] || [ ! -d "$JAVA_HOME" ]
   then
-    show_error "Java not found:" "default JAVA_HOME in $params_file to point to zulu17 install"
-    exit 1
+    if which java && java --version && java --version | grep Zulu17 >/dev/null
+      then
+        show_info "Default Java" "found and matches expected Zulu17 version"
+      else
+        show_error "Java not found:" "set JAVA_HOME in $params_file to point to zulu17 install"
+        exit 1
+      fi
   fi
 
 if [ "$ANDROID_HOME" == "" ] || [ ! -d "$ANDROID_HOME" ]
   then
-    show_error "Android Sdk not found:" "default ANDROID_HOME in $params_file to point to sdk install"
-    exit 1
+    if [ -d /opt/homebrew/share/android-commandlinetools ]
+      then
+        show_info "Default Android SDK" "found at $ANDROID_HOME"
+        export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+      else
+        show_error "Android Sdk not found:" "default ANDROID_HOME in $params_file to point to sdk install"
+        exit 1
+      fi
   fi
 
 cd "$script_dir/repos/social-app"
