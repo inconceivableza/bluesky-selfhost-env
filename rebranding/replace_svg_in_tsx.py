@@ -31,12 +31,21 @@ def style_to_attribs(stylestr):
     key_value_pairs = [(hyphen_to_camelcase(key), value) for key, value in key_value_pairs if key and not key.startswith('-inkscape')]
     return ' '.join(f'{key}="{value}"' for key, value in key_value_pairs)
 
+def tagname_to_tsx(tagname):
+    if tagname == 'tspan':
+        return 'TSpan'
+    return tagname[:1].upper() + tagname[1:]
+
 def svg_to_tsx(src):
     # this could be done with more finesse
     tags = set(tag_initial.findall(src))
+    new_tagnames = []
     for tag in tags:
-        new_tag = tag[:3].upper() + tag[3:] if '/' in tag else tag[:2].upper()+tag[2:]
+        tag_opening, tagname = (tag[:2], tag[2:]) if '/' in tag else (tag[:1], tag[1:])
+        new_tagname = tagname_to_tsx(tagname)
+        new_tag = tag_opening + new_tagname
         src = src.replace(tag, new_tag)
+        new_tagnames.append(new_tagname)
     stylestrs = set(style_re.findall(src))
     for stylestr in stylestrs:
         new_styles = style_to_attribs(stylestr[7:-1])
@@ -49,7 +58,7 @@ def svg_to_tsx(src):
     for xml_attr in set(xml_attr_re.findall(src)):
         new_xml_attr = 'xml' + xml_attr[xap:xap+1].upper() + xml_attr[xap+1:]
         src = src.replace(xml_attr, new_xml_attr)
-    return src, [tag[1:2].upper() + tag[2:] for tag in tags if '/' not in tag]
+    return src, new_tagnames
 
 def adjust_svg_and_import(src, svg, config_file=replace_svg_contents_config):
     svg_inner = get_svg_inner(svg)
