@@ -7,26 +7,33 @@ script_dir="`dirname "$script_path"`"
 if [ "$os" == "linux-ubuntu" ]
   then
     show_heading "Setting up apt packages" that are requirements for building running and testing these docker images
-    if dpkg-query -l make pwgen jq
+    # make is used to run setup scripts etc
+    # pwgen is used to generate new securish passwords
+    # jq in are used in extracting json data for config and tests
+    apt_packages="make pwgen jq"
+
+    if dpkg-query -l $apt_packages
       then
         show_info "No install required:" all packages already installed
       else
         sudo apt update
-        # make is used to run setup scripts etc
-        # pwgen is used to generate new securish passwords
-        # jq in are used in extracting json data for config and tests
-        sudo apt install -y make pwgen jq
+        sudo apt install -y $apt_packages
       fi
 
     show_heading "Setting up snap packages" that are requirements for building running and testing these docker images
-    if dpkg-query -l yq; then sudo apt remove yq ; fi
-    if snap list yq
+    # yq is used in extracting yaml data for config and tests; the current ubuntu apt package is 3.x, but we want 4.x
+    snap_packages="yq"
+    old_apt_packages="yq"
+    if dpkg-query -l $old_apt_packages
+      then
+        show_warning "Old version of $old_apt_packages found" "installed using apt; will remove and install snap version"
+        sudo apt remove $old_apt_packages
+    fi
+    if snap list $snap_packages
       then
         show_info "No install required:" all packages already installed
       else
-        # yq is used in extracting yaml data for config and tests
-        sudo snap install make yq
-        # remove the old yq
+        sudo snap install $snap_packages
       fi
     
     show_heading "Setting up websocat" directly from executable download, in /usr/local/bin
@@ -122,6 +129,10 @@ if [ "$new_android_home" != "" ]
     export ANDROID_HOME="$new_android_home"
     show_info "Default Android SDK" "found at $ANDROID_HOME"
   fi
+which sdkmanager >/dev/null || {
+  show_error "Android SDK Manager not found;" "check that you have the commandlinetools installed"
+  exit 1
+}
 
 show_info "Checking License Acceptance" "for Android SDK packages; accept as required"
 sdkmanager --licenses
