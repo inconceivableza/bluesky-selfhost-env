@@ -121,7 +121,7 @@ show_info "Checking yarn" in node $NODE_VER
   which yarn > /dev/null || npm install -g yarn
 )
 
-show_heading "Installing Android tools" "and checking that licenses have been accepted"
+show_heading "Installing Android tools" "and checking that licenses have been accepted (on $os)"
 
 new_android_home=$(check_android_home) || exit 1
 if [ "$new_android_home" != "" ]
@@ -129,13 +129,35 @@ if [ "$new_android_home" != "" ]
     export ANDROID_HOME="$new_android_home"
     show_info "Default Android SDK" "found at $ANDROID_HOME"
   fi
-which sdkmanager >/dev/null || {
+
+if [ "${os/linux/}" != "$os" ]
+  then
+    # we have to install cmdline-tools manually on Linux
+    [ -d $ANDROID_HOME/cmdline-tools ] || {
+      show_info "Installing Android SDK Manager" "into $ANDROID_HOME"
+      downloads_dir="$script_dir/downloads"
+      mkdir -p "$downloads_dir"
+      commandlinetools_url="$(curl -s 'https://developer.android.com/studio#command-line-tools-only' | grep 'href="[^"]*commandlinetools-linux.*latest[.]zip"' | sed 's/^.*href="\([^"]*\)".*/\1/g')"
+      commandlinetools_zip="$downloads_dir/$(basename "$commandlinetools_url")"
+      [ -f "$commandlinetools_zip" ] || {
+        show_info --oneline "Downloading latest commandlinetools" "from $commandlinetools_url into $commandlinetools_zip"
+        curl -o "$commandlinetools_zip" "$commandlinetools_url" || { show_error "Could not download" "$commandlinetools_url" ; exit 1 ; }
+      }
+      show_info --oneline "Unpacking latest commandlinetools" "from $commandlinetools_zip into $ANDROID_HOME"
+      unzip -d "$ANDROID_HOME" "$commandlinetools_zip"
+    }
+    sdkmanager_params="--sdk_root=$ANDROID_HOME"
+  fi
+
+which sdkmanager >/dev/null 2>&1 || export PATH="$PATH:$ANDROID_HOME/cmdline-tools/bin"
+
+which sdkmanager >/dev/null 2>&1 || {
   show_error "Android SDK Manager not found;" "check that you have the commandlinetools installed"
   exit 1
 }
 
 show_info "Checking License Acceptance" "for Android SDK packages; accept as required"
-sdkmanager --licenses
+sdkmanager $sdkmanager_params --licenses
 
 show_info --oneline "Checking Android Versions" "configured in social-app"
 android_versions="$($script_dir/selfhost_scripts/get-social-app-android-build-properties.js)"
@@ -144,7 +166,7 @@ android_build_tools="$(echo "$android_versions" | jq -r .buildToolsVersion)"
 # - In "SDK Platforms": "Android x" (where x is Android's current version).
 # - In "SDK Tools": "Android SDK Build-Tools" and "Android Emulator" are required.
 android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator"
-android_installed="$(sdkmanager --list_installed)"
+android_installed="$(sdkmanager $sdkmanager_params --list_installed)"
 needed_android_reqs=""
 for android_req in $android_reqs
   do
@@ -155,7 +177,7 @@ if [ "$needed_android_reqs" != "" ]
     for android_req in $android_reqs
       do
         show_info "Installing Android SDK" "$android_req"
-        sdkmanager --install $android_req
+        sdkmanager $sdkmanager_params --install $android_req
       done
   else
     show_info "Android SDK requirements already installed:" "no install required"
