@@ -49,6 +49,8 @@ elif [ "$os" == "macos" ]
             [ "$pkg" == "python" ] && cmd=python3
             [ "$pkg" == "cocoapods" ] && cmd=pod
             [ "$pkg" == "expo-orbit" ] && check_cmd="brew list"
+            [ "${pkg/android/}" != "$pkg" ] && check_cmd="brew list"
+            [ "${pkg/zulu/}" != "$pkg" ] && check_cmd="brew list"
             $check_cmd $cmd > /dev/null || required_packages="$required_packages $pkg"
           done
         if [ "$required_packages" == "" ]
@@ -111,6 +113,42 @@ show_info "Checking yarn" in node $NODE_VER
   nvm use $NODE_VER
   which yarn > /dev/null || npm install -g yarn
 )
+
+show_heading "Installing Android tools" "and checking that licenses have been accepted"
+
+new_android_home=$(check_android_home) || exit 1
+if [ "$new_android_home" != "" ]
+  then
+    export ANDROID_HOME="$new_android_home"
+    show_info "Default Android SDK" "found at $ANDROID_HOME"
+  fi
+
+show_info "Checking License Acceptance" "for Android SDK packages; accept as required"
+sdkmanager --licenses
+
+show_info --oneline "Checking Android Versions" "configured in social-app"
+android_versions="$($script_dir/selfhost_scripts/get-social-app-android-build-properties.js)"
+android_platform="$(echo "$android_versions" | jq -r .compileSdkVersion)"
+android_build_tools="$(echo "$android_versions" | jq -r .buildToolsVersion)"
+# - In "SDK Platforms": "Android x" (where x is Android's current version).
+# - In "SDK Tools": "Android SDK Build-Tools" and "Android Emulator" are required.
+android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator"
+android_installed="$(sdkmanager --list_installed)"
+needed_android_reqs=""
+for android_req in $android_reqs
+  do
+    echo "$android_req" | grep "$android_req" >/dev/null || needed_android_reqs="$needed_android_reqs $android_req"
+  done
+if [ "$needed_android_reqs" != "" ]
+  then
+    for android_req in $android_reqs
+      do
+        show_info "Installing Android SDK" "$android_req"
+        sdkmanager --install $android_req
+      done
+  else
+    show_info "Android SDK requirements already installed:" "no install required"
+  fi
 
 show_heading "Building internal tool" "selfhost_scripts/apiImpl" 
 (

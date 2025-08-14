@@ -114,6 +114,43 @@ function get_linux_os {
   fi
 }
 
+function potential_android_homes {
+  if [ "$os" == "macos" ]
+    then
+      echo /opt/homebrew/share/android-commandlinetools
+  elif [ "$os" == "linux" ]
+    then
+      echo "$HOME/Android/Sdk/"
+  else
+      show_warning "Could not determine potential android home" "for OS $os" >&2
+  fi
+}
+
+function check_android_home {
+  if [ "$ANDROID_HOME" == "" ]
+    then
+      for potential_android_home in $(potential_android_homes)
+        do
+          if [ "$potential_android_home" != "" ] && [ -d "$potential_android_home" ]
+            then
+              export ANDROID_HOME="$potential_android_home"
+              echo $potential_android_home
+              exit 0
+            fi
+        done
+      if [ "$ANDROID_HOME" == "" ]
+        then
+          show_error "Android Sdk not found:" "set ANDROID_HOME in $params_file to point to sdk install"
+          exit 1
+        fi
+  elif [ -d "$ANDROID_HOME" ]
+    then
+      exit 0
+  else
+      show_error "Android Sdk not found:" "ANDROID_HOME in $params_file points to $ANDROID_HOME but it doesn't exist"
+      exit 1
+  fi
+}
 function setup_python_venv_with_requirements {
   venv_target=venv
   [ -d $venv_target ] || python3 -m venv $venv_target

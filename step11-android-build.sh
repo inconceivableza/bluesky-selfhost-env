@@ -12,22 +12,18 @@ if [ "$JAVA_HOME" == "" ] || [ ! -d "$JAVA_HOME" ]
     if which java && java --version && java --version | grep Zulu17 >/dev/null
       then
         show_info "Default Java" "found and matches expected Zulu17 version"
+        [ "$os" == "macos" ] && export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
       else
         show_error "Java not found:" "set JAVA_HOME in $params_file to point to zulu17 install"
         exit 1
       fi
   fi
 
-if [ "$ANDROID_HOME" == "" ] || [ ! -d "$ANDROID_HOME" ]
+new_android_home=$(check_android_home) || exit 1
+if [ "$new_android_home" != "" ]
   then
-    if [ -d /opt/homebrew/share/android-commandlinetools ]
-      then
-        show_info "Default Android SDK" "found at $ANDROID_HOME"
-        export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
-      else
-        show_error "Android Sdk not found:" "default ANDROID_HOME in $params_file to point to sdk install"
-        exit 1
-      fi
+    export ANDROID_HOME="$new_android_home"
+    show_info "Default Android SDK" "found at $ANDROID_HOME"
   fi
 
 cd "$script_dir/repos/social-app"
