@@ -154,7 +154,7 @@ http://test-ws.{$DOMAIN} {
 	reverse_proxy http://bgs:2470
 }
 
-api.{$DOMAIN}, {$bskyFQDN} {
+{$apiFQDN}, {$publicApiFQDN}, {$bskyFQDN} {
 	import cors
 	import tracing bsky
 	tls {$EMAIL4CERTS} {
@@ -341,18 +341,3 @@ ozone-standalone.{$DOMAIN} {
 	import tracing_reverse_proxy @others http://social-app:8100 pds-profile-others
 }
 # ends: *.pdsFQDN <<<<<<<<<<<
-
-# starts: additional (long FQDN) >>>>>>>>>
-
-# for ATP_APPVIEW_HOST=https://public.api.bsky.app in https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env
-# for https://github.com/bluesky-social/bsky-docs/issues/63
-{$publicApiFQDN} {
-	import cors
-	import tracing public-bsky
-	tls {$EMAIL4CERTS} {
-		on_demand
-	}
-	#       temporal support of no-auth API call, fill secrets.
-	reverse_proxy http://admin:{$BSKY_ADMIN_PASSWORDS}@bsky:2584
-}
-# ends: additional (long FQDN)   <<<<<<<<<
