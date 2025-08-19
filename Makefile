@@ -90,7 +90,7 @@ config/plc-secrets.env: config/db-secrets.env
 	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
 
 config/social-link-secrets.env: config/db-secrets.env
-    @cat $^ > $@
+	@cat $^ > $@
 	@echo 'LINK_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/link' >> $@
 
 clean-secret-envs:
