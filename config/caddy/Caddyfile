@@ -172,6 +172,33 @@ api.{$DOMAIN}, {$bskyFQDN} {
 	reverse_proxy http://social-app:8100
 }
 
+{$cardFQDN} {
+	import cors
+	import tracing social-card
+	tls {$EMAIL4CERTS} {
+		on_demand
+	}
+	reverse_proxy http://social-card:3002
+}
+
+{$embedFQDN} {
+	import cors
+	import tracing social-embed
+	tls {$EMAIL4CERTS} {
+		on_demand
+	}
+	reverse_proxy http://social-embed:8101
+}
+
+{$linkFQDN} {
+	import cors
+	import tracing social-link
+	tls {$EMAIL4CERTS} {
+		on_demand
+	}
+	reverse_proxy http://social-link:3001
+}
+
 {$ozoneFQDN} {
 	import cors
 	import tracing ozone

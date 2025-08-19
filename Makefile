@@ -41,7 +41,7 @@ rDir ?=${wDir}/repos
 passfile ?=${wDir}/config/secrets-passwords.env
 
 # List of all secret env files that can be generated
-SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env
+SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env config/social-link-secrets.env
 
 # derived secrets files that limit the scope of secrets
 
@@ -89,6 +89,10 @@ config/plc-secrets.env: config/db-secrets.env
 	@echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
 	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
 
+config/social-link-secrets.env: config/db-secrets.env
+    @cat $^ > $@
+	@echo 'LINK_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/link' >> $@
+
 clean-secret-envs:
 	rm -f $(SECRET_ENV_FILES)
 
@@ -99,8 +103,8 @@ f ?=${wDir}/docker-compose.yaml
 #f ?=${wDir}/docker-compose-builder.yaml
 
 # folders of repos
-#_nrepo  ?=atproto indigo social-app feed-generator did-method-plc pds ozone jetstream
-_nrepo   ?=atproto indigo social-app feed-generator did-method-plc ozone jetstream
+#_nrepo  ?=atproto indigo social-app social-card social-embed social-link feed-generator did-method-plc pds ozone jetstream
+_nrepo   ?=atproto indigo social-app social-card social-embed social-link feed-generator did-method-plc ozone jetstream
 repoDirs ?=$(addprefix ${rDir}/, ${_nrepo})
 _nofork  ?=feed-generator ozone jetstream
 
@@ -125,7 +129,7 @@ origin_repo_did_prefix  ?=${gh}did-method-plc/
 #    # no plc in Sdep, comparing below line.
 #
 Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
-Sbsky ?=plc pds bgs bsky social-app palomar
+Sbsky ?=plc pds bgs bsky social-app social-card social-embed social-link palomar
 Sfeed ?=feed-generator
 #Sozone ?=ozone ozone-daemon
 Sozone ?=ozone-standalone

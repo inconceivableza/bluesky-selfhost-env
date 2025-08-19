@@ -23,13 +23,16 @@ make cloneAll
 failures=""
 for service in $BUILD_SERVICES
   do
+    EXTRA_ARGS=
+    [ "$service" == "social-link" ] && EXTRA_ARGS="SOCIAL_LINK_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskylink/) $EXTRA_ARGS"
+    [ "$service" == "social-card" ] && EXTRA_ARGS="SOCIAL_CARD_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskyogcard/) $EXTRA_ARGS"
     if [ "${REBRANDED_SERVICES/${service}/}" == "${REBRANDED_SERVICES}" ]
       then
         show_heading "Building $service" "without domain customizations"
-        make build DOMAIN= f=./docker-compose-builder.yaml services=$service || failures="$failures $service"
+        make build DOMAIN= f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
       else
         show_heading "Building $service" "customized for domain $DOMAIN"
-        make build f=./docker-compose-builder.yaml services=$service || failures="$failures $service"
+        make build f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
       fi
     # 1) build image, customized for domain
   done
