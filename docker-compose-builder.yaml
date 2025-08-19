@@ -39,6 +39,7 @@ volumes:
 x-definitions:
   certificate-volumes: &certificate-volumes
     # CA certificates for self-signed, or a dummy directory if that's not being used
+    # These can't be used if the service defines its own volumes, but at least it reduces reuse
     volumes:
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
@@ -47,7 +48,6 @@ x-definitions:
 networks:
  default:
     name: ${docker_network}
-    external: true
 
 services:
   caddy:
@@ -88,20 +88,24 @@ services:
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
-    <<: *certificate-volumes
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
       # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
       - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
       # CA certificates for serving self-signed. <<<
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+      # <<<
       - caddy-data:/data
       - caddy-config:/config
       # the social app's static website
       - ./${PDS_WEB_DIR:-staticweb}:/socialweb
     healthcheck:
       # https://caddy.community/t/what-is-the-best-practise-for-doing-a-health-check-for-caddy-containers/12995
-      test: "wget --no-verbose --tries=1 --spider http://localhost:2019/metrics || exit 1"
+      test: "wget --no-verbose --tries=1 --spider http://127.0.0.1:2019/metrics || exit 1"
       interval: 5s
       retries: 20
     restart: always
@@ -241,7 +245,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --enable-source-maps index.js'
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
+    command: ''
     ports:
       - 2582:2582
     <<: *certificate-volumes
@@ -256,6 +262,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
       # telemetry settings
@@ -295,6 +302,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
@@ -332,9 +340,12 @@ services:
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-    <<: *certificate-volumes
     volumes:
       - pds:/pds
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     restart: always
     depends_on:
       - database
@@ -366,14 +377,20 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-    <<: *certificate-volumes
     volumes:
       - bgs:/data/bigsky
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - database
@@ -426,6 +443,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2584
       - REDIS_HOST=redis
@@ -433,10 +451,12 @@ services:
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
-    <<: *certificate-volumes
     volumes:
       - bsky:/cache/
-#     - ./repos/atproto/services/bsky/api.js:/app/services/bsky/api.js:ro
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     restart: always
     depends_on:
       - database
@@ -468,18 +488,31 @@ services:
     command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
     <<: *certificate-volumes
     environment:
-      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 >>>>
-      - ATP_APPVIEW_HOST=https://${publicApiFQDN}
-      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 <<<<
+      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 :
+      - ATP_APPVIEW_HOST=https://${apiFQDN}
+      - ATP_PDS_HOST=https://${pdsFQDN}
+      - ATP_PUBLIC_APPVIEW_HOST=https://${publicApiFQDN}
+      # - BSKY_CANONICAL_INSTANCE=true # Enable if this is the canonical deployment. This enables routes like /ips-v4, /ips-v6, /security.txt and /.well-known/*
+      - CORS_ALLOWED_ORIGINS="https://${socialappFQDN}" # defaults are bsky.app main.bsky.dev and app.staging.bsky.dev
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - HTTP_ADDRESS=:8100
+      - IPCC_HOST=http://ipcc:8080
+      - LINK_HOST=https://${linkFQDN}
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - OGCARD_HOST=${cardFQDN}
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
+      # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
-      - IPCC_HOST=http://ipcc:8080
+      # - STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
+      - STATUS_PAGE_URL=https://${statuspageFQDN}
+      - SOCIAL_APP_URL=https://${socialappFQDN}
+      - SOCIAL_EMBED_SERVICE=https://${embedFQDN} # TODO: actually publish the embed service on a domain
+      - SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
+      - SOCIAL_POLICY_BASE_URL=${SOCIAL_POLICY_BASE_URL}
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
@@ -699,6 +732,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
 #     - NODE_ENV=development
       - NODE_ENV=production
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
@@ -753,6 +787,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -795,6 +830,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -842,6 +878,7 @@ services:
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
       - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     restart: always
     healthcheck:
@@ -956,6 +993,7 @@ services:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
       - "127.0.0.1:9090:9090"
     command:
+      # TODO? connect to metrics on new services
       - "--config.file=/etc/prometheus/prometheus.yml"
       # - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=200h"
