@@ -460,7 +460,8 @@ services:
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3002:3002 # this is what we're configuring it to listen on
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     <<: *certificate-volumes
     env_file:
       # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
@@ -525,7 +526,8 @@ services:
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3001:3001 # this is what we're configuring it to listen on
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     <<: *certificate-volumes
     env_file:
       # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
