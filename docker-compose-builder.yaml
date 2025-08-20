@@ -508,7 +508,7 @@ services:
       # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       # - STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
-      - STATUS_PAGE_URL=https://${statuspageFQDN}
+      - STATUS_PAGE_URL=${STATUS_PAGE_URL}
       - SOCIAL_APP_URL=https://${socialappFQDN}
       - SOCIAL_EMBED_SERVICE=https://${embedFQDN} # TODO: actually publish the embed service on a domain
       - SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
