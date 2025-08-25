@@ -10,8 +10,11 @@ show_heading "Generating secrets" "if any are missing"
 $script_dir/config/gen-secrets.sh
 make secret-envs
 
-show_heading "Checking for missing params" "in environment"
-"$script_dir"/selfhost_scripts/check-env.py || { show_error "Missing params:" "please correct" ; exit 1 ;}
+show_heading "Checking for missing params" "in all required environments"
+"$script_dir"/selfhost_scripts/check-env.py -D -P || { show_error "Missing params:" "please correct" ; exit 1 ;}
+
+show_heading "Checking for missing params" "in staging environment (not required)"
+"$script_dir"/selfhost_scripts/check-env.py -S || { show_warning "Missing params in staging:" "better to correct at some point" ; }
 
 show_heading "Checking for missing params" "in branding configuration"
 "$script_dir"/selfhost_scripts/check-branding.py || { show_error "Missing branding config:" "please correct" ; exit 1 ;}

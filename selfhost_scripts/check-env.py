@@ -391,7 +391,8 @@ def main():
         # Check if any files exist
         existing_files = [f for f in env_files if os.path.exists(f)]
         if not existing_files:
-            parser.error(f"No environment files found for specified profiles: {', '.join(str(p) or '.env' for p in profiles)}")
+            print(f"No environment files found for specified profiles: {', '.join(str(p) or '.env' for p in profiles)}", file=sys.stderr)
+            return False
 
     # Check all specified files
     problem_env_files = []
@@ -409,9 +410,11 @@ def main():
     if problem_env_files:
         if not args.silent:
             print(f"\n❌ The following environment files have issues: {', '.join(problem_env_files)}")
-        sys.exit(1)
+        return False
     elif not args.silent and len(env_files) > 1:
         print(f"\n✅ All {len(env_files)} environment files are valid!")
+    return True
 
 if __name__ == '__main__':
-    main()
+    if not main():
+        sys.exit(1)
