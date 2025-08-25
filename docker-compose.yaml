@@ -64,13 +64,15 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - DOMAIN=${DOMAIN}
-      - socialappFQDN=${socialappFQDN}
-      - pdsFQDN=${pdsFQDN}
       - EMAIL4CERTS=${EMAIL4CERTS}
+      - apiFQDN=${apiFQDN}
       - bgsFQDN=${bgsFQDN}
       - bskyFQDN=${bskyFQDN}
+      - cardFQDN=${cardFQDN}
+      - embedFQDN=${embedFQDN}
       - feedgenFQDN=${feedgenFQDN}
       - jetstreamFQDN=${jetstreamFQDN}
+      - linkFQDN=${linkFQDN}
       - ozoneFQDN=${ozoneFQDN}
       - palomarFQDN=${palomarFQDN}
       - pdsFQDN=${pdsFQDN}
