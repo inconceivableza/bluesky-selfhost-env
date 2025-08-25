@@ -12,6 +12,7 @@ config/**secret**
 **/*.egg-info/**
 *.env
 .make-env
+.env.*
 .*.sw*
 *.apk
 *.apks
