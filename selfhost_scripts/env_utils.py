@@ -42,7 +42,6 @@ def get_all_env_paths():
 def validate_profile_name(profile):
     """Validate profile name contains only allowed characters."""
     if not re.match(r'^[a-zA-Z0-9_.+-]+$', profile):
-        print(f"Error: Invalid profile name '{profile}'. Only [a-zA-Z0-9_.+-] characters are allowed.", file=sys.stderr)
         return False
     return True
 
