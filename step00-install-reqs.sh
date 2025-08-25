@@ -22,7 +22,7 @@ if [ "$os" == "linux-ubuntu" ]
 
     show_heading "Setting up snap packages" that are requirements for building running and testing these docker images
     # yq is used in extracting yaml data for config and tests; the current ubuntu apt package is 3.x, but we want 4.x
-    snap_packages="yq"
+    snap_packages="yq go"
     old_apt_packages="yq"
     if dpkg-query -l $old_apt_packages
       then
@@ -48,7 +48,7 @@ elif [ "$os" == "macos" ]
     if which brew >/dev/null
       then
         required_packages= 
-        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools
+        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools golang
           do
             cmd=$pkg
             check_cmd=which
