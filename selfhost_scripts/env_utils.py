@@ -70,7 +70,17 @@ def check_syntax_issues(filepath):
                         # Extract the variable name for the error
                         var_name = line.split('=')[0].strip()
                         syntax_issues.append(f"Line {line_num}: Variable '{var_name}' has trailing spaces that will be included in the value")
-    
+
+                # check for variable fallback syntax issues
+                matches = re.findall(r'\$\{[^}]+\}', line.strip())
+                for match in matches:
+                    fallback_match = re.match(r'\$\{([A-Za-z_][A-Za-z0-9_]*)(:?[=+?-])([^}]*)\}', match)
+                    if fallback_match:
+                        varname, fallback_syntax, _ = fallback_match.groups()
+                        if fallback_syntax != ':-':
+                            syntax_issues.append(f"Line {line_num}: Variable expansion for {varname} uses syntax {fallback_syntax} for fallback in {match}; " "switch to ${VARIABLE:-fallback}")
+                    elif not re.match(r'\$\{[A-Za-z0-9_]+\}', match):
+                        syntax_issues.append(f"Line {line_num}: invalid variable syntax {match}")
     except FileNotFoundError:
         pass
     
