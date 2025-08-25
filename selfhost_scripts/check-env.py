@@ -7,7 +7,7 @@ import sys
 import re
 from pathlib import Path
 
-from env_utils import read_env, replace_env, check_syntax_issues
+from env_utils import check_syntax_issues, get_profile_env_paths, get_existing_profile_names,  read_env, validate_profile_name
 from secret_types import parse_secret_template
 
 def get_file_info(filepath):
@@ -125,37 +125,21 @@ def check_ssl_configuration(target_env):
 
     return ssl_errors
 
-def main():
-    parser = argparse.ArgumentParser(description='Compare .env file with bluesky-params.env.example')
-    parser.add_argument('-e', '--env-file', default='.env', help='Environment file to check (default: .env)')
-    parser.add_argument('-t', '--template-file', default='bluesky-params.env.example', 
-                       help='Template file to compare against (default: bluesky-params.env.example)')
-    parser.add_argument('-d', '--show-definition-changes', action='store_true', 
-                       help='Show variables that use different variable references')
-    parser.add_argument('-v', '--show-value-changes', action='store_true',
-                       help='Show variables with different plain values (no variable substitution)')
-    parser.add_argument('-q', '--hide-extra-vars', action='store_true',
-                       help='Hide variables in target that are not in example (default: show them)')
-    parser.add_argument('-s', '--silent', action='store_true',
-                       help='Silent mode - no output, just exit codes (0=match, 1=differences)')
-    parser.add_argument('--secrets-template', default='config/secrets-passwords.env.example',
-                       help='Secrets template file to check for exposed passwords')
-    
-    args = parser.parse_args()
-    
+def check_single_env_file(env_file, args):
+    """Check a single environment file against the template."""
     # Check if files exist
     if not os.path.exists(args.template_file):
         print(f"Error: Example file '{args.template_file}' not found", file=sys.stderr)
-        sys.exit(1)
-        
-    if not os.path.exists(args.env_file):
-        print(f"Error: Environment file '{args.env_file}' not found", file=sys.stderr)
-        sys.exit(1)
-    
+        return False
+
+    if not os.path.exists(env_file):
+        print(f"Error: Environment file '{env_file}' not found", file=sys.stderr)
+        return False
+
     # Show file information (unless silent)
     if not args.silent:
         print(f"Comparing files:")
-        print(f"  Target:  {get_file_info(args.env_file)}")
+        print(f"  Target:  {get_file_info(env_file)}")
         print(f"  Example: {get_file_info(args.template_file)}")
         print()
 
@@ -163,9 +147,9 @@ def main():
     try:
         example_env = read_env(args.template_file, interpolate=False)
         example_env_resolved = read_env(args.template_file, interpolate=True)
-        target_env = read_env(args.env_file, interpolate=False)
-        target_env_resolved = read_env(args.env_file, interpolate=True)
-        
+        target_env = read_env(env_file, interpolate=False)
+        target_env_resolved = read_env(env_file, interpolate=True)
+
         # Load secret variable names if secrets template exists
         secret_vars = set()
         if os.path.exists(args.secrets_template):
@@ -174,12 +158,12 @@ def main():
 
     except Exception as e:
         print(f"Error reading environment files: {e}", file=sys.stderr)
-        sys.exit(1)
-    
+        return False
+
     # Get variable order from both files
     example_order, example_optional, example_optional_values = parse_env_with_order(args.template_file)
-    target_order, _target_optional, _target_optional_values = parse_env_with_order(args.env_file)
-    
+    target_order, _target_optional, _target_optional_values = parse_env_with_order(env_file)
+
     # Combine all known variables (required + optional) from example
     example_all_vars = set(example_order + example_optional)
 
@@ -206,8 +190,8 @@ def main():
             seen.add(var)
 
     # Check for syntax issues first
-    syntax_issues = check_syntax_issues(args.env_file)
-    
+    syntax_issues = check_syntax_issues(env_file)
+
     # Check SSL configuration consistency
     ssl_errors = check_ssl_configuration(target_env)
 
@@ -303,23 +287,131 @@ def main():
 
     if not args.silent and not has_issues and not has_syntax_issues and not has_ssl_errors:
         print("✅ All variables match between files!")
-    
-    # Exit with error code if there are missing variables, exposed passwords, syntax issues, or SSL errors
-    if has_missing_vars or has_exposed_passwords or has_syntax_issues or has_ssl_errors:
+
+    # Return True if no critical errors (missing vars, exposed passwords, syntax issues, or SSL errors)
+    return not (has_missing_vars or has_exposed_passwords or has_syntax_issues or has_ssl_errors)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Compare .env file with bluesky-params.env.example',
+        epilog="Examples:\n"
+               "  %(prog)s                           # Check .env\n"
+               "  %(prog)s -p prod                   # Check .env.prod\n"
+               "  %(prog)s -p prod -p staging        # Check multiple profiles\n"
+               "  %(prog)s --staging                 # Check .env.staging\n"
+               "  %(prog)s -a                        # Check all existing .env* files\n"
+               "  %(prog)s -e custom.env             # Check custom.env\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument('-e', '--env-file', help='Environment file to check (overrides profile options)')
+    parser.add_argument('-t', '--template-file', default='bluesky-params.env.example',
+                       help='Template file to compare against (default: bluesky-params.env.example)')
+    parser.add_argument('-d', '--show-definition-changes', action='store_true',
+                       help='Show variables that use different variable references')
+    parser.add_argument('-v', '--show-value-changes', action='store_true',
+                       help='Show variables with different plain values (no variable substitution)')
+    parser.add_argument('-q', '--hide-extra-vars', action='store_true',
+                       help='Hide variables in target that are not in example (default: show them)')
+    parser.add_argument('-s', '--silent', action='store_true',
+                       help='Silent mode - no output, just exit codes (0=match, 1=differences)')
+    parser.add_argument('--secrets-template', default='config/secrets-passwords.env.example',
+                       help='Secrets template file to check for exposed passwords')
+
+    parser.add_argument(
+        '-p', '--profile',
+        action='append',
+        dest='profiles',
+        default=[],
+        help='Target profile for .env.{profile} (allows [a-zA-Z0-9_.+-] characters, can be used multiple times)'
+    )
+    parser.add_argument(
+        '-P', '--prod',
+        action='append_const',
+        const='production',
+        dest='profiles',
+        help='Shortcut for --profile production'
+    )
+    parser.add_argument(
+        '-D', '--default',
+        action='append_const',
+        const='default',
+        dest='profiles',
+        help='Shortcut for --profile default which targets the main .env file'
+    )
+    parser.add_argument(
+        '-S', '--staging',
+        action='append_const',
+        const='staging',
+        dest='profiles',
+        help='Shortcut for --profile staging'
+    )
+    parser.add_argument(
+        '-a', '--all-profiles',
+        action='store_true',
+        help='Check all existing .env* files'
+    )
+
+    args = parser.parse_args()
+
+    # Handle profile selection
+    profiles = [None if p == 'default' else p for p in args.profiles] or []
+    default_profiles = [None, "production", "staging"]
+
+    if args.all_profiles:
+        # Add all existing profiles to the list
+        existing_profiles = get_existing_profile_names()
+        for profile in existing_profiles:
+            if profile not in profiles:
+                profiles.append(profile)
+        for profile in default_profiles:
+            if profile not in profiles:
+                profiles.append(profile)
+
+    # Validate all profiles
+    for profile in profiles:
+        if profile and not validate_profile_name(profile):
+            parser.error(f"Profile name {profile} is not valid")
+
+    # If no profiles specified, default to None (which means .env)
+    if not profiles:
+        profiles = [None]
+
+    # Determine which files to check
+    if args.env_file and profiles and profiles != [None]:
+        parser.error("Either specify env file or profiles, not both")
+    if args.env_file:
+        # Explicit file specified
+        env_files = [args.env_file]
+    else:
+        # Use profile-based files
+        env_files = get_profile_env_paths(profiles)
+
+        # Check if any files exist
+        existing_files = [f for f in env_files if os.path.exists(f)]
+        if not existing_files:
+            parser.error(f"No environment files found for specified profiles: {', '.join(str(p) or '.env' for p in profiles)}")
+
+    # Check all specified files
+    problem_env_files = []
+    for i, env_file in enumerate(env_files):
+        if len(env_files) > 1 and not args.silent:
+            if i > 0:
+                print("\n" + "="*60 + "\n")
+            print(f"📁 Checking file {i+1} of {len(env_files)}: {env_file}")
+            print()
+
+        if not check_single_env_file(env_file, args):
+            problem_env_files.append(env_file.name)
+
+    # Exit with appropriate code
+    if problem_env_files:
         if not args.silent:
-            error_parts = []
-            if has_syntax_issues:
-                error_parts.append("syntax errors")
-            if has_missing_vars:
-                error_parts.append("missing variables")
-            if has_exposed_passwords:
-                error_parts.append("exposed passwords")
-            if has_ssl_errors:
-                error_parts.append("inconsistent self-signed certificate configuration")
-            
-            error_msg = " and ".join(error_parts)
-            print(f"❌ Error: there are {error_msg} in this file")
+            print(f"\n❌ The following environment files have issues: {', '.join(problem_env_files)}")
         sys.exit(1)
+    elif not args.silent and len(env_files) > 1:
+        print(f"\n✅ All {len(env_files)} environment files are valid!")
 
 if __name__ == '__main__':
     main()
