@@ -1,7 +1,7 @@
 ##########################################################################################
 # starts: definitions, need to care in especial.
 
-# Include the .env file, which can be a symlink pointing to an env - see params-file-util.sh
+# Include the .env file, which can be a symlink pointing to an env - see manage-params-files.py
 ifeq (,$(wildcard ./.env))
     $(error .env file not found. Please create one based on bluesky-params.env.example and symlink to .env)
 endif
