@@ -103,8 +103,8 @@ f ?=${wDir}/docker-compose.yaml
 #f ?=${wDir}/docker-compose-builder.yaml
 
 # folders of repos
-#_nrepo  ?=atproto indigo social-app social-card social-embed social-link feed-generator did-method-plc pds ozone jetstream
-_nrepo   ?=atproto indigo social-app social-card social-embed social-link feed-generator did-method-plc ozone jetstream
+#_nrepo  ?=atproto indigo social-app feed-generator did-method-plc pds ozone jetstream
+_nrepo   ?=atproto indigo social-app feed-generator did-method-plc ozone jetstream
 repoDirs ?=$(addprefix ${rDir}/, ${_nrepo})
 _nofork  ?=feed-generator ozone jetstream
 
