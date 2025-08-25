@@ -9,59 +9,23 @@ allowing easy switching between different configurations.
 import argparse
 import os
 import sys
-import re
+import types
 from pathlib import Path
 
+# making relative imports work without having to make this directory a Python package
+__script_dir__ = os.path.dirname(os.path.abspath(__file__))
+__package__ = os.path.basename(__script_dir__).replace('-', '_')
+package_module = types.ModuleType(__package__)
+package_module.__package__ = __package__
+package_module.__path__ = [__script_dir__]
+sys.modules[__package__] = package_module
 
-def get_env_filename(profile):
-    """Get the environment filename for a given profile."""
-    if profile:
-        return f".env.{profile}"
-    return ".env"
-
-
-def get_env_files_from_profiles(profiles):
-    """Get list of environment files from profile names."""
-    env_files = []
-    for profile in profiles:
-        env_files.append(Path(get_env_filename(profile)))
-    return env_files
-
-
-def get_existing_profile_names():
-    """Get names of existing profiles (without .env prefix)."""
-    profile_files = get_all_profile_files()
-    profiles = []
-
-    for env_file in profile_files:
-        if env_file.name == ".env":
-            profiles.append(None)  # Default profile
-        elif env_file.name.startswith(".env."):
-            profiles.append(env_file.name[5:])  # Remove .env. prefix
-
-    return profiles
-
-
-def get_all_profile_files():
-    """Get all .env profile files (.env, .env.*, etc.)"""
-    env_files = []
-    cwd = Path.cwd()
-
-    # Add .env if it exists
-    env_file = cwd / ".env"
-    if env_file.exists():
-        env_files.append(env_file)
-
-    # Add all .env.* files
-    env_files.extend(cwd.glob(".env.*"))
-
-    return sorted(env_files)
-
+from .selfhost_scripts.env_utils import get_all_env_paths, get_env_filename, get_profile_env_paths, get_existing_profile_names, validate_profile_name
 
 def list_env_files():
     """List all available environment files with symlink targets."""
     param_files = list(Path.cwd().glob("*.env"))
-    profile_files = get_all_profile_files()
+    profile_files = get_all_env_paths()
 
     # Create mapping of target files to their profile links
     target_to_profiles = {}
@@ -69,7 +33,7 @@ def list_env_files():
         if profile_file.is_symlink():
             target = profile_file.readlink()
             target_to_profiles.setdefault(target.name, []).append(profile_file.name)
-    print("target to profiles", target_to_profiles)
+
     if param_files:
         print("Available environment files:")
         for env_file in sorted(param_files):
@@ -102,7 +66,7 @@ def show_current_env(profiles):
 
 def delete_env_links(profiles):
     """Delete environment symlinks for specified profiles."""
-    env_files = get_env_files_from_profiles(profiles)
+    env_files = get_profile_env_paths(profiles)
     success = True
 
     for env_file in env_files:
@@ -156,20 +120,12 @@ def create_env_links(params_file, profiles):
         print(f"Error: Cannot find {params_file} to use as new environment file", file=sys.stderr)
         return False
 
-    env_files = get_env_files_from_profiles(profiles)
+    env_files = get_profile_env_paths(profiles)
     success = True
 
     for env_file in env_files:
         success = success and create_env_link(params_file, env_file)
     return success
-
-
-def validate_profile_name(profile):
-    """Validate profile name contains only allowed characters."""
-    if not re.match(r'^[a-zA-Z0-9_.+-]+$', profile):
-        print(f"Error: Invalid profile name '{profile}'. Only [a-zA-Z0-9_.+-] characters are allowed.", file=sys.stderr)
-        return False
-    return True
 
 
 def main():

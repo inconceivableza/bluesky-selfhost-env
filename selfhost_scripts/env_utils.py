@@ -2,6 +2,49 @@
 
 import configparser
 import re
+from pathlib import Path
+
+def get_env_filename(profile):
+    """Get the environment filename for a given profile."""
+    if profile:
+        return f".env.{profile}"
+    return ".env"
+
+def get_profile_env_paths(profiles):
+    """Get list of environment files from profile names, as Path objects."""
+    env_files = []
+    for profile in profiles:
+        env_files.append(Path(get_env_filename(profile)))
+    return env_files
+
+def get_existing_profile_names():
+    """Get names of existing profiles (without .env prefix)."""
+    profile_files = get_all_env_paths()
+    profiles = []
+    for env_file in profile_files:
+        if env_file.name == ".env":
+            profiles.append(None)  # Default profile
+        elif env_file.name.startswith(".env."):
+            profiles.append(env_file.name[5:])  # Remove .env. prefix
+    return profiles
+
+def get_all_env_paths():
+    """Get all .env profile files (.env, .env.*, etc.), as Path objects"""
+    env_files = []
+    cwd = Path.cwd()
+    env_file = cwd / ".env"
+    if env_file.exists():
+        env_files.append(env_file)
+    # Add all other .env.* files
+    env_files.extend(cwd.glob(".env.*"))
+    return sorted(env_files)
+
+def validate_profile_name(profile):
+    """Validate profile name contains only allowed characters."""
+    if not re.match(r'^[a-zA-Z0-9_.+-]+$', profile):
+        print(f"Error: Invalid profile name '{profile}'. Only [a-zA-Z0-9_.+-] characters are allowed.", file=sys.stderr)
+        return False
+    return True
 
 def check_syntax_issues(filepath):
     """Check for syntax issues like trailing spaces that Docker Compose would read into variables"""
