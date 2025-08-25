@@ -20,47 +20,106 @@ def get_env_filename(profile):
     return ".env"
 
 
+def get_env_files_from_profiles(profiles):
+    """Get list of environment files from profile names."""
+    env_files = []
+    for profile in profiles:
+        env_files.append(Path(get_env_filename(profile)))
+    return env_files
+
+
+def get_existing_profile_names():
+    """Get names of existing profiles (without .env prefix)."""
+    profile_files = get_all_profile_files()
+    profiles = []
+
+    for env_file in profile_files:
+        if env_file.name == ".env":
+            profiles.append(None)  # Default profile
+        elif env_file.name.startswith(".env."):
+            profiles.append(env_file.name[5:])  # Remove .env. prefix
+
+    return profiles
+
+
+def get_all_profile_files():
+    """Get all .env profile files (.env, .env.*, etc.)"""
+    env_files = []
+    cwd = Path.cwd()
+
+    # Add .env if it exists
+    env_file = cwd / ".env"
+    if env_file.exists():
+        env_files.append(env_file)
+
+    # Add all .env.* files
+    env_files.extend(cwd.glob(".env.*"))
+
+    return sorted(env_files)
+
+
 def list_env_files():
-    """List all available environment files."""
-    env_files = list(Path.cwd().glob("*.env"))
-    if env_files:
+    """List all available environment files with symlink targets."""
+    param_files = list(Path.cwd().glob("*.env"))
+    profile_files = get_all_profile_files()
+
+    # Create mapping of target files to their profile links
+    target_to_profiles = {}
+    for profile_file in profile_files:
+        if profile_file.is_symlink():
+            target = profile_file.readlink()
+            target_to_profiles.setdefault(target.name, []).append(profile_file.name)
+    print("target to profiles", target_to_profiles)
+    if param_files:
         print("Available environment files:")
-        for env_file in sorted(env_files):
+        for env_file in sorted(param_files):
             if not env_file.name.startswith("."):
-                print(f"  {env_file.name}")
+                line = f"  {env_file.name}"
+                # Show which profiles point to this file
+                if env_file.name in target_to_profiles:
+                    profiles = ", ".join(sorted(target_to_profiles[env_file.name]))
+                    line += f" (current target for {profiles})"
+                print(line)
     else:
         print("No .env files found in current directory")
 
 
-def show_current_env(env_file):
+def show_current_env(profiles):
     """Show the current environment file status."""
-    if env_file.is_symlink():
-        target = env_file.readlink()
-        print(f"{env_file.name} -> {target}")
-        return True
-    elif env_file.exists():
-        print(f"{env_file.name} (regular file)")
-        return True
-    else:
-        print(f"No {env_file.name} file found.")
-        return False
+    success = True
+    for profile in profiles:
+        env_file = Path(get_env_filename(profile))
+        if env_file.is_symlink():
+            target = env_file.readlink()
+            print(f"{env_file.name} -> {target}")
+        elif env_file.exists():
+            print(f"{env_file.name} (regular file)")
+        else:
+            print(f"No {env_file.name} file found for {profile or 'default'} profile.")
+            success = False
+    return success
 
 
-def delete_env_link(env_file):
-    """Delete the environment symlink."""
-    if env_file.is_symlink():
-        target = env_file.readlink()
-        print(f"{env_file.name} was previously pointing to {target}")
-        env_file.unlink()
-        print("Removed symlink")
-        return True
-    elif env_file.exists():
-        print(f"Error: {env_file.name} is not a symlink: not removing, check and adjust manually")
-        os.system(f"ls -l {env_file}")
-        return False
-    else:
-        print(f"No {env_file.name} found", file=sys.stderr)
-        return False
+def delete_env_links(profiles):
+    """Delete environment symlinks for specified profiles."""
+    env_files = get_env_files_from_profiles(profiles)
+    success = True
+
+    for env_file in env_files:
+        if env_file.is_symlink():
+            target = env_file.readlink()
+            print(f"{env_file.name} was previously pointing to {target}")
+            env_file.unlink()
+            print(f"Removed symlink {env_file.name}")
+        elif env_file.exists():
+            print(f"Warning: {env_file.name} is not a symlink: not removing, check and adjust manually")
+            os.system(f"ls -l {env_file}")
+            success = False
+        else:
+            print(f"No {env_file.name} found", file=sys.stderr)
+            success = False
+
+    return success
 
 
 def create_env_link(params_file, env_file):
@@ -88,7 +147,24 @@ def create_env_link(params_file, env_file):
     return True
 
 
-def validate_profile(profile):
+def create_env_links(params_file, profiles):
+    """Create symlinks for specified profiles to the parameters file."""
+    params_path = Path(params_file)
+
+    # Check if the source file exists
+    if not params_path.exists():
+        print(f"Error: Cannot find {params_file} to use as new environment file", file=sys.stderr)
+        return False
+
+    env_files = get_env_files_from_profiles(profiles)
+    success = True
+
+    for env_file in env_files:
+        success = success and create_env_link(params_file, env_file)
+    return success
+
+
+def validate_profile_name(profile):
     """Validate profile name contains only allowed characters."""
     if not re.match(r'^[a-zA-Z0-9_.+-]+$', profile):
         print(f"Error: Invalid profile name '{profile}'. Only [a-zA-Z0-9_.+-] characters are allowed.", file=sys.stderr)
@@ -104,7 +180,10 @@ def main():
                "  %(prog)s myproject.env             # Link .env to myproject.env\n"
                "  %(prog)s -d                        # Delete current .env symlink\n"
                "  %(prog)s -p prod myproject.env     # Link .env.prod to myproject.env\n"
-               "  %(prog)s --staging staging.env     # Link .env.staging to staging.env\n",
+               "  %(prog)s -p prod -p staging proj.env # Link multiple profiles\n"
+               "  %(prog)s --staging staging.env     # Link .env.staging to staging.env\n"
+               "  %(prog)s -a myproject.env          # Link all existing profiles\n"
+               "  %(prog)s -a -d                     # Delete all existing profiles\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -120,24 +199,38 @@ def main():
         help='Delete the current environment symlink'
     )
 
-    profile_group = parser.add_mutually_exclusive_group()
-    profile_group.add_argument(
+    parser.add_argument(
         '-p', '--profile',
-        help='Target profile for .env.{profile} (allows [a-zA-Z0-9_.+-] characters)'
+        action='append',
+        dest='profiles',
+        default=[],
+        help='Target profile for .env.{profile} (allows [a-zA-Z0-9_.+-] characters, can be used multiple times)'
     )
-    profile_group.add_argument(
+    parser.add_argument(
+        '-D', '--default',
+        action='append_const',
+        const='default',
+        dest='profiles',
+        help='Shortcut for --profile default which targets the main .env file'
+    )
+    parser.add_argument(
         '-P', '--prod',
-        action='store_const',
+        action='append_const',
         const='production',
-        dest='profile',
+        dest='profiles',
         help='Shortcut for --profile production'
     )
-    profile_group.add_argument(
+    parser.add_argument(
         '-S', '--staging',
-        action='store_const',
+        action='append_const',
         const='staging',
-        dest='profile',
+        dest='profiles',
         help='Shortcut for --profile staging'
+    )
+    parser.add_argument(
+        '-a', '--all-profiles',
+        action='store_true',
+        help='Apply command to all existing .env* files'
     )
 
     args = parser.parse_args()
@@ -146,30 +239,45 @@ def main():
     script_dir = Path(__file__).parent
     os.chdir(script_dir)
 
-    # Validate profile if provided
-    if args.profile and not validate_profile(args.profile):
-        sys.exit(1)
+    # Handle profile selection
+    profiles = [None if p == 'default' else p for p in args.profiles] or []
+    default_profiles = [None, "production", "staging"]
 
-    # Determine target environment file
-    env_file = Path(get_env_filename(args.profile))
+    if args.all_profiles:
+        # Add all existing profiles to the list
+        existing_profiles = get_existing_profile_names()
+        for profile in existing_profiles:
+            if profile not in profiles:
+                profiles.append(profile)
+        for profile in default_profiles:
+            if profile not in profiles:
+                profiles.append(profile)
+
+    # Validate all profiles
+    for profile in profiles:
+        if profile and not validate_profile_name(profile):
+            parser.error(f"Profile name {profile} is not valid")
+
+    # If no profiles specified, default to None (which means .env)
+    if not profiles:
+        profiles = [None]
 
     # Handle delete operation
     if args.delete:
-        success = delete_env_link(env_file)
+        success = delete_env_links(profiles)
         sys.exit(0 if success else 1)
 
     # Handle showing current status
-    if not args.params_file:
-        if show_current_env(env_file):
-            sys.exit(0)
-        else:
-            print("Set by running this script with a parameters file. Potential options:", file=sys.stderr)
+    if args.params_file:
+        # Handle creating new symlink
+        if not create_env_links(args.params_file, profiles):
+            sys.exit(1)
+    else:
+        if not show_current_env(profiles):
+            print()
+            print("Set missing environments by running this script with a parameters file. Potential options:", file=sys.stderr)
             list_env_files()
             sys.exit(1)
-
-    # Handle creating new symlink
-    success = create_env_link(args.params_file, env_file)
-    sys.exit(0 if success else 1)
 
 
 if __name__ == '__main__':
