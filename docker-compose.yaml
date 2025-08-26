@@ -424,10 +424,10 @@ services:
       # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 :
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
       - EXPO_PUBLIC_ATP_PDS_URL=https://${pdsFQDN}
-      - EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_HOST=${publicApiFQDN}
       - EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       # - BSKY_CANONICAL_INSTANCE=true # Enable if this is the canonical deployment. This enables routes like /ips-v4, /ips-v6, /security.txt and /.well-known/*
       - EXPO_PUBLIC_CORS_ALLOWED_ORIGINS=https://${socialappFQDN} # defaults are bsky.app main.bsky.dev and app.staging.bsky.dev
+      - EXPO_PUBLIC_GIF_SERVICE= # we don't yet have one of these
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - HTTP_ADDRESS=:8100
@@ -437,17 +437,20 @@ services:
       - NODE_ENV=development
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-      - EXPO_PUBLIC_OGCARD_HOST=${cardFQDN}
+      - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
+      - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY= # we don't yet have one of these
       - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
       # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       # - EXPO_PUBLIC_STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
-      - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
       - EXPO_PUBLIC_SOCIAL_APP_HOST=${socialappFQDN}
       - EXPO_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
       - EXPO_PUBLIC_SOCIAL_EMBED_SERVICE=https://${embedFQDN} # TODO: actually publish the embed service on a domain
       - EXPO_PUBLIC_SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
       - EXPO_PUBLIC_SOCIAL_POLICY_BASE_URL=${SOCIAL_POLICY_BASE_URL}
+      - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
+      - EXPO_PUBLIC_VIDEO_SERVICE= # we don't yet have one of these
+      - EXPO_PUBLIC_VIDEO_SERVICE_DID= # we don't yet have one of these
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
