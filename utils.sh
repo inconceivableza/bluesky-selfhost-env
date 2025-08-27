@@ -69,9 +69,20 @@ function show_failure_n {
 }
 
 function source_env {
-  # exports variables in the .env file into the current context
+  # exports variables in the .env file (or profile env file if parameter given)  into the current context
+  env_file="${params_file:-$script_dir/.env}"
+  if [ "$#" -eq 1 ]
+    then
+      profile="$1"
+      env_file="${script_dir}/.env.$profile"
+  elif [ "$selfhost_env_profile" != "" ]
+    then
+      profile="$selfhost_env_profile"
+      env_file="${script_dir}/.env.$selfhost_env_profile"
+    fi
+  [ -f "$env_file" ] || { show_error "Could not find env" "for profile ${profile:-(default)}" ; exit 1 ; }
   set -o allexport
-  . "${params_file:-$script_dir/.env}"
+  . "$env_file"
   set +o allexport
 }
 
@@ -183,14 +194,22 @@ function maybe_show_info {
 
 maybe_show_info "OS detected" $os
 
-if [[ "$params_file" != "" && "$(realpath "$params_file")" != "$(realpath "$selfhost_dir/.env")" ]]
+if [ "$selfhost_env_profile" != "" ]
+  then
+    maybe_show_info --oneline "Self-host environment using profile" "$selfhost_env_profile"
+    selfhost_env_filename=".env.${selfhost_env_profile}"
+  else
+    selfhost_env_filename=".env"
+  fi
+
+if [[ "$params_file" != "" && "$(realpath "$params_file")" != "$(realpath "$selfhost_dir/$selfhost_env_filename")" ]]
   then
     show_warning "Params file variable" "\$params_file is no longer supported; rather use ./params-file-util.sh to switch .env symlink"
     show_info "params_file was set to" "$params_file"
-    export params_file="$selfhost_dir/.env"
+    export params_file="$selfhost_dir/$selfhost_env_filename"
     show_info "params_file reset to" "$params_file"
   else
-    export params_file="$selfhost_dir/.env"
+    export params_file="$selfhost_dir/$selfhost_env_filename"
     if [ -h "$params_file" ]
       then
         actual_params_file="`readlink -f "$params_file"`"

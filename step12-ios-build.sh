@@ -2,8 +2,15 @@
 
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
+if [ "$#" -eq 1 ]
+  then
+    build_profile="$1"
+    selfhost_env_profile="$build_profile"
+  else
+    build_profile="preview"
+  fi
 . "$script_dir/utils.sh"
-source_env
+source_env || exit 1
 
 show_heading "Building iOS app" "using applied branding and domain name changes"
 
