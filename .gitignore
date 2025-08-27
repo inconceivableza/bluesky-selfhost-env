@@ -19,3 +19,6 @@ config/**secret**
 *.apks
 *.aab
 *.ipa
+android-builds
+ios-builds
+tmp-builds
