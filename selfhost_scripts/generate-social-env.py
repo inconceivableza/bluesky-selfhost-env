@@ -12,6 +12,8 @@ import argparse
 import sys
 from pathlib import Path
 
+base_dir = Path(__file__).parent.parent
+
 from env_utils import get_existing_profile_names, read_env, validate_profile_name
 
 def render_mustache_template(template_content, variables):
@@ -25,9 +27,11 @@ def render_mustache_template(template_content, variables):
     
     return result
 
-def get_social_env_output_path(profile):
+def get_social_env_output_path(profile, args):
     """Get the output path for social-app env file based on profile."""
-    base_path = Path("repos/social-app")
+    base_path = base_dir / Path("repos/social-app")
+    if args.output:
+        return base_path / Path(args.output) # will compute as relative unless args.output is absolute
     
     if profile is None:
         return base_path / ".env"
@@ -37,7 +41,7 @@ def get_social_env_output_path(profile):
 def generate_social_env_for_profile(profile, template_content, args):
     """Generate social-app environment file for a specific profile."""
     # Read environment variables from profile file
-    env_file_path = Path(f".env.{profile}" if profile else ".env")
+    env_file_path = base_dir / Path(f".env.{profile}" if profile else ".env")
     
     if not env_file_path.exists():
         print(f"Warning: Environment file {env_file_path} not found for profile {profile or 'default'}", file=sys.stderr)
@@ -57,7 +61,7 @@ def generate_social_env_for_profile(profile, template_content, args):
     rendered_content = render_mustache_template(template_content, env_vars)
     
     # Determine output path
-    output_path = get_social_env_output_path(profile)
+    output_path = get_social_env_output_path(profile, args)
     
     if args.dry_run:
         if not args.silent:
@@ -87,13 +91,13 @@ def generate_social_env_for_profile(profile, template_content, args):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate social-app environment files from profile configurations',
-        epilog="Examples:\\n"
-               "  %(prog)s                           # Generate for default .env\\n"
-               "  %(prog)s -p prod                   # Generate for .env.prod\\n"
-               "  %(prog)s -p prod -p staging        # Generate for multiple profiles\\n"
-               "  %(prog)s --staging                 # Generate for .env.staging\\n"
-               "  %(prog)s -a                        # Generate for all existing profiles\\n"
-               "  %(prog)s -t custom.mustache        # Use custom template\\n",
+        epilog="Examples:\n"
+               "  %(prog)s                           # Generate for default .env\n"
+               "  %(prog)s -p prod                   # Generate for .env.prod\n"
+               "  %(prog)s -p prod -p staging        # Generate for multiple profiles\n"
+               "  %(prog)s --staging                 # Generate for .env.staging\n"
+               "  %(prog)s -a                        # Generate for all existing profiles\n"
+               "  %(prog)s -t custom.mustache        # Use custom template\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -137,6 +141,10 @@ def main():
         action='store_true',
         help='Generate for all existing .env* files'
     )
+    parser.add_argument(
+        '-o', '--output', default=None,
+        help='Override the filename to output (relative to target social-app directory; defaults to .env or .env.$profile)',
+    )
     
     args = parser.parse_args()
     
@@ -164,9 +172,9 @@ def main():
         profiles = [None]
     
     # Check template file exists
-    template_path = Path(args.template_file)
+    template_path = base_dir / Path(args.template_file)
     if not template_path.exists():
-        print(f"Error: Template file '{args.template_file}' not found", file=sys.stderr)
+        print(f"Error: Template file '{template_path}' not found", file=sys.stderr)
         return False
     
     # Read template content
