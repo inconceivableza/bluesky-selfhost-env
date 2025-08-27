@@ -110,11 +110,11 @@ def check_ssl_configuration(target_env):
         # For self-signed certificates, these should be configured correctly
         custom_certs_dir = target_env.get('CUSTOM_CERTS_DIR', '').strip()
         update_certs_cmd = target_env.get('UPDATE_CERTS_CMD', '').strip()
-        
-        # Check CUSTOM_CERTS_DIR should be /etc/ssl/certs
-        if custom_certs_dir != '/etc/ssl/certs':
-            ssl_errors.append(('CUSTOM_CERTS_DIR', f"EMAIL4CERTS='internal' but CUSTOM_CERTS_DIR is '{custom_certs_dir}', should be '/etc/ssl/certs'"))
-        
+
+        # Check CUSTOM_CERTS_DIR should be /etc/ssl/certs or /usr/local/share/ca-certificates
+        if custom_certs_dir not in ('/etc/ssl/certs', '/usr/local/share/ca-certificates'):
+            ssl_errors.append(('CUSTOM_CERTS_DIR', f"EMAIL4CERTS='internal' but CUSTOM_CERTS_DIR is '{custom_certs_dir}', should be '/etc/ssl/certs' or '/usr/local/share/ca-certificates'"))
+
         # Check UPDATE_CERTS_CMD should contain update-ca-certificates
         if 'update-ca-certificates' not in update_certs_cmd:
             ssl_errors.append(('UPDATE_CERTS_CMD', f"EMAIL4CERTS='internal' but UPDATE_CERTS_CMD is '{update_certs_cmd}', should contain 'update-ca-certificates'"))

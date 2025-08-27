@@ -43,7 +43,8 @@ x-definitions:
     volumes:
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+      # leave out host ca-certificates as it can't be included from a single file, or will interfere with update-ca-certificates
+      # - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/host-ca-certificates.crt:ro
 
 networks:
  default:
