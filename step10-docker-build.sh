@@ -3,9 +3,10 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
-source_env
+source_env || exit 1
 
-echo command-line args $# $@
+show_heading "Building Docker containers" "using applied branding"
+
 if [ $# -gt 0 ]
   then
     cmdlineDirs="$@"
