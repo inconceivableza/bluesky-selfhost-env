@@ -4,6 +4,13 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 
+if ! which docker >/dev/null
+  then
+    show_error --oneline "Docker install required" "in order to use this self-hosting environment"
+    show_info --oneline "Please install docker manually" "by following the docker installation instructions"
+    exit 1
+  fi
+
 if [ "$os" == "linux-ubuntu" ]
   then
     show_heading "Setting up apt packages" that are requirements for building running and testing these docker images
@@ -45,12 +52,6 @@ if [ "$os" == "linux-ubuntu" ]
       fi
 elif [ "$os" == "macos" ]
   then
-    if ! which docker >/dev/null
-      then
-        show_error --oneline "Docker install required" "in order to use this self-hosting environment"
-        show_info --oneline "Please install docker manually" "by following the docker installation instructions"
-        exit 1
-      fi
     if which brew >/dev/null
       then
         required_packages= 

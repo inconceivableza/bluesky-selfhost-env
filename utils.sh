@@ -34,12 +34,18 @@ function show_info {
 }
 
 function show_error {
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$red_color""$start_bold"$1 "$clear_bold" >&2
   shift 1
   echo "$@""$clear_text" >&2
 }
 
 function show_warning {
+  oneline=
+  [ "$1" == "--oneline" ] && { oneline=true ; shift 1 ; }
+  [ "$oneline" == "true" ] || echo
   echo -n "$purple_color""$start_bold"$1 "$clear_bold" >&2
   shift 1
   echo "$@""$clear_text" >&2
