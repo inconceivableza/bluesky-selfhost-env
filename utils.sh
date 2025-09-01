@@ -80,7 +80,7 @@ function source_env {
       profile="$selfhost_env_profile"
       env_file="${script_dir}/.env.$selfhost_env_profile"
     fi
-  [ -f "$env_file" ] || { show_error "Could not find env" "for profile ${profile:-(default)}" ; exit 1 ; }
+  [ -f "$env_file" ] || { show_error "Could not find env" "for profile ${profile:-(default)}" ; return 1 ; }
   set -o allexport
   . "$env_file"
   set +o allexport
@@ -146,20 +146,20 @@ function check_android_home {
             then
               export ANDROID_HOME="$potential_android_home"
               echo $potential_android_home
-              exit 0
+              return 0
             fi
         done
       if [ "$ANDROID_HOME" == "" ]
         then
           show_error "Android Sdk not found:" "set ANDROID_HOME in $params_file to point to sdk install"
-          exit 1
+          return 1
         fi
   elif [ -d "$ANDROID_HOME" ]
     then
-      exit 0
+      return 0
   else
       show_error "Android Sdk not found:" "ANDROID_HOME in $params_file points to $ANDROID_HOME but it doesn't exist"
-      exit 1
+      return 1
   fi
 }
 function setup_python_venv_with_requirements {
@@ -167,11 +167,11 @@ function setup_python_venv_with_requirements {
   [ -d $venv_target ] || python3 -m venv $venv_target
   . $venv_target/bin/activate || {
     show_error "Could not activate" "virtual environment in `realpath $venv_target`"
-    exit 1
+    return 1
   }
   [ "$(dirname $(which python))" == "$(realpath $venv_target/bin)" ] || {
     show_error "Malformed virtual environment" "in $(realpath $venv_target). Recreate manually"
-    exit 1
+    return 1
   }
   python -m pip install -U pip | { grep -v "^Requirement already satisfied" ; true ; }
   python -m pip install -r requirements.txt | { grep -v "^Requirement already satisfied" ; true ; }
