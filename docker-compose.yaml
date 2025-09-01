@@ -834,7 +834,7 @@ services:
       # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.132.0
     volumes:
       - "./config/telemetry/otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml"
     command:
