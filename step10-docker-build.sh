@@ -28,16 +28,16 @@ $script_dir/selfhost_Scripts/generate-social-env.py -S || show_warning "Error ge
 failures=""
 for service in $BUILD_SERVICES
   do
-    EXTRA_ARGS=
-    [ "$service" == "social-link" ] && EXTRA_ARGS="SOCIAL_LINK_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskylink/) $EXTRA_ARGS"
-    [ "$service" == "social-card" ] && EXTRA_ARGS="SOCIAL_CARD_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskyogcard/) $EXTRA_ARGS"
+    BUILD_ARGS=
+    [ "$service" == "social-link" ] && BUILD_ARGS="--build-arg=LINK_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskylink/) $BUILD_ARGS"
+    [ "$service" == "social-card" ] && BUILD_ARGS="--build-arg=CARD_VERSION=$(cd $script_dir/repos/social-app ; git log -1 --format=%H bskyogcard/) $BUILD_ARGS"
     if [ "${REBRANDED_SERVICES/${service}/}" == "${REBRANDED_SERVICES}" ]
       then
         show_heading "Building $service" "without domain customizations"
-        make build DOMAIN= f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
+        make build DOMAIN= f=./docker-compose-builder.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
       else
         show_heading "Building $service" "customized for domains in env files"
-        make build DOMAIN= f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
+        make build DOMAIN= f=./docker-compose-builder.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
       fi
     # 1) build image, customized for domain
   done
