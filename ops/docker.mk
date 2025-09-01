@@ -12,7 +12,7 @@ docker-pull:
 docker-pull-unbranded:
 	DOMAIN= asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} pull --policy ${dockerPullPolicy} ${unbranded_services}
 build:
-	COMPOSE_PROFILES=${COMPOSE_PROFILES} DOMAIN=${DOMAIN} asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} build ${services}
+	COMPOSE_PROFILES=${COMPOSE_PROFILES} asof=${asof} branded_asof=${branded_asof} ${dockerCompose} -f ${f} build ${services}
 
 docker-start::      setupdir ${wDir}/config/caddy/Caddyfile ${passfile}
 ifeq ($(EMAIL4CERTS),internal)

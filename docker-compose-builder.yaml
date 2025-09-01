@@ -465,7 +465,7 @@ services:
 
   social-app:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -522,7 +522,7 @@ services:
 
   social-card:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -558,7 +558,7 @@ services:
 
   social-embed:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -601,7 +601,7 @@ services:
 
   social-link:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof}-${DOMAIN}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']

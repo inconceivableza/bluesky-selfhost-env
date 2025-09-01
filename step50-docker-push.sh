@@ -28,6 +28,8 @@ for built_service in $BUILT_SERVICES
     image_name="$(yq ".services.$built_service.image" docker-compose-builder.yaml | sed 's#^[^/]*/##' | sed 's#:[^:]*$##' | sed 's#[$]{REBRANDING_NAME[^}]*}#'"${REBRANDING_NAME}#")"
     if [ "${REBRANDED_SERVICES/${built_service}/}" != "${REBRANDED_SERVICES}" ]
       then
+        show_error "Domain-specific build" "of service $built_service for $REBRANDING_NAME and domain $DOMAIN - should not be tagged with domain"
+        exit 1
         description="customized for $REBRANDING_NAME and domain $DOMAIN"
         json="$(echo "$docker_images_json" | jq "select(.Repository == \"$BRANDED_NAMESPACE/${image_name}\" and .Tag == \"$branded_asof-$DOMAIN\")")" || failures="$failures $built_service"
         target_name="$BRANDED_NAMESPACE/${image_name}:${branded_asof}-${DOMAIN}"
