@@ -178,7 +178,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://social-card:3002
+	reverse_proxy http://social-card:3003
 }
 
 {$embedFQDN} {
@@ -196,7 +196,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://social-link:3001
+	reverse_proxy http://social-link:3004
 }
 
 {$ozoneFQDN} {
@@ -205,8 +205,8 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	#	reverse_proxy http://ozone:3000
-	reverse_proxy http://ozone-standalone:3000
+	#	reverse_proxy http://ozone:3006
+	reverse_proxy http://ozone-standalone:3005
 }
 ozone-standalone.{$DOMAIN} {
 	import cors
@@ -214,7 +214,7 @@ ozone-standalone.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://ozone-standalone:3000
+	reverse_proxy http://ozone-standalone:3005
 }
 
 {$palomarFQDN} {
@@ -232,7 +232,7 @@ ozone-standalone.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://feed-generator:3000
+	reverse_proxy http://feed-generator:3008
 }
 
 {$jetstreamFQDN} {
