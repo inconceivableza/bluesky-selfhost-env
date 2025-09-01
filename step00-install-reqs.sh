@@ -45,6 +45,12 @@ if [ "$os" == "linux-ubuntu" ]
       fi
 elif [ "$os" == "macos" ]
   then
+    if ! which docker >/dev/null
+      then
+        show_error --oneline "Docker install required" "in order to use this self-hosting environment"
+        show_info --oneline "Please install docker manually" "by following the docker installation instructions"
+        exit 1
+      fi
     if which brew >/dev/null
       then
         required_packages= 
