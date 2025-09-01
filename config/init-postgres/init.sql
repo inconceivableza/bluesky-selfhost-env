@@ -25,3 +25,7 @@ GRANT ALL PRIVILEGES ON DATABASE palomar TO pg;
 -- ozone(Moderation)
 CREATE DATABASE ozone;
 GRANT ALL PRIVILEGES ON DATABASE ozone TO pg;
+
+-- link(social-app-link)
+CREATE DATABASE link;
+GRANT ALL PRIVILEGES ON DATABASE link TO pg;
