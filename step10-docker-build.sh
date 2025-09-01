@@ -36,8 +36,8 @@ for service in $BUILD_SERVICES
         show_heading "Building $service" "without domain customizations"
         make build DOMAIN= f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
       else
-        show_heading "Building $service" "customized for domain $DOMAIN"
-        make build f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
+        show_heading "Building $service" "customized for domains in env files"
+        make build DOMAIN= f=./docker-compose-builder.yaml services=$service $EXTRA_ARGS || failures="$failures $service"
       fi
     # 1) build image, customized for domain
   done
