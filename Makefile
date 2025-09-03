@@ -92,6 +92,7 @@ config/plc-secrets.env: config/db-secrets.env
 config/social-link-secrets.env: config/db-secrets.env
 	@cat $^ > $@
 	@echo 'LINK_DB_POSTGRES_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/link' >> $@
+	@echo 'LINK_DB_POSTGRES_MIGRATION_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/link' >> $@
 
 clean-secret-envs:
 	rm -f $(SECRET_ENV_FILES)
