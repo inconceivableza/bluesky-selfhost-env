@@ -75,6 +75,7 @@ show_heading "Creating environments" "for social-app from ${build_profile} envir
 # TODO: work out what the mobile build actually does with the .env files; should we switch .env to .env.development and copy .env.$build_profile to .env just for mobile builds?
 $script_dir/selfhost_scripts/generate-social-env.py -P -D || { show_error "Error generating social-app environment" "which is required for build" ; exit 1 ; }
 $script_dir/selfhost_scripts/generate-social-env.py -T || show_warning "Error generating social-app test environment" "so build will not contain it"
+$script_dir/selfhost_scripts/generate-google-services-json.py -PDTV || show_warning "Error generating google services for all build environments"
 
 show_heading "Running yarn" "to ensure everything is installed"
 yarn
