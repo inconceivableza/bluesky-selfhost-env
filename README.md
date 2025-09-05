@@ -78,7 +78,7 @@ You can change the domain name by setting the environment variable as follows:
 Environment variables for bluesky-selfhost-env are shared with docker-compose and declared in `./.env`
 A helper script, `./manage-params-files.py` allows you to have different `.env files` defined and switch which one `.env` is currently pointing to as a symlink.
 Copy `bluesky-params.env.example` to start off.
-A production file `.env.production` and staging file `.env.staging` are used to
+A production file `.env.production` and test file `.env.test` are used to
 set the default domains used by builds of the social-app.
 
 ```bash

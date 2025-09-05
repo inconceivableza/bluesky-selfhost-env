@@ -298,8 +298,8 @@ def main():
         epilog="Examples:\n"
                "  %(prog)s                           # Check .env\n"
                "  %(prog)s -p prod                   # Check .env.prod\n"
-               "  %(prog)s -p prod -p staging        # Check multiple profiles\n"
-               "  %(prog)s --staging                 # Check .env.staging\n"
+               "  %(prog)s -p prod -p test           # Check multiple profiles\n"
+               "  %(prog)s --test                    # Check .env.test\n"
                "  %(prog)s -a                        # Check all existing .env* files\n"
                "  %(prog)s -e custom.env             # Check custom.env\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -341,11 +341,11 @@ def main():
         help='Shortcut for --profile default which targets the main .env file'
     )
     parser.add_argument(
-        '-S', '--staging',
+        '-T', '--test',
         action='append_const',
-        const='staging',
+        const='test',
         dest='profiles',
-        help='Shortcut for --profile staging'
+        help='Shortcut for --profile test'
     )
     parser.add_argument(
         '-a', '--all-profiles',
@@ -357,7 +357,7 @@ def main():
 
     # Handle profile selection
     profiles = [None if p == 'default' else p for p in args.profiles] or []
-    default_profiles = [None, "production", "staging"]
+    default_profiles = [None, "production", "test"]
 
     if args.all_profiles:
         # Add all existing profiles to the list

@@ -136,8 +136,8 @@ def main():
                "  %(prog)s myproject.env             # Link .env to myproject.env\n"
                "  %(prog)s -d                        # Delete current .env symlink\n"
                "  %(prog)s -p prod myproject.env     # Link .env.prod to myproject.env\n"
-               "  %(prog)s -p prod -p staging proj.env # Link multiple profiles\n"
-               "  %(prog)s --staging staging.env     # Link .env.staging to staging.env\n"
+               "  %(prog)s -p prod -p test proj.env  # Link multiple profiles\n"
+               "  %(prog)s --test test.env           # Link .env.test to test.env\n"
                "  %(prog)s -a myproject.env          # Link all existing profiles\n"
                "  %(prog)s -a -d                     # Delete all existing profiles\n",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -177,11 +177,11 @@ def main():
         help='Shortcut for --profile production'
     )
     parser.add_argument(
-        '-S', '--staging',
+        '-T', '--test',
         action='append_const',
-        const='staging',
+        const='test',
         dest='profiles',
-        help='Shortcut for --profile staging'
+        help='Shortcut for --profile test'
     )
     parser.add_argument(
         '-a', '--all-profiles',
@@ -197,7 +197,7 @@ def main():
 
     # Handle profile selection
     profiles = [None if p == 'default' else p for p in args.profiles] or []
-    default_profiles = [None, "production", "staging"]
+    default_profiles = [None, "production", "test"]
 
     if args.all_profiles:
         # Add all existing profiles to the list
