@@ -2,6 +2,7 @@
 "exec" """""$(dirname $0)/venv/bin/python""""" "$0" "$@" # this is a shell exec which will drop down to the relative virtualenv's python
 
 import argparse
+import datetime
 import logging
 import os
 from os.path import join
@@ -23,7 +24,7 @@ def rename_files(config, env, dry_run=False, git_mv=False):
         src_path = get_config(rename_config, 'src_path')
         dest_path = get_config(rename_config, 'dest_path')
         if os.path.exists(dest_path):
-            logging.error(f"Destination path {dest_path} already exists; rename will fail. Please remove and rerun")
+            logging.error(f"Destination path {dest_path} already exists; rename will fail. Please select an appropriate option:")
             
             # Show detailed information about source and destination
             print(f"\nSource path info:")
@@ -41,12 +42,22 @@ def rename_files(config, env, dry_run=False, git_mv=False):
             # Prompt user for action
             while True:
                 choice = input(f"\nDestination '{dest_path}' already exists. What would you like to do?\n"
+                              f"  [b] Backup destination and continue\n"
                               f"  [r] Remove destination and continue\n"
                               f"  [c] Continue without removing (may cause errors)\n" 
                               f"  [q] Quit\n"
-                              f"Choice (r/c/q): ").lower().strip()
+                              f"Choice (b/r/c/q): ").lower().strip()
                 
-                if choice == 'r':
+                if choice == 'b':
+                    dest_path_backup = os.path.join(os.path.dirname(dest_path), os.path.basename(dest_path) + f'-backup-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}')
+                    print(f"Rename to {dest_path_backup}")
+                    try:
+                        os.rename(dest_path, dest_path_backup)
+                        print(f"Rename succeeded")
+                    except Exception as e:
+                        logging.error("Rename failed: aborting")
+                        raise
+                elif choice == 'r':
                     try:
                         shutil.rmtree(dest_path)
                         print(f"Removed {dest_path}")
@@ -61,7 +72,7 @@ def rename_files(config, env, dry_run=False, git_mv=False):
                     print("Quitting...")
                     sys.exit(1)
                 else:
-                    print("Invalid choice. Please enter 'r', 'c', or 'q'.")
+                    print("Invalid choice. Please enter 'b', 'r', 'c', or 'q'.")
         logging.info(f"Renaming {src_path} to {dest_path}")
         if not dry_run:
             if git_mv:
