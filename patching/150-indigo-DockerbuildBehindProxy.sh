@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-echo "DOMAIN: ${DOMAIN}"
 echo "rDir:   ${rDir}"
 echo "pDir:   ${pDir}"
 
