@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is for convenience when scripting manually
 # in a script, if utils.sh has has been sourced, rather call the source_env function
