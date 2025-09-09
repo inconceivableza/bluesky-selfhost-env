@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This allows the automated creation of branches, with easier controls over handling common scenarios
 

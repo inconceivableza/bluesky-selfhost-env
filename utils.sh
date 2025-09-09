@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # this is meant to be sourced from stepNN-*.sh
 
 selfhost_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

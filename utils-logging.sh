@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # this is meant to be sourced from stepNN-*.sh and utils.sh
 
 clear_text=$(printf '\e[0m')

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This allows the automated creation of updated version branches, by auto-merging specified feature branches
 # the feature branches are specified in a branch-rules.yml file, which can be specified
