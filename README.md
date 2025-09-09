@@ -189,7 +189,7 @@ make    docker-stop-with-clean f=./docker-compose-debug-caddy.yaml
 *Scripted:* For a local test environment, you don't need to make branding changes to the social-app.
 For a public environment you do.
 To be consistent, the scripted environment is set up to build your own social app.
-You can automate this with `./step02-apply-branding.sh` to set up a new branch of `social-app` with the branding changes,
+You can automate this with `./step02-update-branches.sh` to set up a new branch of `social-app` with the branding changes,
 `./step10-docker-build.sh` to build the new docker images,
 and then `./step30-docker-deploy.sh` to pull and deploy the docker images.
 
