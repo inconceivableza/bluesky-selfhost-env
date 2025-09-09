@@ -2,17 +2,34 @@
 
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
+. "$script_dir/utils-logging.sh"
+
+# syntax $0 [build_profile] [env_profile]
 if [ "$#" -eq 1 ]
   then
     build_profile="$1"
     selfhost_env_profile="$build_profile"
+    [[ "$selfhost_env_profile" == "testflight" || "$selfhost_env_profile" == "preview" ]] && selfhost_env_profile=test
+elif [ "$#" -eq 2 ]
+  then
+    build_profile="$1"
+    selfhost_env_profile="$2"
+    manually_set_env_profile=1
   else
     build_profile="development"
+    selfhost_env_profile="$build_profile"
+  fi
+if [ ! -f "$script_dir/.env.$selfhost_env_profile" ]
+  then
+    [ "$selfhost_env_profile" == "production" ] && { show_error "cannot build production" "as .env.production is missing" ; exit 1 ; }
+    [ "$manually_set_env_profile" == 1 ] && { show_error "cannot find environment" "$selfhost_env_profile was manually specified but .env.$selfhost_env_profile does not exist" ; exit 1 ; }
+    show_warning "selecting development environment" for build profile $build_profile rather than $selfhost_env_profile, as .env.$selfhost_env_profile does not exist
+    selfhost_env_profile="development"
   fi
 . "$script_dir/utils.sh"
-source_env || exit 1
+source_env "$selfhost_env_profile" || exit 1
 
-show_heading "Building Android app" "using applied branding and ${build_profile} profile"
+show_heading "Building Android app" "using applied branding, ${build_profile} profile and ${selfhost_env_profile} default environment"
 
 if [ "$JAVA_HOME" == "" ] || [ ! -d "$JAVA_HOME" ]
   then
