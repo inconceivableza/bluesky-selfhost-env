@@ -9,6 +9,7 @@ corresponding .env files for the social-app Docker image using a mustache templa
 """
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -88,6 +89,36 @@ def generate_social_env_for_profile(profile, template_content, args):
         print(f"Error writing output file {output_path}: {e}", file=sys.stderr)
         return False
 
+def generate_branding_file(args):
+    env_file_path = base_dir / Path(f".env.production")
+    if not env_file_path.exists():
+        print(f"Warning: Environment file {env_file_path} not found for production profile; will not generate branding file", file=sys.stderr)
+        return False
+    try:
+        # Read environment with interpolation to resolve variables
+        env_vars = read_env(str(env_file_path), interpolate=True)
+    except Exception as e:
+        print(f"Error reading environment file {env_file_path}: {e}; will not generate branding file", file=sys.stderr)
+        return False
+    rebranding_dir = env_vars['REBRANDING_DIR'].strip('"')
+    rebranding_path = base_dir / Path(rebranding_dir)
+    branding_file_path = rebranding_path / "branding.yml"
+    if not branding_file_path.exists():
+        print(f"Warning: Expected branding file {branding_file_path} does not exist; will not generate branding file", file=sys.stderr)
+    target_branding_file_path = base_dir / Path("repos/social-app/branding.json")
+    try:
+        with target_branding_file_path.open('w') as f:
+            subprocess.call(["yq", "--output-format=json", str(branding_file_path)], stdout=f)
+    except Exception as e:
+        target_exists = target_branding_file_path.exists()
+        print(f"Error generating {target_branding_file_path}: {e}. " + ("Will remove branding file" if target_exists else ""), file=sys.stderr)
+        if target_exists:
+            target_branding_file_path.unlink()
+        return False
+    if not args.silent:
+        print(f"✅ Generated: {target_branding_file_path}")
+    return True
+
 def main():
     parser = argparse.ArgumentParser(
         description='Generate social-app environment files from profile configurations',
@@ -107,7 +138,9 @@ def main():
                        help='Silent mode - no output except errors')
     parser.add_argument('--dry-run', action='store_true',
                        help='Show what would be generated without writing files')
-    
+    parser.add_argument('--no-branding', action='store_true',
+                        help="Don't copy branding info into branding.json")
+
     parser.add_argument(
         '-p', '--profile',
         action='append',
@@ -197,7 +230,9 @@ def main():
     for profile in profiles:
         if generate_social_env_for_profile(profile, template_content, args):
             success_count += 1
-    
+    if not args.no_branding:
+        generate_branding_file(args)
+
     # Report results
     if not args.silent:
         print()
