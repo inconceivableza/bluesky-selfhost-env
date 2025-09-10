@@ -1,22 +1,4 @@
 rules:
-- id: public-api
-  patterns:
-    - pattern: 'https://public.api.bsky.app'
-  fix: 'https://{{ env.publicApiFQDN }}'
-  message: Update the public API to use our public app view (this will in due course select lexicons etc)
-  languages:
-    - generic
-  severity: WARNING
-
-- id: non-public-api
-  patterns:
-    - pattern: 'https://api.bsky.app'
-  fix: 'https://{{ env.apiFQDN }}'
-  message: Update the non-public API to use our authenticated app view (this will in due course select lexicons etc)
-  languages:
-    - generic
-  severity: WARNING
-
 - id: web-view
   patterns:
     - pattern: 'https://bsky.app'
