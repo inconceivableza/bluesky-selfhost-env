@@ -9,9 +9,7 @@ code:
   expo_project_id: '19a6f1d0-201b-434e-affb-e4bdd025cd58'
   google_service_project_name: openskyweb
   sentry_project_organization: 'openskysocial'
-  web_bundle_name: openskyweb
   web_package_id: xyz.opensky.app
-  web_package_path: 'xyz/openskyweb'
 atproto_accounts:
   follow_default:
     did: "did:plc:z72i7hdynmk6r22z27h6tvur" # This would need to be updated for opensky

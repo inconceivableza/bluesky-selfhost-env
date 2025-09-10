@@ -9,9 +9,7 @@ code:
   expo_project_id: '87ab4766-b66c-489c-98ca-65e740fa205b'
   google_service_project_name: blueskyweb # this is used in an example; the actual config should be in a proper google services json file
   sentry_project_organization: 'blueskysocial'
-  web_bundle_name: bskyweb
   web_package_id: xyz.blueskyweb.app
-  web_package_path: 'xyz/blueskyweb' # this has a /app at the end, but to make renames easier we just assume that
 atproto_accounts:
   follow_default:
     did: "did:plc:z72i7hdynmk6r22z27h6tvur"

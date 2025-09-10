@@ -209,41 +209,6 @@ rules:
     exclude:
       - LICENSE
 
-- id: clip-module
-  patterns:
-    - pattern: "BlueskyClip"
-  fix: "{{ code.ios_clip_name }}"
-  message: Update the clip module name (requires RENAME)
-  languages:
-    - generic
-  severity: WARNING
-
-- id: notification-service-extension
-  patterns:
-    - pattern: "BlueskyNSE"
-  fix: "{{ code.ios_nse_name }}"
-  message: Update the notification service extension (requires RENAME)
-  languages:
-    - generic
-  severity: WARNING
-
-- id: share-with-module
-  patterns:
-    - pattern: "Share-with-Bluesky"
-  fix: "{{ code.ios_share_with_name }}"
-  message: Update the share-with module name (requires RENAME)
-  languages:
-    - generic
-  severity: WARNING
-
-- id: web-bundle-name
-  patterns:
-    - pattern: "bskyweb"
-  fix: "{{ code.web_bundle_name }}"
-  message: Update the bundled web service name
-  languages:
-    - generic
-  severity: WARNING
 
 - id: background-color
   patterns:
@@ -368,23 +333,7 @@ rules:
 #       - "modules/expo-receive-android-intents/"
 
 
-rename_paths:
-- src_path: "modules/Share-with-Bluesky"
-  dest_path: "modules/{{ code.ios_share_with_name }}"
-- src_path: "modules/{{ code.ios_share_with_name }}/Share-with-Bluesky.entitlements"
-  dest_path: "modules/{{ code.ios_share_with_name }}/{{ code.ios_share_with_name }}.entitlements"
-- src_path: "modules/BlueskyNSE"
-  dest_path: "modules/{{ code.ios_nse_name }}"
-- src_path: "modules/{{ code.ios_nse_name }}/BlueskyNSE.entitlements"
-  dest_path: "modules/{{ code.ios_nse_name }}/{{ code.ios_nse_name }}.entitlements"
-- src_path: "modules/BlueskyClip"
-  dest_path: "modules/{{ code.ios_clip_name }}"
-- src_path: "modules/expo-receive-android-intents/android/src/main/java/xyz/blueskyweb/"
-  dest_path: "modules/expo-receive-android-intents/android/src/main/java/{{ code.web_package_path }}"
-- src_path: "bskyweb"
-  dest_path: "{{ code.web_bundle_name }}"
-- src_path: "{{ code.web_bundle_name }}/cmd/bskyweb"
-  dest_path: "{{ code.web_bundle_name }}/cmd/{{ code.web_bundle_name }}"
+rename_paths: {}
 
 copy_files:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
@@ -408,7 +357,7 @@ copy_files:
     - "icon.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "{{ code.web_bundle_name }}/static/"
+  dest_dir: "bskyweb/static/"
   files:
     - "favicon.png"
     - "favicon-16x16.png"
@@ -419,7 +368,7 @@ copy_files:
     - "social-card-default-gradient.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "{{ code.web_bundle_name }}/static/"
+  dest_dir: "bskyweb/static/"
   git_add: True
   files:
     - "email_mark_light.png"
@@ -466,7 +415,7 @@ svg_html_subst:
       view_box: "0 0 512 512"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "{{ code.web_bundle_name }}/templates/"
+  dest_dir: "bskyweb/templates/"
   file_substs:
     - src: "logo.compact.svg"
       dest: "base.html"
