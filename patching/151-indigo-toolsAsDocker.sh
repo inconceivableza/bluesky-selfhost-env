@@ -10,4 +10,5 @@ echo "applying patch: under ${d_} for ${p_}"
 
 pushd ${d_}
 patch -p1 < ${p_}
+git add Dockerfile
 popd

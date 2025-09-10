@@ -12,4 +12,5 @@ echo "applying patch: under ${d_} for ${p1_} ${p2_}"
 pushd ${d_}
 patch -p1 < ${p1_}
 patch -p1 < ${p2_}
+git add packages/dev-env/src/debug.ts
 popd

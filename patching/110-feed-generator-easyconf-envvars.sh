@@ -16,5 +16,6 @@ if [ -f $f ] && [ -n "`grep -R 'https://plc.directory' $f`" ];then
        sed -i.bak "s#plcUrl: 'https://plc.directory'#plcUrl: process.env.FEEDGEN_PLC_URL ?? 'https://plc.directory'#g" $f
        echo "plcUrl: hardcoded   => process.env.FEEDGEN_PLC_URL ?? hardcoded  for $f"
 fi
+git add scripts/publishFeed.exp
 popd
 
