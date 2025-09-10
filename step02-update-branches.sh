@@ -13,6 +13,9 @@ missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir
 show_heading "Cloning source code" "from the different repositories"
 make cloneAll
 
+do_fetch=1
+[[ "$1" == "--no-fetch" ]] && { do_fetch=0 ; shift 1 ; }
+
 if [ $# -gt 0 ]
   then
     cmdlineDirs="$@"
@@ -75,7 +78,7 @@ for repoDir in $repoDirs
         git_repo_changes
         exit 1
       }
-      git fetch --all
+      [ $do_fetch -eq 1 ] && git fetch --all
       exit 0
     ) || { show_error "Repo ${repo_key} has changed" "inspect $repo_key and commit/discard as necessary" ; error_repos="$error_repos $repo_key"; }
   done
