@@ -189,11 +189,15 @@ for repoDir in $repoDirs
 #    - brightsun/branding-${REBRANDING_NAME}
 #    Then switch back to the current branch
 
-function is_autocreate_branch() {
-  [ "${target_branch##*/}" == "selfhost-patching-changes" ] && return 0
-  [ "${target_branch##*/}" == "branding-${REBRANDING_NAME}" ] && return 0
-  return 1
+function determine_autocreate_branch() {
   local target_branch=$1
+  local base_target_branch="${target_branch##*/}"
+  # checks if this matches the two target names, or starts with them (to allow for version suffixes)
+  [ "${base_target_branch}" == "selfhost-patching-changes" ] && return 1
+  [ "${base_target_branch##selfhost-patching-changes-}" != "${base_target_branch}" ] && return 1
+  [ "${base_target_branch}" == "branding-${REBRANDING_NAME}" ] && return 2
+  [ "${base_target_branch##branding-${REBRANDING_NAME}-}" != "${base_target_branch}" ] && return 2
+  return 0
 }
 
 function apply_selfhost_patching_changes() {
@@ -267,7 +271,8 @@ for repoDir in $repoDirs
       application_result=0
       for merge_branch in $merge_branches
         do
-          is_autocreate_branch "$merge_branch" || { echo $merge_branch is not auto-create ; continue; }
+          determine_autocreate_branch "$merge_branch" ; branch_type=$?
+          [ $branch_type -eq 0 ] && { echo $merge_branch is not auto-create ; continue ; }
           merge_branch_local=${merge_branch##*/}
           show_info --oneline "checking for $merge_branch" "and $merge_branch_local"
           if git_branch_present $merge_branch; then
@@ -281,9 +286,9 @@ for repoDir in $repoDirs
               show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
               current_branch=$(git_current_branch)
               git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; exit 1; }
-              if [ "$merge_branch_local" == "selfhost-patching-changes" ]; then
+              if [ $branch_type -eq 1 ]; then
                 apply_selfhost_patching_changes || application_error=1
-              elif [ "$merge_branch_local" == "branding-${REBRANDING_NAME}" ]; then
+              elif [ $branch_type -eq 2 ]; then
                 if [ "$REBRANDING_DISABLED" == "true" ]; then
                   show_warning "Not Rebranding:" "ensure that you don't make this available publicly until rebranded, in order to comply with bluesky-social/social-app guidelines"
                   echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
