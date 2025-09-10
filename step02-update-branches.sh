@@ -107,8 +107,28 @@ function analyse_branch() {
       show_info --oneline "searching for configured" $required_branch
       if ! git_branch_present $required_branch
         then
-          show_error "Could not find $required_branch" "which is the expected base for $repo_key"
-          return 1
+          # the likely scenario is that this branch is under construction for the first time; set it up accordingly if we can get the right config
+          if git_branch_present $required_branch_name
+            then
+              show_info --oneline "$repo_key: branch $required_branch_name" "is present locally but not at $required_branch; presume it is being made but not pushed yet"
+              base_branch=$required_branch_name
+            else
+              local intended_base_ref="$(yq -r ".${repo_key} // {} | .[\"${required_branch_name}\"].base" "$script_dir/$FEATURE_BRANCH_RULES")"
+              if [[ "$intended_base_ref" != "" && "$intended_base_ref" != "null" ]]; then
+                show_warning --oneline "Could not find $required_branch" "which is the expected base for $repo_key; presume it is being constructed for first time from $intended_base_ref"
+                if git_ref_present $intended_base_ref; then
+                  show_info --oneline "Creating new branch $required_branch_name" "based on $intended_base_ref"
+                  git checkout -b $required_branch_name $intended_base_ref
+                  base_branch=$required_branch_name
+                else
+                  show_error --oneline "Could not find $required_branch" "which is the expected base for $repo_key, and could not find intended base ref $intended_base_ref; cannot continue"
+                  return 1
+                fi
+              else
+                show_error --oneline "Could not find $required_branch" "which is the expected base for $repo_key, and could not find intended base ref in branch rules; cannot continue"
+                return 1
+              fi
+            fi
         fi
       if git_is_ancestor $required_branch
         then
