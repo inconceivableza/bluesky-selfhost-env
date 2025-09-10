@@ -34,28 +34,35 @@ function git_current_branch() {
 
 function git_branch_present() {
   # accepts either a local branch (without /) or a remote (as 'remote/branch')
-  required_branch="$1"
-  if [ "${required_branch##*/}" == "$required_branch" ]
+  local check_present_branch="$1" check_present_branch_ref
+  if [ "${check_present_branch##*/}" == "$check_present_branch" ]
     then
-      required_branch_ref=refs/heads/$required_branch
+      check_present_branch_ref=refs/heads/$check_present_branch
     else
-      required_branch_ref=refs/remotes/$required_branch
+      check_present_branch_ref=refs/remotes/$check_present_branch
     fi
-  git show-ref --verify --quiet $required_branch_ref
+  git show-ref --verify --quiet $check_present_branch_ref
+  return $?
+}
+
+function git_ref_present() {
+  # accepts any ref that is resolvable
+  local check_present_ref="$1"
+  git show-ref --quiet $check_present_ref
   return $?
 }
 
 function git_is_ancestor() {
   # checks whether the given ref is an ancestor of the current commit
-  required_ref="$1"
-  git merge-base --is-ancestor $required_branch HEAD
+  local check_ancestor_ref="$1"
+  git merge-base --is-ancestor $check_ancestor_ref HEAD
 }
 
 # 1. Check which branch we're on. If not listed in branch-rules, and non of the branches listed there is an ancestor commit:
 #    - create the latest branch in branch-rules / the one specified in the environment
 
 cd "$script_dir"
-show_heading "Checking for uncommitted changes" "in the specified repositories and fetching from remotes"
+show_heading "Checking for uncommitted changes" "in the specified repositories" $([ $do_fetch -eq 1 ] && echo "and fetching from remotes")
 error_repos=""
 for repoDir in $repoDirs
   do
@@ -85,13 +92,13 @@ error_repos=""
 declare -A base_branch_names
 
 function analyse_branch() {
-  repo_key="$1"
+  local repo_key="$1"
   echo "$blue_color$clear_bold$repo_key$reset_color"
-  repo_branch_varname=${repo_key//-/_}_branch
-  required_branch=${!repo_branch_varname:-}
-  required_branch_name=${required_branch##*/}
-  current_branch=$(git_current_branch)
-  base_branch=
+  local repo_branch_varname=${repo_key//-/_}_branch
+  local required_branch=${!repo_branch_varname:-}
+  local required_branch_name=${required_branch##*/}
+  local current_branch=$(git_current_branch)
+  local base_branch=
   if [ "$required_branch" != "" ]
     then
       show_info --oneline "searching for configured" $required_branch
@@ -120,7 +127,7 @@ function analyse_branch() {
       base_branch_names["$repo_key"]="$base_branch"
       return 0
     else
-      potential_branches="$(yq -r ".${repo_key} // {} | keys | .[]" "$script_dir/$FEATURE_BRANCH_RULES")"
+      local potential_branches="$(yq -r ".${repo_key} // {} | keys | .[]" "$script_dir/$FEATURE_BRANCH_RULES")" present_base_branch
       [ "$potential_branches" == "" ] && {
         show_info --oneline "will not branch $repo_key" "as branch-rules are not configured for it"
         return 0
@@ -183,10 +190,10 @@ for repoDir in $repoDirs
 #    Then switch back to the current branch
 
 function is_autocreate_branch() {
-  target_branch=$1
   [ "${target_branch##*/}" == "selfhost-patching-changes" ] && return 0
   [ "${target_branch##*/}" == "branding-${REBRANDING_NAME}" ] && return 0
   return 1
+  local target_branch=$1
 }
 
 function apply_selfhost_patching_changes() {
