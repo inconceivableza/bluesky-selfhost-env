@@ -514,12 +514,15 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       # these are passed through to bskyembed's vite which interpolates them. It's yucky and in HTML doesn't support fallback
       # however, we're actually not using bskyembed/ (ts) but bskyweb/cmd/embedr (go), which doesn't use these
-      - VITE_CARD_HOST=${cardFQDN}
+      - VITE_CARD_URL=https://${cardFQDN}
+      - VITE_EMBED_GENERATOR=${REBRANDED_WEB_SERVICE}}
       - VITE_EMBED_URL=${embedFQDN}
-      - VITE_LINK_HOST=${linkFQDN}
-      - VITE_PUBLIC_APPVIEW_HOST=https://${publicApiFQDN}
-      - VITE_SOCIAL_APP_HOST=${socialappFQDN}
+      - VITE_LINK_URL=https://${linkFQDN}
+      - VITE_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - VITE_SOCIAL_APP_ABOUT=https://${pdsFQDN}/about
+      - VITE_SOCIAL_APP_HOST=${socialappFQDN}
+      - VITE_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - VITE_SOCIAL_APP_URL=https://${socialappFQDN}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8101/ | grep 'Embed' >/dev/null"]
       timeout: 10s

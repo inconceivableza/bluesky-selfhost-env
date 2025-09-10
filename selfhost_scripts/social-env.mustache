@@ -14,10 +14,15 @@ EXPO_PUBLIC_SOCIAL_POLICY_BASE_URL={{SOCIAL_POLICY_BASE_URL}}
 EXPO_PUBLIC_STATUS_PAGE_URL={{STATUS_PAGE_URL}}
 EXPO_PUBLIC_VIDEO_SERVICE=
 EXPO_PUBLIC_VIDEO_SERVICE_DID=
-# Will these Vite things work with our different environments?
-VITE_EMBED_URL={{embedFQDN}}
-VITE_SOCIAL_APP_ABOUT=https://{{pdsFQDN}}/about
-VITE_CARD_HOST={{cardFQDN}}
-VITE_LINK_HOST={{linkFQDN}}
-VITE_PUBLIC_APPVIEW_HOST={{publicApiFQDN}}
-VITE_SOCIAL_APP_HOST={{socialappFQDN}}
+# VITE_ variables are used by {bsky}embed. 
+# The actual running embed server will need to use a particular set of them, depending on whether it is production, testing or development
+# They are set to the following values in docker-compose, which loads them from the appropriate .env like everything else
+# VITE_CARD_URL=https://{{cardFQDN}}
+# VITE_EMBED_GENERATOR={{REBRANDED_WEB_SERVICE}}
+# VITE_EMBED_URL=https://{{embedFQDN}}
+# VITE_LINK_URL=https://{{linkFQDN}}
+# VITE_PUBLIC_APPVIEW_URL=https://{{publicApiFQDN}}
+# VITE_SOCIAL_APP_ABOUT=https://{{pdsFQDN}}/about
+# VITE_SOCIAL_APP_HOST={{socialappFQDN}}
+# VITE_SOCIAL_APP_NAME={{SOCIAL_APP_NAME}}
+# VITE_SOCIAL_APP_URL=https://{{socialappFQDN}}
