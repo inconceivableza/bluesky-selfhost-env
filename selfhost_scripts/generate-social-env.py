@@ -32,7 +32,10 @@ def get_social_env_output_path(profile, args):
     """Get the output path for social-app env file based on profile."""
     base_path = base_dir / Path("repos/social-app")
     if args.output:
-        return base_path / Path(args.output) # will compute as relative unless args.output is absolute
+        if args.output.endswith('/'):
+            base_path = base_dir / Path(args.output)
+        else:
+            return base_path / Path(args.output) # will compute as relative unless args.output is absolute
     
     if profile is None:
         return base_path / ".env"
@@ -176,7 +179,7 @@ def main():
     )
     parser.add_argument(
         '-o', '--output', default=None,
-        help='Override the filename to output (relative to target social-app directory; defaults to .env or .env.$profile)',
+        help='Override the filename or directory prefix (if ending with /) to output (relative to target social-app directory; defaults to .env or .env.$profile)',
     )
     
     args = parser.parse_args()

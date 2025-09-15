@@ -421,7 +421,7 @@ services:
     profiles: ['', 'social-app']
     ports:
       - 8100:8100
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/$${REBRANDED_WEB_SERVICE:-bskyweb} serve"
+    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
     <<: *certificate-volumes
     environment:
       # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 :
@@ -442,7 +442,6 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
       - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY= # we don't yet have one of these
-      - REBRANDED_WEB_SERVICE=${REBRANDED_WEB_SERVICE:-bskyweb}
       # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       # - EXPO_PUBLIC_STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
