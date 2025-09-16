@@ -2,9 +2,10 @@ code:
   app_slug_scheme: 'opensky'
   apple_groups: 'group.app.opensky'
   chat_api_did: 'did:web:api.chat.opensky.local.com#opensky_chat'
-  ios_clip_name: 'OpenskyClip'
-  ios_nse_name: 'OpenskyNSE'
-  ios_share_with_name: 'Share-with-Opensky'
+  # these ios_${plugin}_name variables are not to set the target name (which is the source directory) but the suffix to the web_package_id used for the bundleId
+  ios_clip_name: 'AppClip' # this is currently not used - it's hardcoded to AppClip anyway
+  ios_nse_name: 'AppNSE'
+  ios_share_with_name: 'Share-with-App'
   expo_project_owner: 'davidfinc-org'
   expo_project_id: '19a6f1d0-201b-434e-affb-e4bdd025cd58'
   google_service_project_name: openskyweb
@@ -16,6 +17,7 @@ atproto_accounts:
     varname: OPENSKY_APP_ACCOUNT_DID
 naming:
   app_name: Opensky
+  spoken_name: "Open Sky"
 styling:
   additional_color_defs: []
   android_splash_background_color_dark: '#3a4a5a'
