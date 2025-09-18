@@ -17,6 +17,7 @@ atproto_accounts:
     varname: OPENSKY_APP_ACCOUNT_DID
 naming:
   app_name: Opensky
+  full_app_name: "Opensky Social"
   spoken_name: "Open Sky"
 styling:
   additional_color_defs: []

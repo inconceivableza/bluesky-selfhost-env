@@ -20,6 +20,7 @@ atproto_accounts:
     varname: BSKY_APP_ACCOUNT_DID
 naming:
   app_name: Bluesky # ATPROTO_APP_NAME
+  full_app_name: "Bluesky Social" # occasionally used
   spoken_name: "Blue Sky"
 styling:
   additional_color_defs: # hack to get new colour names
