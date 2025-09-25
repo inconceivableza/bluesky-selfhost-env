@@ -2,17 +2,34 @@
 
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
+. "$script_dir/utils-logging.sh"
+
+# syntax $0 [build_profile] [env_profile]
 if [ "$#" -eq 1 ]
   then
     build_profile="$1"
     selfhost_env_profile="$build_profile"
+    [[ "$selfhost_env_profile" == "testflight" || "$selfhost_env_profile" == "preview" ]] && selfhost_env_profile=test
+elif [ "$#" -eq 2 ]
+  then
+    build_profile="$1"
+    selfhost_env_profile="$2"
+    manually_set_env_profile=1
   else
-    build_profile="preview"
+    build_profile="development"
+    selfhost_env_profile="$build_profile"
+  fi
+if [ ! -f "$script_dir/.env.$selfhost_env_profile" ]
+  then
+    [ "$selfhost_env_profile" == "production" ] && { show_error "cannot build production" "as .env.production is missing" ; exit 1 ; }
+    [ "$manually_set_env_profile" == 1 ] && { show_error "cannot find environment" "$selfhost_env_profile was manually specified but .env.$selfhost_env_profile does not exist" ; exit 1 ; }
+    show_warning "selecting development environment" for build profile $build_profile rather than $selfhost_env_profile, as .env.$selfhost_env_profile does not exist
+    selfhost_env_profile="development"
   fi
 . "$script_dir/utils.sh"
-source_env || exit 1
+source_env "$selfhost_env_profile" || exit 1
 
-show_heading "Building iOS app" "using applied branding and ${build_profile} profile"
+show_heading "Building iOS app" "using applied branding, ${build_profile} profile and ${selfhost_env_profile} default environment"
 
 cd "$script_dir/repos/social-app"
 
@@ -34,6 +51,12 @@ show_info --oneline "Creating temporary build directory" "at ${build_dir}"
 mkdir -p "$build_dir"
 mkdir -p "$target_dir"
 
+show_heading "Creating environments" "for social-app from ${build_profile} environment"
+# TODO: work out what the mobile build actually does with the .env files; should we switch .env to .env.development and copy .env.$build_profile to .env just for mobile builds?
+$script_dir/selfhost_scripts/generate-social-env.py -P -D || { show_error "Error generating social-app environment" "which is required for build" ; exit 1 ; }
+$script_dir/selfhost_scripts/generate-social-env.py -T || show_warning "Error generating social-app test environment" "so build will not contain it"
+$script_dir/selfhost_scripts/generate-google-services-json.py -PDTV || show_warning "Error generating google services for all build environments"
+
 show_heading "Running yarn" "to ensure everything is installed"
 yarn
 
@@ -44,7 +67,7 @@ npx expo install --check
 # issues with npx doctor (added things to package.json, but was this necessary?)
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
-if npx eas-cli build -p ios --local -e ${build_profile} --output="$build_dir"
+if npx eas-cli build -p ios --local -e ${build_profile} --output="$build_dir/$build_file"
   then
     cd "$build_dir"
     if [ -f "$build_file" ]

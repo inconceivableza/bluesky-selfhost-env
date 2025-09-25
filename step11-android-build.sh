@@ -98,7 +98,7 @@ show_heading "Running yarn" "to ensure everything is installed"
 yarn
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
-if npx eas-cli build -p android --local -e $build_profile --output="$build_dir/$build_file"
+if npx eas-cli build -p android --local -e ${build_profile} --output="$build_dir/$build_file"
   then
     cd "$build_dir"
     if [ -f "$build_file" ]
