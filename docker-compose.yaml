@@ -442,6 +442,7 @@ services:
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
+      - PRECONNECT_DOMAINS=https://${pdsFQDN} # comma-separated list for index.html
       - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY= # we don't yet have one of these
       # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
