@@ -241,6 +241,11 @@ services:
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2582/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - database
@@ -310,6 +315,11 @@ services:
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
       - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - database
@@ -407,6 +417,11 @@ services:
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
       - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - database
@@ -782,6 +797,11 @@ services:
       - DB_TYPE=mmdb
       - COUNTRY=geo-whois-asn-country
       - ASN=
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080 | grep 'message' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
 
   backup:
