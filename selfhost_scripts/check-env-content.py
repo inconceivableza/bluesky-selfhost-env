@@ -28,58 +28,71 @@ def load_yaml_file(filepath):
     except Exception as e:
         raise ValueError(f"Error reading {filepath}: {e}")
 
-def validate_env_content_structure(data):
-    """Validate that the env-content structure matches expected schema"""
-    issues = []
+def compare_yaml_values(example_data, target_data, path="", show_value_changes=False):
+    """Recursively compare YAML values and return differences"""
+    missing_keys = []
+    extra_keys = []
+    value_changes = []
 
-    if not isinstance(data, dict):
-        issues.append("❌ Root must be a dictionary")
-        return issues
+    if isinstance(example_data, dict) and isinstance(target_data, dict):
+        # Check for missing keys in target
+        for key in example_data:
+            current_path = f"{path}.{key}" if path else key
+            if key not in target_data:
+                missing_keys.append(f"❌ MISSING: {current_path}")
+            else:
+                sub_missing, sub_extra, sub_changes = compare_yaml_values(
+                    example_data[key], target_data[key], current_path, show_value_changes
+                )
+                missing_keys.extend(sub_missing)
+                extra_keys.extend(sub_extra)
+                value_changes.extend(sub_changes)
 
-    if 'atproto_accounts' not in data:
-        issues.append("❌ MISSING: atproto_accounts section")
-        return issues
+        # Check for extra keys in target
+        for key in target_data:
+            if key not in example_data:
+                current_path = f"{path}.{key}" if path else key
+                extra_keys.append(f"ℹ️  EXTRA: {current_path}")
 
-    atproto_accounts = data['atproto_accounts']
-    if not isinstance(atproto_accounts, dict):
-        issues.append("❌ atproto_accounts must be a dictionary")
-        return issues
+    elif isinstance(example_data, list) and isinstance(target_data, list):
+        # For lists, we'll just check if they're different
+        if show_value_changes and example_data != target_data:
+            value_changes.append(f"📝 VALUE CHANGE: {path}. Example: {example_data}, Target: {target_data}")
 
-    if 'follow' not in atproto_accounts:
-        issues.append("❌ MISSING: atproto_accounts.follow section")
     else:
-        follow = atproto_accounts['follow']
-        if not isinstance(follow, dict):
-            issues.append("❌ atproto_accounts.follow must be a dictionary")
-        else:
-            # Validate follow entries
-            for account_name, account_data in follow.items():
-                if not isinstance(account_data, dict):
-                    issues.append(f"❌ atproto_accounts.follow.{account_name} must be a dictionary")
-                    continue
+        # Direct value comparison
+        if show_value_changes and example_data != target_data:
+            value_changes.append(f"📝 VALUE CHANGE: {path}. Example: {example_data}, Target: {target_data}")
 
-                if 'did' not in account_data:
-                    issues.append(f"❌ MISSING: atproto_accounts.follow.{account_name}.did")
-                elif not account_data['did'] or not account_data['did'].startswith('did:'):
-                    issues.append(f"❌ INVALID: atproto_accounts.follow.{account_name}.did must be a valid DID")
-
-    return issues
+    return missing_keys, extra_keys, value_changes
 
 def main():
-    parser = argparse.ArgumentParser(description='Check env-content configuration')
-    parser.add_argument('-e', '--env-file', default='.env', help='Environment file (default: .env)')
-    parser.add_argument('-c', '--env-content-file', help='Env-content file to check')
+    parser = argparse.ArgumentParser(description='Compare env-content.yml file with example template')
+    parser.add_argument('-c', '--env-content-file',
+                       help='Env-content YAML file to check (default: derived from .env ENV_CONTENT_FILE)')
+    parser.add_argument('-e', '--env-file', default='.env',
+                       help='Environment file to read (default: .env)')
     parser.add_argument('-t', '--template-file', default='bluesky-env-content.yml.example',
-                        help='Template file (default: bluesky-env-content.yml.example)')
-    parser.add_argument('-s', '--silent', action='store_true', help='Silent mode')
+                       help='Template file to compare against (default: bluesky-env-content.yml.example)')
+    parser.add_argument('-v', '--show-value-changes', action='store_true',
+                       help='Show variables with different values (default: only show missing keys)')
+    parser.add_argument('-s', '--silent', action='store_true',
+                       help='Silent mode - no output, just exit codes (0=match, 1=differences)')
 
     args = parser.parse_args()
 
-    # If no specific env-content file provided, determine from environment
+    # If no env-content file specified, try to derive it from environment
     if not args.env_content_file:
+        # Check if .env file exists
+        if not os.path.exists(args.env_file):
+            if not args.silent:
+                print(f"Error: Environment file '{args.env_file}' not found and no env-content file specified", file=sys.stderr)
+                print("Please specify env-content file with -c/--env-content-file", file=sys.stderr)
+            sys.exit(1)
+
         try:
-            # Read environment file to get current configuration
-            env_vars = read_env(args.env_file)
+            # Use env_utils to read the environment file
+            env_vars = read_env(args.env_file, interpolate=False)
 
             # Check for ENV_CONTENT_FILE override
             if 'ENV_CONTENT_FILE' in env_vars and env_vars['ENV_CONTENT_FILE'].strip():
@@ -114,42 +127,82 @@ def main():
 
     # Show file information (unless silent)
     if not args.silent:
-        print(f"Checking env-content configuration:")
+        print(f"Comparing env-content files:")
         print(f"  Target:   {get_file_info(args.env_content_file)}")
         print(f"  Template: {get_file_info(args.template_file)}")
         print()
 
     try:
         # Load YAML files
+        example_data = load_yaml_file(args.template_file)
         target_data = load_yaml_file(args.env_content_file)
 
     except Exception as e:
         if not args.silent:
-            print(f"Error loading env-content file: {e}", file=sys.stderr)
+            print(f"Error loading YAML files: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Check for syntax issues in the environment file
+    # Check for syntax issues in the environment file if we read it
     env_syntax_issues = []
-    if os.path.exists(args.env_file):
+    if not args.env_content_file and os.path.exists(args.env_file):
         env_syntax_issues = check_syntax_issues(args.env_file)
 
-    # Validate env-content structure
-    structure_issues = validate_env_content_structure(target_data)
+    # Compare the YAML structures
+    missing_keys, extra_keys, value_changes = compare_yaml_values(
+        example_data, target_data, show_value_changes=args.show_value_changes
+    )
 
-    # Report results
-    all_issues = env_syntax_issues + structure_issues
+    # Track issues and critical errors (missing keys are always critical)
+    has_issues = bool(missing_keys or extra_keys or value_changes)
+    has_missing_keys = bool(missing_keys)
+    has_syntax_issues = len(env_syntax_issues) > 0
 
-    if all_issues:
+    if not args.silent:
+        print("=== ENV-CONTENT ANALYSIS ===\n")
+
+        # Report syntax issues in env file first
+        if env_syntax_issues:
+            print("Environment file syntax issues:")
+            for issue in env_syntax_issues:
+                print(f"🚨 SYNTAX: {issue}")
+            print()  # Add blank line after syntax issues
+
+        # Always show missing keys
+        for missing in missing_keys:
+            print(missing)
+
+        # Show extra keys
+        for extra in extra_keys:
+            print(extra)
+
+        # Show value changes only if -v flag is used
+        if args.show_value_changes:
+            for change in value_changes:
+                print(change)
+
+        if not has_issues and not has_syntax_issues:
+            print("✅ All env-content values match the template!")
+
+    # Exit with error code if there are missing keys or syntax issues (critical errors)
+    if has_missing_keys or has_syntax_issues:
         if not args.silent:
-            print("Issues found:")
-            for issue in all_issues:
-                print(f"  {issue}")
-            print()
+            error_parts = []
+            if has_syntax_issues:
+                error_parts.append("syntax errors")
+            if has_missing_keys:
+                error_parts.append("missing keys")
+
+            error_msg = " and ".join(error_parts)
+            print(f"❌ Error: there are {error_msg} in this configuration")
         sys.exit(1)
-    else:
+
+    # Exit with informational message if there are only extra keys (not critical)
+    if has_issues and not has_missing_keys:
         if not args.silent:
-            print("✅ Env-content configuration is valid")
+            print("ℹ️  Note: There are extra keys in the configuration (not critical)")
         sys.exit(0)
+
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

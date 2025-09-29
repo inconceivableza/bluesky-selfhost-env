@@ -6,13 +6,10 @@
 atproto_accounts:
   # Accounts to follow by default for new users
   follow:
-    # Example account entries - customize for your instance
+    # Example account entries - uncomment and customize for your instance
     # admin:
     #   did: "did:plc:your-admin-did-here"
     # support:
     #   did: "did:plc:your-support-did-here"
     # news:
     #   did: "did:plc:your-news-did-here"
-
-# Additional structured content can be added here in the future
-# following the EnvContent type definition from social-app
