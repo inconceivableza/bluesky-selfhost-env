@@ -123,6 +123,9 @@ def generate_branding_file(args):
     subprocess.call(["cp", "branding.json", "bskyweb/branding.json"], cwd=base_dir / Path("repos/social-app"))
     if not args.silent:
         print(f"✅ Copied: {base_dir / Path("respos/social-app/bskyweb/branding.json")}")
+    subprocess.call(["cp", "branding.json", "bskylink/branding.json"], cwd=base_dir / Path("repos/social-app"))
+    if not args.silent:
+        print(f"✅ Copied: {base_dir / Path("respos/social-app/bskylink/branding.json")}")
     return True
 
 def main():
