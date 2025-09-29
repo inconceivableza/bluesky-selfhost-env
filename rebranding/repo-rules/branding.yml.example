@@ -14,10 +14,6 @@ code:
   sentry_project_organization: 'blueskyweb'
   updates_url: 'https://updates.bsky.app/manifest'
   web_package_id: xyz.blueskyweb.app
-atproto_accounts:
-  follow_default:
-    did: "did:plc:z72i7hdynmk6r22z27h6tvur"
-    varname: BSKY_APP_ACCOUNT_DID
 naming:
   app_name: Bluesky # ATPROTO_APP_NAME
   full_app_name: "Bluesky Social" # occasionally used
