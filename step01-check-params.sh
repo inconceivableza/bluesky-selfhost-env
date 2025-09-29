@@ -19,6 +19,9 @@ show_heading "Checking for missing params" "in test environment (not required)"
 show_heading "Checking for missing params" "in branding configuration"
 "$script_dir"/selfhost_scripts/check-branding.py || { show_error "Missing branding config:" "please correct" ; exit 1 ;}
 
+show_heading "Checking for missing params" "in env-content configuration"
+"$script_dir"/selfhost_scripts/check-env-content.py || { show_error "Missing env-content config:" "please correct" ; exit 1 ;}
+
 show_heading "Checking secrets configuration"
 "$script_dir"/selfhost_scripts/check-secrets.py || { show_error "Secrets issues:" "please review and correct" ; exit 1 ;}
 

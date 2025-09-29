@@ -27,6 +27,9 @@ $script_dir/selfhost_scripts/generate-social-env.py -T || show_warning "Error ge
 $script_dir/selfhost_scripts/generate-social-env.py -P -p development -o repos/social-app/bskyembed/ -t selfhost_scripts/social-env-embedr.mustache --no-branding || { show_error "Error generating social-app embedr environment" "which is required for build" ; exit 1 ; }
 $script_dir/selfhost_scripts/generate-google-services-json.py -PDTV || show_warning "Error generating google services for all build environments"
 
+show_heading "Creating env-content files" "for bsky appview from production, development and test environments"
+$script_dir/selfhost_scripts/generate-appview-env.py || show_warning "Error generating bsky appview env-content files"
+
 failures=""
 for service in $BUILD_SERVICES
   do

@@ -1,0 +1,18 @@
+# Bluesky Environment Content Configuration
+# This file defines structured content that can be configured per environment
+# Copy this file to env-content.yml and customize as needed
+
+# Account configurations for atproto services
+atproto_accounts:
+  # Accounts to follow by default for new users
+  follow:
+    # Example account entries - customize for your instance
+    # admin:
+    #   did: "did:plc:your-admin-did-here"
+    # support:
+    #   did: "did:plc:your-support-did-here"
+    # news:
+    #   did: "did:plc:your-news-did-here"
+
+# Additional structured content can be added here in the future
+# following the EnvContent type definition from social-app
