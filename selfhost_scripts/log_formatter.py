@@ -22,27 +22,36 @@ def adjust_vars(record):
         record['res'] = json.dumps(res)
     return record
 
-for line in sys.stdin:
-    if not '|' in line:
-        sys.stdout.write(line)
-        continue
-    service_prefix,log_json = line.split('|',1)
-    service_name = service_prefix.strip()
-    try:
-        log_obj = json.loads(log_json)
-    except Exception as e:
-        rich.print(f"[bold green]{service_prefix}[/bold green]|", end='')
-        print(log_json.rstrip())
-        continue
-    log_obj = adjust_vars(log_obj)
-    status_vars = {}
-    for varname in status_line_varnames:
-        if varname in log_obj:
-            value = log_obj.pop(varname)
-            if varname == 'time' and type(value) == int:
-                value = datetime.datetime.fromtimestamp(value/1000.)
-            elif varname == 'ts' and type(value) == float:
-                value = datetime.datetime.fromtimestamp(value)
-            status_vars[varname] = value
-    status_line = ' '.join([f"{varname}={status_vars[varname]}" for varname in status_line_varnames if varname in status_vars])
-    rich.print(f"[bold green]{service_prefix}[/bold green]|", status_line, log_obj)
+def main():
+    for line in sys.stdin:
+        if not '|' in line:
+            sys.stdout.write(line)
+            continue
+        service_prefix,log_json = line.split('|',1)
+        service_name = service_prefix.strip()
+        try:
+            log_obj = json.loads(log_json)
+        except Exception as e:
+            rich.print(f"[bold green]{service_prefix}[/bold green]|", end='')
+            print(log_json.rstrip())
+            continue
+        log_obj = adjust_vars(log_obj)
+        status_vars = {}
+        for varname in status_line_varnames:
+            if varname in log_obj:
+                value = log_obj.pop(varname)
+                if varname == 'time' and type(value) == int:
+                    value = datetime.datetime.fromtimestamp(value/1000.)
+                elif varname == 'ts' and type(value) == float:
+                    value = datetime.datetime.fromtimestamp(value)
+                status_vars[varname] = value
+        status_line = ' '.join([f"{varname}={status_vars[varname]}" for varname in status_line_varnames if varname in status_vars])
+        rich.print(f"[bold green]{service_prefix}[/bold green]|", status_line, log_obj)
+
+if __name__ == '__main__':
+   try:
+       main()
+   except KeyboardInterrupt:
+       rich.print("[bold blue]Goodbye[/bold blue]")
+       sys.exit()
+
