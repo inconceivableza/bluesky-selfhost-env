@@ -11,10 +11,6 @@ code:
   google_service_project_name: openskyweb
   sentry_project_organization: 'openskysocial'
   web_package_id: xyz.opensky.app
-atproto_accounts:
-  follow_default:
-    did: "did:plc:z72i7hdynmk6r22z27h6tvur" # This would need to be updated for opensky
-    varname: OPENSKY_APP_ACCOUNT_DID
 naming:
   app_name: Opensky
   full_app_name: "Opensky Social"

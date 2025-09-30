@@ -469,6 +469,8 @@ services:
       - EXPO_PUBLIC_SOCIAL_EMBED_SERVICE=https://${embedFQDN} # TODO: actually publish the embed service on a domain
       - EXPO_PUBLIC_SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
       - EXPO_PUBLIC_SOCIAL_POLICY_BASE_URL=${SOCIAL_POLICY_BASE_URL}
+      - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${STATSIG_CLIENT_KEY}
+      - EXPO_PUBLIC_STATSIG_API_URL=${STATSIG_API_URL}
       - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
       - EXPO_PUBLIC_VIDEO_SERVICE= # we don't yet have one of these
       - EXPO_PUBLIC_VIDEO_SERVICE_DID= # we don't yet have one of these
