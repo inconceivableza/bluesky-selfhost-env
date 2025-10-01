@@ -277,20 +277,36 @@ function apply_rebranding() {
 }
 
 function autocreate_branch {
+  update=0
+  [[ "$1" == "-u" || "$1" == "--update" ]] && { update=1; shift 1 ; }
   merge_branch="$1"
   merge_branch_local=${merge_branch##*/}
   merge_branch_base="$2"
+  should_run=$update
   show_info --oneline "checking for $merge_branch" "and $merge_branch_local"
-  if git_branch_present $merge_branch; then
-    show_info --oneline "Branch $merge_branch" "exists; no need to create"
+  git_branch_present $merge_branch; remote_branch_missing=$?
+  git_branch_present $merge_branch_local; local_branch_missing=$?
+  if [ "$should_run" == 0 ]; then
+    if [ "$remote_branch_missing" == 1 ]; then
+      should_run=1
+    fi
+  fi
+  if [ "$should_run" == 0 ]; then
+    show_info --oneline "Branch $merge_branch" "exists, and not updating; no need to create"
   else
-    show_warning --oneline "Branch $merge_branch" "is missing"
-    if git_branch_present ${merge_branch_local}; then
+    [ "$remote_branch_missing" == 1 ] && show_warning --oneline "Branch $merge_branch" "is missing"
+    if [[ "$local_branch_missing" == 0 && "$update" == "0" ]]; then
       show_info --oneline "Found local branch $merge_branch_local" "which hasn't yet been pushed to remote; will use that"
     else
-      show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
       current_branch=$(git_current_branch)
-      git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; return 1; }
+      if [ "$local_branch_missing" == 1 ]; then
+        show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
+        git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; return 1; }
+      else
+        show_info "Branch exists but is out of date" "$merge_branch_local on $repo_key; will repoint to where we are"
+        git checkout "$merge_branch_local" || { show_error "Could not checkout branch" ; return 1; }
+        git merge "$merge_branch_base" || { show_error "Could not merge base branch" ; return 1; }
+      fi
       if [ $branch_type -eq 1 ]; then
         apply_selfhost_patching_changes || application_error=1
       elif [ $branch_type -eq 2 ]; then
@@ -344,7 +360,9 @@ for repoDir in $repoDirs
               # merge_branch_base=$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .base" $script_dir/$FEATURE_BRANCH_RULES)
               merge_branch_base="$current_branch"
               show_info "autocreating $merge_branch" "in $repoName"
-              autocreate_branch "$merge_branch" "$merge_branch_base" || { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
+              flags=""
+              [ $branch_type -eq 2 ] && flags="-u" # only update the branding automatically
+              autocreate_branch $flags "$merge_branch" "$merge_branch_base" || { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
             }
             show_info "merging $merge_branch into $actual_target:" "in $repoName"
             git merge $merge_branch || { show_error "error merging $merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
