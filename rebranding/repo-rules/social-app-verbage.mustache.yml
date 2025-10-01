@@ -4,7 +4,7 @@ rules:
     - pattern: "Bluesky"
   # fix: "{{ naming.app_name }}"
   # all over the place. We should do something in app.config.js, but lots of the others are more rebranding than config
-  message: Hardcoded reference to social network app name "Bluesky" - should load from ${branding.naming.app_name}
+  message: Hardcoded reference to social network app name "Bluesky" - should load from ${naming.app_name}
   languages:
     - generic
   severity: WARNING

@@ -1,11 +1,13 @@
 code:
   app_slug_scheme: 'opensky'
   apple_groups: 'group.app.opensky'
+  apple_appstore_path: 'opensky-social/idNNNNNNNNNN'
   chat_api_did: 'did:web:api.chat.opensky.local.com#opensky_chat'
   # these ios_${plugin}_name variables are not to set the target name (which is the source directory) but the suffix to the web_package_id used for the bundleId
   ios_clip_name: 'AppClip' # this is currently not used - it's hardcoded to AppClip anyway
   ios_nse_name: 'AppNSE'
   ios_share_with_name: 'Share-with-App'
+  expo_project_name: 'opensky.app'
   expo_project_owner: 'davidfinc-org'
   expo_project_id: '19a6f1d0-201b-434e-affb-e4bdd025cd58'
   google_service_project_name: openskyweb

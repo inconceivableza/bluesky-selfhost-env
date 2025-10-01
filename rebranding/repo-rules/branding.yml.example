@@ -9,8 +9,9 @@ code:
   ios_clip_name: 'BlueskyClip'
   ios_nse_name: 'BlueskyNSE'
   ios_share_with_name: 'Share-with-Bluesky'
-  expo_project_owner: 'blueskysocial'
+  expo_project_name: 'bsky.app'
   expo_project_id: '87ab4766-b66c-489c-98ca-65e740fa205b'
+  expo_project_owner: 'blueskysocial'
   google_service_project_name: blueskyweb # this is used in an example; the actual config should be in a proper google services json file
   sentry_project_organization: 'blueskyweb'
   updates_url: 'https://updates.bsky.app/manifest'

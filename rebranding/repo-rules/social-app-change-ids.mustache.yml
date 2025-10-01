@@ -3,7 +3,7 @@ rules:
 - id: package-id
   patterns:
     - pattern: '"name": "bsky.app"'
-  fix: '"name": "{{ env.socialappFQDN }}"'
+  fix: '"name": "{{ code.expo_project_name }}"'
   message: Rename expo package
   languages:
     - generic
