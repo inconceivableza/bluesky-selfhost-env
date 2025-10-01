@@ -28,7 +28,16 @@ function apply_feature_branches_usage {
   echo " - not updating, and not on target_branch or base_branch or one of the existing allowed_starting_branches"
 }
 
-function apply_feature_branches {
+function merge_feature_branches {
+  show_info "merging branches into $actual_target:" "please handle any issues that crop up by adjusting the branches if they don't merge, but version-suffixing to prevent issues with earlier versions"
+  for branch in $merge_branches
+    do
+      show_info "merging $branch into $actual_target:" "in $repoName"
+      git merge $branch || { show_error "error merging $branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+    done
+}
+
+function prepare_apply_feature_branches {
   branch_action=create
   [[ "$1" == "-u" || "$1" == "--update" ]] && {
     branch_action=update
@@ -113,13 +122,18 @@ function apply_feature_branches {
     show_heading "Will update current branch $current_branch" "in $repoName based on $base_branch by merging configured branches for $target_branch" $merge_branches
     actual_target=$current_branch
   fi
+}
 
-  show_info "merging branches into $actual_target:" "please handle any issues that crop up by adjusting the branches if they don't merge, but version-suffixing to prevent issues with earlier versions"
-  for branch in $merge_branches
-    do
-      show_info "merging $branch into $actual_target:" "in $repoName"
-      git merge $branch || { show_error "error merging $branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
-    done
+function apply_feature_breanches {
+  do_merge=0
+  [[ "$1" == "--do-merge" ]] && {
+    do_merge=1
+    shift
+  }
+  prepare_apply_feature_branches "$@"
+  if [ "$do_merge" == 1 ]; then
+    merge_feature_branches
+  fi
 }
 
 # only if running this as a script (but allow sourcing to use the function)
@@ -134,5 +148,5 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       exit 1
     fi
   fi
-  apply_feature_branches "$@"
+  apply_feature_branches --do-merge "$@"
 fi

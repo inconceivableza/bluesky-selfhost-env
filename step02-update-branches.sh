@@ -260,7 +260,7 @@ function apply_rebranding() {
   [ "$REBRANDING_NAME" == "" ] && { show_error "Brand name undefined:" "please set REBRANDING_NAME in $params_file" ; return 1 ; }
   show_info "Rebranding for $REBRANDING_NAME" "by scripted changes"
   REBRANDING_DIR_ABS="$(cd $script_dir ; cd $REBRANDING_DIR ; pwd)"
-  "$REBRANDING_SCRIPT_ABS" "$REBRANDING_DIR_ABS" || {
+  "$REBRANDING_SCRIPT_ABS" --commit-parts "$REBRANDING_DIR_ABS" || {
     show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS \"$REBRANDING_DIR_ABS\""
     return 1
   }
@@ -276,74 +276,46 @@ function apply_rebranding() {
   return 0
 }
 
-cd "$script_dir"
-show_heading "Checking auto-created branches" "in each of the target repositories"
-error_repos=""
-for repoDir in $repoDirs
-  do
-    repo_key=$(basename $repoDir)
-    cd "$repoDir"
-    (
-      base_branch=${base_branch_names["${repo_key}"]}
-      echo "$blue_color$clear_bold$repo_key$reset_color" base branch $base_branch
-      base_branch_name=${base_branch##*/}
-      merge_branches="$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .merge // [] | .[]" "$script_dir/$FEATURE_BRANCH_RULES")"
-      [ "$merge_branches" == "" ] && {
-        show_info --oneline "will not check branches for $repo_key" "as branch-rules don't list any"
-        exit 0
+function autocreate_branch {
+  merge_branch="$1"
+  merge_branch_local=${merge_branch##*/}
+  merge_branch_base="$2"
+  show_info --oneline "checking for $merge_branch" "and $merge_branch_local"
+  if git_branch_present $merge_branch; then
+    show_info --oneline "Branch $merge_branch" "exists; no need to create"
+  else
+    show_warning --oneline "Branch $merge_branch" "is missing"
+    if git_branch_present ${merge_branch_local}; then
+      show_info --oneline "Found local branch $merge_branch_local" "which hasn't yet been pushed to remote; will use that"
+    else
+      show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
+      current_branch=$(git_current_branch)
+      git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; return 1; }
+      if [ $branch_type -eq 1 ]; then
+        apply_selfhost_patching_changes || application_error=1
+      elif [ $branch_type -eq 2 ]; then
+        if [ "$REBRANDING_DISABLED" == "true" ]; then
+          show_warning "Not Rebranding:" "ensure that you don't make this available publicly until rebranded, in order to comply with bluesky-social/social-app guidelines"
+          echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
+          application_result=1
+        else
+          apply_rebranding || application_result=1
+        fi
+      fi
+      show_info --oneline "Restoring original checked-out branch $current_branch" "for $repo_key"
+      git checkout $current_branch || { 
+        show_warning "Error switching back to current branch" "possibly because of untracked files; retrying with --force"
+        git checkout --force $current_branch || {
+          show_error "Could not checkout current branch" "please revert to correct branch manually"
+          return 1
+        }
       }
-      application_result=0
-      for merge_branch in $merge_branches
-        do
-          determine_autocreate_branch "$merge_branch" ; branch_type=$?
-          [ $branch_type -eq 0 ] && { echo $merge_branch is not auto-create ; continue ; }
-          merge_branch_local=${merge_branch##*/}
-          show_info --oneline "checking for $merge_branch" "and $merge_branch_local"
-          if git_branch_present $merge_branch; then
-            show_info --oneline "Branch $merge_branch" "exists; no need to create"
-          else
-            show_warning --oneline "Branch $merge_branch" "is missing"
-            if git_branch_present ${merge_branch_local}; then
-              show_info --oneline "Found local branch $merge_branch_local" "which hasn't yet been pushed to remote; will use that"
-            else
-              merge_branch_base=$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .base" $script_dir/$FEATURE_BRANCH_RULES)
-              show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
-              current_branch=$(git_current_branch)
-              git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; exit 1; }
-              if [ $branch_type -eq 1 ]; then
-                apply_selfhost_patching_changes || application_error=1
-              elif [ $branch_type -eq 2 ]; then
-                if [ "$REBRANDING_DISABLED" == "true" ]; then
-                  show_warning "Not Rebranding:" "ensure that you don't make this available publicly until rebranded, in order to comply with bluesky-social/social-app guidelines"
-                  echo "https://github.com/bluesky-social/social-app?tab=readme-ov-file#forking-guidelines"
-                  application_result=1
-                else
-                  apply_rebranding || application_result=1
-                fi
-              fi
-              show_info --oneline "Restoring original checked-out branch $current_branch" "for $repo_key"
-              git checkout $current_branch || { 
-                show_warning "Error switching back to current branch" "possibly because of untracked files; retrying with --force"
-                git checkout --force $current_branch || {
-                  show_error "Could not checkout current branch" "please revert to correct branch manually"
-                  exit 1
-                }
-              }
-            fi
-          fi
-        done
-      exit $application_result
-    ) || { show_error "Error checking auto-created branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
-    cd "$script_dir"
-  done
-
-[ "$error_repos" != "" ] && {
-  show_error "Could not check auto-created branches successfully" for $error_repos
-  show_warning --oneline "Please see errors above" "and correct"
-  exit 1
+    fi
+  fi
+  return 0
 }
 
-# 3. Merge any branches in branch-rules for this branch that haven't been merged
+# 2. Merge any branches in branch-rules for this branch that haven't been merged, auto-creating as required
 
 cd "$script_dir"
 show_heading "Applying configured feature branches" "in each of the target repositories"
@@ -356,8 +328,27 @@ for repoDir in $repoDirs
       cd "$repoDir"
       echo "$blue_color$clear_bold$repo_key$reset_color" base branch $base_branch
       base_branch_name=${base_branch##*/}
+      merge_branches="$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .merge // [] | .[]" "$script_dir/$FEATURE_BRANCH_RULES")"
+      [ "$merge_branches" == "" ] && {
+        show_info --oneline "will not check branches for $repo_key" "as branch-rules don't list any"
+        exit 0
+      }
       (
-        apply_feature_branches -u $base_branch_name $current_branch
+        prepare_apply_feature_branches -u $base_branch_name $current_branch
+        show_info "merging branches into $actual_target:" "please handle any issues that crop up by adjusting the branches if they don't merge, but version-suffixing to prevent issues with earlier versions"
+        for merge_branch in $merge_branches
+          do
+            determine_autocreate_branch "$merge_branch" ; branch_type=$?
+            [ $branch_type -ne 0 ] && {
+              # this would base it off the base
+              # merge_branch_base=$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .base" $script_dir/$FEATURE_BRANCH_RULES)
+              merge_branch_base="$current_branch"
+              show_info "autocreating $merge_branch" "in $repoName"
+              autocreate_branch "$merge_branch" "$merge_branch_base" || { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
+            }
+            show_info "merging $merge_branch into $actual_target:" "in $repoName"
+            git merge $merge_branch || { show_error "error merging $merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+          done
       ) || { show_error "Error applying feature branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
       cd "$script_dir"
     fi
