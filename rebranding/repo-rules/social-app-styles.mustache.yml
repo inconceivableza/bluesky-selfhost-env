@@ -1,0 +1,70 @@
+rules:
+## colors start here
+
+## this section all in app.config.js
+- id: background-color
+  patterns:
+    - pattern: "#1185FE"
+  fix: "{{ styling.background_color }}"
+  message: Background theme colour
+  languages:
+    - generic
+  severity: WARNING
+
+- id: android-splash-background-color-light
+  patterns:
+    - pattern: "#0c7cff"
+  fix: "{{ styling.android_splash_background_color_light }}"
+  message: Android background splash colour (light)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: android-splash-background-color-dark
+  patterns:
+    - pattern: "#0c2a49"
+  fix: "{{ styling.android_splash_background_color_dark }}"
+  message: Android background splash colour (dark)
+  languages:
+    - generic
+  severity: WARNING
+
+- id: ios-splash-background-color-dark
+  patterns:
+    - pattern: "#001429"
+  fix: "{{ styling.ios_splash_background_color_dark }}"
+  message: iOS background splash colour (dark)
+  languages:
+    - generic
+  severity: WARNING
+## above all in app.config.js
+
+# maybe this should just be a branch?
+- id: style-color-names
+  patterns:
+    # trickery to only add additional defs directly between green5 and unreadNotifBg, but not if they've already been added there
+    - patterns:
+      - pattern: "{..., green5: '$VAR1', unreadNotifBg: ...}"
+      - pattern-not: "{..., green5: '$VAR1', {{#styling.additional_color_defs}}{{.}}, {{/styling.additional_color_defs}}unreadNotifBg: ...}"
+    - pattern: "unreadNotifBg: '$VAR2'"
+  fix: "  {{#styling.additional_color_defs}}{{.}},\n{{/styling.additional_color_defs}}unreadNotifBg: '$VAR2'"
+  message: Add in additional style colours
+  languages:
+    - typescript
+  paths:
+    include:
+      - src/lib/styles.ts
+  severity: WARNING
+
+{{#styling.map_color_names}}
+- id: style-color-usage-{{search}}-{{replace}}
+  patterns:
+    - pattern: "colors.{{search}}"
+  fix: "colors.{{replace}}"
+  message: replace color {{search}} with {{replace}}
+  languages:
+    - typescript
+  severity: WARNING
+
+{{/styling.map_color_names}}
+

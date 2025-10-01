@@ -1,0 +1,129 @@
+rules: []
+
+copy_files:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/"
+  files:
+    - "default-avatar.png"
+    - "favicon.png"
+    - "icon-android-background.png"
+    - "icon-android-foreground.png"
+    - "icon-android-notification.png"
+    - "logo.png"
+    - "splash-dark.png"
+    - "splash.png"
+    - "splash-android-icon-dark.png"
+    - "splash-android-icon.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/"
+  git_add: True
+  files:
+    - "icon.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyweb/static/"
+  files:
+    - "favicon.png"
+    - "favicon-16x16.png"
+    - "favicon-32x32.png"
+    - "apple-touch-icon.png"
+    - "safari-pinned-tab.svg" # TODO: make this get the compact one
+    - "social-card-default.png"
+    - "social-card-default-gradient.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyweb/static/"
+  git_add: True
+  files:
+    - "email_mark_light.png"
+    - "email_mark_dark.png"
+    - "email_logo_default.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "assets/app-icons/"
+  files:
+    - "android_icon_core_aurora.png"
+    - "android_icon_core_bonfire.png"
+    - "android_icon_core_classic.png"
+    - "android_icon_core_flat_black.png"
+    - "android_icon_core_flat_blue.png"
+    - "android_icon_core_flat_white.png"
+    - "android_icon_core_midnight.png"
+    - "android_icon_core_sunrise.png"
+    - "android_icon_core_sunset.png"
+    - "android_icon_default_dark.png"
+    - "android_icon_default_light.png"
+    - "ios_icon_core_aurora.png"
+    - "ios_icon_core_bonfire.png"
+    - "ios_icon_core_classic.png"
+    - "ios_icon_core_flat_black.png"
+    - "ios_icon_core_flat_blue.png"
+    - "ios_icon_core_flat_white.png"
+    - "ios_icon_core_midnight.png"
+    - "ios_icon_core_sunrise.png"
+    - "ios_icon_core_sunset.png"
+    - "ios_icon_default_dark.png"
+    - "ios_icon_default_light.png"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyembed/assets/"
+  files:
+    - "logo.svg"
+
+svg_html_subst:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "web"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "index.html"
+      view_box: "0 0 512 512"
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyweb/templates/"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "base.html"
+      view_box: "0 0 512 512"
+
+svg_tsx_subst:
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "src/view/icons"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "Logo.tsx"
+      view_box: "0 0 512 512"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{_fill};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+    - src: "logo.compact.svg"
+      dest: "Logomark.tsx"
+      view_box: "0 0 512 512"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{fill || pal.text.color};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+    - src: "Logotype.compact.svg"
+      dest: "Logotype.tsx"
+      view_box: "0 0 700 190"
+      pre_replace:
+        - find: '\bfill:[^;]*;'
+          replace: 'fill:{fill || pal.text.color};'
+      post_replace:
+        - find: 'fill="{([^}]*)}"'
+          replace: 'fill={\1}'
+
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "src/"
+  file_substs:
+    - src: "logo.compact.svg"
+      dest: "Splash.tsx"
+      view_box: "0 0 512 512"
+
+# note that src/components/icons/TEMPLATE.tsx has a globe icon in it, doesn't need replacing
+

@@ -1,0 +1,342 @@
+rules:
+- id: web-view
+  patterns:
+    - pattern: 'https://bsky.app'
+  # fix: 'https://{{ env.socialappFQDN }}'
+  message: Hardcoded reference to ${env.socialappFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __tests__
+      - README.md
+      - bskyembed/src/env-config.ts
+      - bskyweb/README.embed.md
+      - bskyweb/cmd/bskyweb/main.go
+      - bskyweb/cmd/embedr/main.go
+      - bskyweb/static/.well-known/security.txt
+      - bskyweb/embedr-static/.well-known/security.txt
+      - src/state/env-config.tsx
+      - src/view/com/post-thread/PostThread.tsx # commenting out to see if it finds it
+
+- id: chat-domain
+  patterns:
+    - pattern: 'did:web:api.bsky.chat#bsky_chat'
+  # fix: '{{ code.chat_api_did }}'
+  message: Hardcoded reference to ${env.dmServiceDID} chat server (this is a fake DID)
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js
+      - src/state/env-config.tsx
+
+- id: fixed-did
+  pattern-either:                                                                                                                     
+    - pattern: '"=~/did:web:[a-zA-Z0-9_.-]+(#[a-zA-Z0-9_.-]+)?/"'                                                                     
+    - pattern: '"=~/did:plc:[a-zA-Z0-9]+?/"'
+  message: Hardcoded reference to a did - check whether it should be put into env-content
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js # defaults
+      - src/state/env-config.tsx # defaults
+      - bskyembed/src/env-config.ts # defaults
+      - bskyembed/src/screens/landing.tsx # fallback defaults
+      - src/lib/constants.ts # fallback defaults - but TODO: still a few hardcoded
+      - src/lib/demo.ts # we're not adjusting the demo values
+      - src/view/screens/DebugMod.tsx # we're not adjusting the DebugMod screen
+      - src/state/session/additional-moderation-authorities.ts # at some point we may want to use this, but not yet
+
+- id: hosting-provider
+  patterns:
+    - pattern: 'https://bsky.social'
+  # fix: 'https://{{ env.pdsFQDN }}'
+  # link+preconnect in bskyweb, lots more in src
+  message: Hardcoded reference to PDS/entryway URL https://${env.pdsFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __tests__
+      - README.md
+      - bskyembed/src/env-config.ts
+      - bskyweb/cmd/bskyweb/main.go
+      - bskyweb/cmd/embedr/main.go
+      - src/lib/constants.ts # has some defaults
+      - src/lib/demo.ts # we're not adjusting the demo values
+      - src/state/env-config.tsx
+      - src/view/screens/DebugMod.tsx # we're not adjusting the DebugMod screen
+      - src/screens/Settings/components/ChangeHandleDialog.tsx # links to blob tutorial
+      - web/index.html # we rebuild this so it has a different preconnect
+
+- id: hosting-provider-name
+  patterns:
+    - pattern: 'bsky.social'
+  # fix: '{{ env.pdsFQDN }}'
+  # src/screens/Signup and also links to support places
+  message: Hardcoded reference to PDS/entryway domain ${env.pdsFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __tests__
+      - README.md
+      - bskyembed/src/env-config.ts
+      - bskyembed/src/screens/landing.tsx # fallback constant
+      - bskyweb/cmd/bskyweb/main.go # default fallbacks
+      - bskyweb/cmd/bskyweb/server.go # comment about this
+      - bskyweb/cmd/embedr/main.go # default fallbacks
+      - src/lib/constants.ts # fallback constants
+      - src/lib/demo.ts # we're not adjusting the demo values
+      - src/screens/Settings/components/ChangeHandleDialog.tsx # links to blob tutorial
+      - src/state/env-config.tsx
+      # these files all include references to individual bluesky handles for esoteric purposes
+      - src/view/screens/Profile.tsx
+      - src/view/shell/Drawer.tsx
+      - src/view/shell/desktop/RightNav.tsx
+      # we're not adjusting the DebugMod screen
+      - src/view/screens/DebugMod.tsx
+      - src/locale/
+      - web/index.html # preconnect hardcoded but overridden in template
+
+- id: xyz-web-package
+  patterns:
+    - pattern: 'xyz.blueskyweb.app'
+  # fix: '{{ code.web_package_id }}'
+  # TODO: patch this in app.config.js, also in bskylink/web and google-services.json and modules and some src
+  message: Update the web package ID
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __e2e__
+      - __tests__
+      - README.md
+      - app.config.js
+      - bskylink/src/config.ts
+      - bskyweb/static/.well-known/ # these are regenerated from templates
+      - docs/deploy-ota.md # not adjusting docs
+      - google-services.json.example # this is a template
+      - modules/ # these are repackaged and so don't worry about the package name here
+      - package.json # has a default
+      - plugins/withMobileBuildConfig.js # has pathnames
+      # - bskyweb/cmd/bskyweb/server.go # FIXME: google play store link still needs to be fixed!
+    # include:
+    #   - README.md # for playstore link
+
+- id: apple-team-id
+  patterns:
+    - pattern: 'B3LX46C5HS'
+  # fix: '{{ code.apple_team_id }}'
+  message: Hardcoded Developer Team ID
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js
+      - bskylink/src/config.ts
+      - bskyweb/static/.well-known/ # replaced with templates
+      - plugins/*/withXcodeTarget.js # this has default fallbacks
+
+- id: apple-appstore-path
+  patterns:
+    - pattern: 'id6444370199'
+  # fix: '{{ code.apple_appstore_path }}' # including the bluesky-social/ prefix
+  message: Hardcoded Apple App Store path
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - README.md
+
+- id: google-services-adjust-url
+  patterns:
+    - patterns:
+      - pattern-regex: '[a-zA-Z0-9.]*blueskyweb[a-zA-Z0-9.]*'
+      - pattern-not: 'xyz.blueskyweb.app'
+    - pattern: 'blueskyweb'
+  # fix: '{{ code.google_service_project_name }}'
+  message: Hardcoded reference to ${code.google_service_project_name}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __tests__
+      - __e2e__
+      - README.md
+      - app.config.js
+      - bskylink/src/config.ts
+      - bskyweb/static/.well-known/* # replaced by templates
+      - src/state/env-config.tsx
+      - webpack.config.js # org that could be replaced later
+      - google-services.json.example # this is a template
+      - modules/*/android/**/*.kt # references to package name
+      - modules/*/android/build.gradle # references to package name
+      - modules/*/expo-module.config.json # references to package name
+      - plugins/withMobileBuildConfig.js # contains the full package name
+      - src/lib/strings/url-helpers.ts
+       # references to helpdesk
+      - src/lib/hooks/useCreateSupportLink.ts
+      - src/screens/Settings/PrivacyAndSecuritySettings.tsx
+
+- id: app-domain
+  patterns:
+    - pattern: 'bsky.app'
+  # fix: '{{ env.socialappFQDN }}'
+  # quite a few occurrences still: app.config.js, bskylink/web, modules/, package.json (!), and other places in src/
+  message: Hardcoded reference to ${env.socialappFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - __tests__
+      - __e2e__
+      - Dockerfile
+      - Dockerfile.embedr
+      - README.md
+      - jest
+      - app.config.js
+      - bskyembed/src/env-config.ts
+      - bskylink/src/config.ts
+      - bskylink/src/routes/index.ts # command reference
+      - bskylink/tests/
+      - bskyogcard/src/config.ts
+      - bskyweb/README.embed.md
+      - bskyweb/cmd/bskyweb/main.go
+      - bskyweb/cmd/bskyweb/server.go # comment mentioning this
+      - bskyweb/cmd/embedr/handlers.go
+      - bskyweb/cmd/embedr/main.go
+      - bskyweb/embedr-static/.well-known/ # replaced with templates
+      - bskyweb/embedr-templates/home.html # this isn't really displayed
+      - bskyweb/example.env  # sample domains
+      - bskyweb/static/.well-known/ # replaced with templates
+      - src/state/env-config.tsx
+      - docs/build.md
+      - modules/*/src/Referrer/index.web.ts # fallback constant
+      - scripts/
+      - src/components/Post/Embed/ExternalEmbed/ExternalPlayer.tsx # comment mentioning this
+      - src/lib/constants.ts
+      - src/lib/moderation/useModerationCauseDescription.ts
+      - src/locale/ # haven't worked out localization yet
+      - src/screens/Settings/components/ExportCarDialog.tsx # link to a blog about repo export that's correct
+      - src/state/env-config.tsx
+      - src/state/session/__tests__
+      - src/view/com/post-thread/PostThread.tsx # comment with a link to a post
+      - src/view/com/posts/DiscoverFallbackHeader.tsx # fallback constant
+      - src/view/com/posts/FeedShutdownMsg.tsx # fallback constant
+      - src/view/screens/Storybook/Links.tsx # fallback constant
+      - src/view/screens/Storybook/Typography.tsx # fallback constant
+      - package.json # will be corrected by social-app-change-ids.yml
+      - modules/ # these are repackaged and so don't worry about the package name here
+
+- id: app-slug-scheme
+  patterns:
+    - pattern-either:
+      - pattern: "slug: 'bluesky'"
+      - pattern: "scheme: 'bluesky'"
+  # fix-regex:
+  #   regex: "bluesky"
+  #   replacement: '{{ code.app_slug_scheme }}'
+  # this is just in app.config.js
+  message: Hardcoded slug or scheme for ${code.app_slug_scheme}
+  languages:
+    - javascript
+  severity: WARNING
+
+- id: rename-bluesky-app-urls
+  patterns:
+    - pattern-either:
+      - pattern: '"bluesky://"'
+      - pattern: '"bluesky:///"'
+  # fix-regex:
+  #   regex: 'bluesky'
+  #   replacement: '{{ code.app_slug_scheme }}'
+  # patch src/ and modules/
+  message: Hardcoded scheme used for opening app on mobile devices, should be ${code.app_slug_scheme}://
+  languages:
+    - typescript
+  severity: WARNING
+  paths:
+    exclude:
+      # these have comments with bluesky:// in
+      - src/Navigation.tsx
+      - src/lib/hooks/useIntentHandler.ts
+
+- id: bluesky-in-app-actions
+  patterns:
+    - patterns:
+      - pattern-regex: 'bluesky[a-zA-Z0-9-]*'
+      - pattern-not: 'bluesky-social' # FIXME: this isn't excluding correctly
+    - pattern: 'bluesky'
+  # fix: '{{ code.app_slug_scheme }}'
+  message: "Hardcoded reference to bluesky in mobile modules"
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - "modules/"
+    exclude:
+      - modules/BlueskyNSE/Info.plist # over-ridden by plugins
+      - modules/Share-with-Bluesky/Info.plist # over-ridden by plugins
+
+- id: expo-project-owner
+  patterns:
+    - pattern: "owner: 'blueskysocial'"
+  # fix: "owner: '{{ code.expo_project_owner }}'"
+  message: Hardcoded owner for social network project on expo - should be ${code.expo_project_owner}
+  # just app.config.js
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js
+      - docs/deploy-ota.md
+
+- id: expo-project-id
+  patterns:
+    - pattern: "55bd077a-d905-4184-9c7f-94789ba0f302"
+  # fix: "{{ code.expo_project_id }}"
+  # just app.config.js
+  message: Hardcoded project id for social network project on expo - should be ${code.expo_project_id}
+  languages:
+    - generic
+  severity: WARNING
+
+- id: sentry-project-organization
+  patterns:
+    - pattern: "organization: 'blueskyweb'"
+  # fix: "organization: '{{ code.sentry_project_organization }}'"
+  # just app.config.js
+  message: Hardcoded project id for social network organization on sentry - should be ${code.sentry_project_organization}
+  languages:
+    - generic
+  severity: WARNING
+
+- id: apple-groups
+  patterns:
+    - pattern: "group.app.bsky"
+  # fix: "{{ code.apple_groups }}"
+  # app.config.js, modules/ and plugins/
+  message: Hardcoded permission group used by Apple apps
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js # contains default
+      - modules/BlueskyNSE/BlueskyNSE.entitlements # overridden by templates
+      - modules/Share-with-Bluesky/Share-with-Bluesky.entitlements # overridden by templates

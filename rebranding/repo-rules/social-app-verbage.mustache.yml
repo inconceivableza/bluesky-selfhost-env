@@ -1,0 +1,66 @@
+rules:
+- id: app-name
+  patterns:
+    - pattern: "Bluesky"
+  # fix: "{{ naming.app_name }}"
+  # all over the place. We should do something in app.config.js, but lots of the others are more rebranding than config
+  message: Hardcoded reference to social network app name "Bluesky" - should load from ${branding.naming.app_name}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - .github
+      - __e2e__
+      - __tests__
+      - LICENSE
+      - README.md
+      - app.config.js # has defaults
+      - bskyembed/snippet/embed.ts # comments about Bluesky
+      - bskyembed/src/env-config.ts # defaults
+      - bskyogcard/src/config.ts # fallback defaults
+      - bskyweb/README.embed.md
+      - bskyweb/cmd/embedr/main.go # fallback defaults
+      - bskyweb/templates/base.html # comment
+      - docs/*.md
+      - modules/**/*.plist # we generally overwrite these with plugins
+      - modules/**/*.podspec # we generally overwrite these with plugins
+      - patches/react-native*.patch # comment re Bluesky
+      - plugins/shareExtension/with*.js # some default constants
+      - plugins/withMobileBuildConfig.js # fallback defaults
+      - scripts/*.sh # we don't use these
+      - src/components/moderation/ReportDialog/index.tsx # comment
+      - src/lib/moderation/useModerationCauseDescription.ts # actually the bluesky service (can patch later)
+      - src/lib/notifications/notifications.ts # comments mentioning Bluesky
+      - src/locale/**/*.po # not going to handle localization now...
+      - src/screens/Settings/AppIconSettings/useAppIconSets.ts # comments mentioning Bluesky
+      - src/state/modals/index.tsx # comments mentioning Bluesky
+      - src/state/env-config.tsx # fallback defaults
+      - web/index.html # comment for svg
+
+- id: post-prompt
+  patterns:
+    - pattern: "What's up?"
+  # fix: "{{ verbage.post_prompt }}"
+  # could route to variable
+  message: Hardcoded post prompt
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - app.config.js
+      - src/locale/**/*.po
+
+- id: profile-description-placeholder
+  patterns:
+    - pattern: '_(msg`Tell us a bit about yourself`)'
+  # we can remove this, we don't need the example now that the pattern has changed
+  # fix: "_(msg`{{ verbage.profile_description_placeholder }}`)"
+  message: "Hardcoded profile description placeholder"
+  languages:
+    - typescript
+  paths:
+    include:
+      - view/com/modals/EditProfile.tsx
+  severity: WARNING

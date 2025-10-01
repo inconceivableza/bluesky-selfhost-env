@@ -22,6 +22,10 @@ function source_env {
   set +o allexport
 }
 
+function get_relative_path() {
+    python3 -c "import os.path; print(os.path.relpath('$1', '${2:-.}'))"
+}
+
 function wait_for_container {
   container_name=$1
   compose_file=${2:-docker-compose.yaml}

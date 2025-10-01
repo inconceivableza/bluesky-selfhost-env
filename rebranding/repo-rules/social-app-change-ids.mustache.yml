@@ -1,0 +1,13 @@
+rules:
+# these are changes which have to be made directly in the source code based on the config, rather than reading from config at build/runtime
+- id: package-id
+  patterns:
+    - pattern: '"name": "bsky.app"'
+  fix: '"name": "{{ env.socialappFQDN }}"'
+  message: Rename expo package
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    include:
+      - package.json # package.json doesn't support any dynamic config
