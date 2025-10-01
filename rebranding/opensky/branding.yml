@@ -2,6 +2,7 @@ code:
   app_slug_scheme: 'opensky'
   apple_groups: 'group.app.opensky'
   apple_appstore_path: 'opensky-social/idNNNNNNNNNN'
+  apple_team_id: 'BU4RC7696P', # Inconceivable R and D; not for public use
   chat_api_did: 'did:web:api.chat.opensky.local.com#opensky_chat'
   # these ios_${plugin}_name variables are not to set the target name (which is the source directory) but the suffix to the web_package_id used for the bundleId
   ios_clip_name: 'AppClip' # this is currently not used - it's hardcoded to AppClip anyway
