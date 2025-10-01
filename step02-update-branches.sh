@@ -6,6 +6,7 @@
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
+. "$script_dir/apply-feature-branches.sh"
 source_env
 
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
@@ -356,7 +357,7 @@ for repoDir in $repoDirs
       echo "$blue_color$clear_bold$repo_key$reset_color" base branch $base_branch
       base_branch_name=${base_branch##*/}
       (
-        $script_dir/apply-feature-branches.sh -u $base_branch_name $current_branch
+        apply_feature_branches -u $base_branch_name $current_branch
       ) || { show_error "Error applying feature branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
       cd "$script_dir"
     fi
