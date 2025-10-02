@@ -284,10 +284,12 @@ function autocreate_branch {
   fi
   if [ "$should_run" == 0 ]; then
     show_info --oneline "Branch $merge_branch" "exists, and not updating; no need to create"
+    return 0
   else
     [ "$remote_branch_missing" == 1 ] && show_warning --oneline "Branch $merge_branch" "is missing"
     if [[ "$local_branch_missing" == 0 && "$update" == "0" ]]; then
       show_info --oneline "Found local branch $merge_branch_local" "which hasn't yet been pushed to remote; will use that"
+      return 2
     else
       current_branch=$(git_current_branch)
       if [ "$local_branch_missing" == 1 ]; then
@@ -298,8 +300,9 @@ function autocreate_branch {
         git checkout "$merge_branch_local" || { show_error "Could not checkout branch" ; return 1; }
         git merge "$merge_branch_base" || { show_error "Could not merge base branch" ; return 1; }
       fi
+      application_result=0
       if [ $branch_type -eq 1 ]; then
-        apply_selfhost_patching_changes || application_error=1
+        apply_selfhost_patching_changes || application_result=1
       elif [ $branch_type -eq 2 ]; then
         if [ "$REBRANDING_DISABLED" == "true" ]; then
           show_warning "Not Rebranding:" "ensure that you don't make this available publicly until rebranded, in order to comply with bluesky-social/social-app guidelines"
@@ -309,6 +312,7 @@ function autocreate_branch {
           apply_rebranding || application_result=1
         fi
       fi
+      [ "$application_result" == 1 ] && { show_warning "Error applying self-host patching changes" "please inspect $repo_key and correct before continuing" ; return 1 ; }
       show_info --oneline "Restoring original checked-out branch $current_branch" "for $repo_key"
       git checkout $current_branch || { 
         show_warning "Error switching back to current branch" "possibly because of untracked files; retrying with --force"
@@ -317,6 +321,7 @@ function autocreate_branch {
           return 1
         }
       }
+      return 2 # this indicates to use merge_branch_local rather than the remote
     fi
   fi
   return 0
@@ -347,6 +352,8 @@ for repoDir in $repoDirs
           do
             determine_autocreate_branch "$merge_branch" ; branch_type=$?
             merge_branch_local=${merge_branch##*/}
+            selected_merge_branch=$merge_branch
+            autocreate_result=0
             [ $branch_type -ne 0 ] && {
               # this would base it off the base
               # merge_branch_base=$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .base" $script_dir/$FEATURE_BRANCH_RULES)
@@ -354,11 +361,17 @@ for repoDir in $repoDirs
               show_info "autocreating $merge_branch" "in $repoName"
               flags=""
               [ $branch_type -eq 2 ] && flags="-u" # only update the branding automatically
-              autocreate_branch $flags "$merge_branch" "$merge_branch_base" || { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
+              autocreate_branch $flags "$merge_branch" "$merge_branch_base" ; autocreate_result=$?
+              [ $autocreate_result -eq 1 ] && { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
+              [ $autocreate_result -eq 2 ] && selected_merge_branch="$merge_branch_local"
             }
-            show_info "merging $merge_branch into $actual_target:" "in $repoName"
-            git merge $merge_branch_local || { show_error "error merging $merge_branch_local:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
-            show_info "you may want to push" "$merge_branch_local to $merge_branch"
+            show_info "merging $selected_merge_branch into $actual_target:" "in $repoName"
+            git merge $selected_merge_branch || { show_error "error merging $selected_merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+            [ $autocreate_result -eq 2 ] && {
+              local_commit="$(git log -1 --format=%H $merge_branch_local 2>/dev/null)"
+              remote_commit="$(git log -1 --format=%H $merge_branch 2>/dev/null)"
+              [[ "$local_commit" == "$remote_commit" ]] || show_info "Local changes made" "consider pushing $merge_branch_local to $merge_branch"
+            }
           done
       ) || { show_error "Error applying feature branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
       cd "$script_dir"
