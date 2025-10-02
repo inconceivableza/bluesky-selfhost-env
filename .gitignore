@@ -22,3 +22,4 @@ config/**secret**
 android-builds
 ios-builds
 tmp-builds
+build-logs
