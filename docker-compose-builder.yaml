@@ -719,6 +719,8 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
+    command: ['/palomar', 'run']
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default

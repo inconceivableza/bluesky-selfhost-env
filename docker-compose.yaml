@@ -592,6 +592,8 @@ services:
   palomar:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof}
     profiles: ['', 'indigo']
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
+    command: ['/palomar', 'run']
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
