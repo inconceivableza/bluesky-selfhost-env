@@ -248,6 +248,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/did-method-plc"
+        org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
     user: root
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
@@ -295,6 +298,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     ports:
       - 2583:2583
     expose:
@@ -375,6 +381,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
     ports:
       - 2470:2470
       - 2471:2471
@@ -421,6 +430,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} App View"
     ports:
       - 2584:2584
       # - 3001:3001 # dataplane port
@@ -503,6 +515,9 @@ services:
        - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN-}
        - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY-}
        - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
     ports:
       - 8100:8100
     command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
@@ -565,6 +580,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - SOCIAL_APP_NAME=${SOCIAL_APP_NAME-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3003:3003 # this is what we're configuring it to listen on
@@ -601,6 +619,9 @@ services:
        - http_proxy=${http_proxy-}
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
     ports: []
       # - 8100:8100 # this is the default port it listens on, same as social-app
       # - 8101:8101 # this is the default port we're telling it to listen on
@@ -649,6 +670,9 @@ services:
        - http_proxy=${http_proxy-}
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3004:3004 # this is what we're configuring it to listen on
@@ -692,6 +716,9 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
     ports:
       - 3999:3999
       # - 3998:3998 # metrics port by default
