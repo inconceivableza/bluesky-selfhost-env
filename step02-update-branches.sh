@@ -264,15 +264,6 @@ function apply_rebranding() {
     show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS \"$REBRANDING_DIR_ABS\""
     return 1
   }
-  git diff --exit-code --stat && { show_warning "no changes to $branded_repo:" "check if branding config is correct" ; return 1 ; }
-  show_info "Committing branding changes" "to $branded_repo"
-  git commit -a -m "Automatic rebranding to $REBRANDING_NAME" || {
-    show_error "Error auto-committing branding changes:" "retrying with git hooks disabled, but you may want to review the above errors"
-    git commit --no-verify -a -m "Automatic rebranding to $REBRANDING_NAME (hooks disabled due to error)" || {
-      show_error "Error auto-committing branding changes:" "even when git hooks disabled; please correct in $repo_key"
-      return 1
-    }
-  }
   return 0
 }
 
@@ -355,6 +346,7 @@ for repoDir in $repoDirs
         for merge_branch in $merge_branches
           do
             determine_autocreate_branch "$merge_branch" ; branch_type=$?
+            merge_branch_local=${merge_branch##*/}
             [ $branch_type -ne 0 ] && {
               # this would base it off the base
               # merge_branch_base=$(yq -r ".[\"${repo_key}\"] // {} | .[\"${base_branch_name}\"] // {} | .base" $script_dir/$FEATURE_BRANCH_RULES)
@@ -365,7 +357,8 @@ for repoDir in $repoDirs
               autocreate_branch $flags "$merge_branch" "$merge_branch_base" || { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
             }
             show_info "merging $merge_branch into $actual_target:" "in $repoName"
-            git merge $merge_branch || { show_error "error merging $merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+            git merge $merge_branch_local || { show_error "error merging $merge_branch_local:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+            show_info "you may want to push" "$merge_branch_local to $merge_branch"
           done
       ) || { show_error "Error applying feature branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
       cd "$script_dir"
