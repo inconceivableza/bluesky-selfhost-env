@@ -807,7 +807,7 @@ services:
     restart: always
 
   backup:
-    image: creativeprojects/resticprofile:0.29.0 # wait until restic issue #5324 fix is released before upgrading
+    image: creativeprojects/resticprofile:0.32.0 # restic issue #5324 fix was released in 0.18.1, and 0.32.0 is subsequent to that
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
