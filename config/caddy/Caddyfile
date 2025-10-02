@@ -6,7 +6,7 @@
 {
 	#	debug
 	on_demand_tls {
-		ask http://caddy-sidecar:80
+		permission http "http://caddy-sidecar:80" # this just response with 200 to everything so will allow all certificates
 	}
 	#    limits to HTTP/1.1 >>>
 	servers {
