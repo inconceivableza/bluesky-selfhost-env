@@ -6,13 +6,73 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+  # Optional: collect host metrics
+  hostmetrics:
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      disk:
+      filesystem:
+      memory:
+      network:
+      process:
+        mute_process_user_error: true
+
+  datadog:
+    endpoint: 0.0.0.0:8126
+    read_timeout: 60s
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  # Optional: memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 512
+    check_interval: 5s
+
+exporters:
+  # Jaeger exporter for traces
+  # jaeger:
+  #   endpoint: jaeger:14250
+  #   tls:
+  #     insecure: true
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    
+  # OTLP exporter - useful for forwarding to other collectors
+  # otlp/jaeger:
+  #   endpoint: jaeger:4317
+  #   tls:
+  #     insecure: true
+
+  # used to be called logging
+  debug:
+
+  # OTLP pull-based exporter - for jaeger to collect from
+  # otlp:
+  #   endpoint: "0.0.0.0:14317"
+  # otlphttp:
+  #   endpoint: "http://0.0.0.0:14318"
+
 service:
-  extensions: [jaeger_storage, jaeger_query]
+  extensions: [jaeger_storage, jaeger_query, health_check, zpages]
   pipelines:
     traces:
-      receivers: [nop]
-      processors: [batch]
-      exporters: [nop]
+      receivers: [otlp, datadog]
+      processors: [memory_limiter, batch]
+      # exporters: [otlp/jaeger, jaeger, logging]
+      exporters: [debug]
+    
+    metrics:
+      receivers: [otlp, hostmetrics, datadog]
+      processors: [memory_limiter, batch]
+      # exporters: [logging]
+      exporters: [prometheus]
+
   telemetry:
     resource:
       service.name: jaeger-query
@@ -34,14 +94,9 @@ extensions:
     ui:
       config_file: /etc/jaeger/config-ui.json
 
-receivers:
-  nop:
-
-processors:
-  batch:
-
-exporters:
-  nop:
+  health_check: # port 13133
+  zpages:
+    endpoint: ':55679'
 
 ui:
   config_file = 'jaeger-ui.json'

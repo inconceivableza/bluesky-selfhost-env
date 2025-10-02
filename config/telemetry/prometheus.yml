@@ -12,21 +12,22 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # OpenTelemetry Collector metrics
-  - job_name: 'otel-collector'
-    static_configs:
-      - targets: ['otel-collector:8889']
-    scrape_interval: 5s
+  # Jaeger / OpenTelemetry Collector metrics
+  # - job_name: 'jaeger'
+  #   static_configs:
+  #     - targets: ['jaeger:8889']
+  #   scrape_interval: 5s
 
-  # OpenTelemetry Collector internal metrics
-  - job_name: 'otel-collector-internal'
-    static_configs:
-      - targets: ['otel-collector:8888']
-    scrape_interval: 5s
-
+  # Jaeger / OpenTelemetry Collector internal metrics
   - job_name: 'jaeger-internal'
     static_configs:
       - targets: ['jaeger:8888']
+    scrape_interval: 5s
+
+  # OpenTelemetry Collector internal metrics
+  - job_name: 'dd-collector-internal'
+    static_configs:
+      - targets: ['dd-collector:8888']
     scrape_interval: 5s
 
   - job_name: 'bgs-relay'

@@ -84,7 +84,7 @@ services:
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://jaeger:4317
       - OTEL_SERVICE_NAME=caddy
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
@@ -238,7 +238,7 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
       # telemetry settings
-      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_AGENT_URL=http://dd-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
     healthcheck:
@@ -301,14 +301,14 @@ services:
       - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
       # telemetry settings
-      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_AGENT_URL=http://dd-collector:8126
       - DD_TRACE_OTEL_ENABLED=true
       - DD_SERVICE=pds # the package.json misconfigures this as plc-service
       - DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
       - OTEL_EXPORTER_OTLP_INSECURE=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - pds:/pds
       # CA certificates for connecting to self-signed, or a dummy directory if not used
@@ -345,7 +345,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
       - OTEL_EXPORTER_OTLP_INSECURE=true
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     volumes:
       - bgs:/data/bigsky
       # CA certificates for connecting to self-signed, or a dummy directory if not used
@@ -408,7 +408,7 @@ services:
       - PORT=2584
       - REDIS_HOST=redis
       # telemetry settings
-      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_AGENT_URL=http://dd-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
     volumes:
@@ -610,7 +610,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
     restart: always
     depends_on:
       - opensearch
@@ -847,7 +847,7 @@ services:
     restart: always
 
   jaeger:
-    image: jaegertracing/jaeger:2.6.0
+    image: jaegertracing/jaeger:latest
     volumes:
       - "./config/telemetry/jaeger.yaml:/etc/jaeger/jaeger.yml"
     environment:
@@ -864,15 +864,26 @@ services:
       # - "6831:6831/udp" # legacy thrift in compact thrift protocol
       # - "6832:6832/udp" # legacy thrift in binary thrift protocol
       # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
+      # - "13133:13133"   # healthcheck extension
       - "127.0.0.1:16686:16686"   # Jaeger UI
       # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
+      - "127.0.0.1:55680:55679" # ZPages for direct view of otel-collector info
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    restart: always
 
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.132.0
+  # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
+  dd-collector:
+    image: otel/opentelemetry-collector-contrib:latest
     volumes:
-      - "./config/telemetry/otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml"
+      - "./config/telemetry/dd-collector.yml:/etc/otelcol/dd-collector.yml"
     command:
-      - "--config=/etc/otelcol/otel-collector-config.yml"
+      - "--config=/etc/otelcol/dd-collector.yml"
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
@@ -886,8 +897,16 @@ services:
       # - "14278:14278" # alternate jaeger thrift_http receiver
       # - "8126:8126"   # datadog receiver for services instrumented with ddtrace
     depends_on:
-      - jaeger
+      # - jaeger
       - prometheus
+    # No healthcheck as can't run wget/curl
+    # See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/cmd/otelcontribcol/Dockerfile
+    # healthcheck:
+    #   test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+    #   timeout: 10s
+    #   interval: 10s
+    #   retries: 5
+    restart: always
 
   prometheus:
     image: prom/prometheus:latest
@@ -901,4 +920,10 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       # - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=200h"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    restart: always
 

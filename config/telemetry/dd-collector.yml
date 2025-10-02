@@ -1,11 +1,4 @@
 receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-      http:
-        endpoint: 0.0.0.0:4318
-  
   # Optional: collect host metrics
   hostmetrics:
     collection_interval: 10s
@@ -42,7 +35,7 @@ exporters:
 
   # Prometheus exporter for metrics
   prometheus:
-    endpoint: "0.0.0.0:8889"
+    endpoint: "0.0.0.0:8889" # FIXME - not loading
     
   # OTLP exporter - useful for forwarding to other collectors
   otlp/jaeger:
@@ -62,14 +55,14 @@ exporters:
 service:
   pipelines:
     traces:
-      receivers: [otlp, datadog]
+      receivers: [datadog]
       processors: [memory_limiter, batch]
       # exporters: [jaeger, logging]
       # exporters: [otlp/jaeger]
       exporters: [debug, otlp/jaeger]
     
     metrics:
-      receivers: [otlp, hostmetrics, datadog]
+      receivers: [hostmetrics, datadog]
       processors: [memory_limiter, batch]
       # exporters: [prometheus, logging]
       exporters: [prometheus]
@@ -86,7 +79,7 @@ service:
   extensions: [health_check, zpages]
 
 extensions:
-  health_check:
+  health_check: # port 13133
   zpages:
     endpoint: ':55679'
 
