@@ -58,7 +58,7 @@ def svg_to_tsx(src):
     for xml_attr in set(xml_attr_re.findall(src)):
         new_xml_attr = 'xml' + xml_attr[xap:xap+1].upper() + xml_attr[xap+1:]
         src = src.replace(xml_attr, new_xml_attr)
-    return src, new_tagnames
+    return src, list(sorted(dict.fromkeys(new_tagnames)))
 
 def adjust_svg_and_import(src, svg, config_file=replace_svg_contents_config):
     svg_inner = get_svg_inner(svg)
@@ -80,7 +80,7 @@ def adjust_svg_and_import(src, svg, config_file=replace_svg_contents_config):
         import_replacements[imported_tags] = ', '.join(used_tags)
         imported_svg_objects.extend(tag.strip() for tag in used_tags if tag.strip())
     tsx_tags = [tag for tag in tsx_tags if tag not in imported_svg_objects]
-    new_tags_str = ', '.join(tsx_tags)
+    new_tags_str = ', '.join(sorted(dict.fromkeys(tsx_tags)))
     result = result.replace('@SVG_INNER@', tsx_svg_inner).replace('@SVG_TAGS@', new_tags_str)
     for import_original, import_new in import_replacements.items():
         result = result.replace(import_original, import_new)
