@@ -834,6 +834,7 @@ services:
       # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
       # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
+      - RESTIC_AUTO_REMOTE=${RESTIC_AUTO_REMOTE}
       - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1-}
       - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2-}
       - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3-}

@@ -17,9 +17,8 @@ mixins:
       schedule-priority: background
       schedule-log: $RESTIC_LOGDIR/restic-{{ .Profile.Name }}.log
       schedule-lock-wait: 15m
-{{ if .Env.RESTIC_NO_AUTO_REMOTE }}
-{{ else }}
-      run-finally: 'resticprofile all-remote.copy'
+{{ if .Env.RESTIC_AUTO_REMOTE }}
+      run-finally: 'resticprofile {{ .Env.RESTIC_AUTO_REMOTE }}.copy'
 {{ end }}
     retention:
       prune: true
