@@ -503,6 +503,8 @@ services:
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
+      additional_contexts:
+        atproto: ./repos/atproto
       dockerfile: Dockerfile
       args:
        - http_proxy=${http_proxy-}
