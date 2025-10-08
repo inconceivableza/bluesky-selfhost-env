@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+import pystache
 
 base_dir = Path(__file__).parent.parent
 
@@ -19,14 +20,7 @@ from env_utils import get_existing_profile_names, read_env, validate_profile_nam
 
 def render_mustache_template(template_content, variables):
     """Simple mustache template renderer for basic variable substitution."""
-    result = template_content
-    
-    # Handle basic {{variable}} substitutions
-    for key, value in variables.items():
-        pattern = f"{{{{{key}}}}}"
-        result = result.replace(pattern, str(value))
-    
-    return result
+    return pystache.render(template_content, variables)
 
 def get_social_env_output_path(profile, args):
     """Get the output path for social-app env file based on profile."""
