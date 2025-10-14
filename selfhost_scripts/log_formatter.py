@@ -22,13 +22,16 @@ def adjust_vars(record):
         record['res'] = json.dumps(res)
     return record
 
-def main():
+def main(args):
     for line in sys.stdin:
-        if not '|' in line:
+        if not '|' in line and not args.no_prefix:
             sys.stdout.write(line)
             continue
-        service_prefix,log_json = line.split('|',1)
-        service_name = service_prefix.strip()
+        if args.no_prefix:
+            service_prefix, log_json = 'stdout', line
+        else:
+            service_prefix, log_json = line.split('|',1)
+            service_name = service_prefix.strip()
         try:
             log_obj = json.loads(log_json)
         except Exception as e:
@@ -49,8 +52,11 @@ def main():
         rich.print(f"[bold green]{service_prefix}[/bold green]|", status_line, log_obj)
 
 if __name__ == '__main__':
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--no-prefix', action='store_true', help='Read JSON from each line rather than the service prefix that docker produces')
+   args = parser.parse_args()
    try:
-       main()
+       main(args)
    except KeyboardInterrupt:
        rich.print("[bold blue]Goodbye[/bold blue]")
        sys.exit()
