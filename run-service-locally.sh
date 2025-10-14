@@ -40,22 +40,28 @@ cd $script_dir
 cd "$working_dir"
 
 running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
-readarray -t build_commands < <(jq_service '.build[]')
-readarray -t run_commands < <(jq_service '.run[]')
+build_commands="$(jq_service '.build[]')"
+run_commands="$(jq_service '.run[]')"
 
-for cmd in "$build_commands"
+# build commands are run in the normal environment
+
+while IFS= read -r cmd
   do
     show_info --oneline "Running build command" "$cmd"
     $cmd || { show_warning --oneline "Error running build command" "please correct and rerun" ; exit 1 ; }
-  done
+  done < <(echo "$build_commands")
  
+cd $script_dir
+cd "$working_dir"
+
+# run commands are run in the adopted environment
 adopt_environment "$running_env" > bsky-export.env
 (
   . bsky-export.env
   rm bsky-export.env
-  for cmd in "$run_commands"
+  while IFS= read -r cmd
     do
-      show_info --oneline "Running build command" "$cmd"
+      show_info --oneline "Running command" "$cmd"
       $cmd "$@" || { show_warning --oneline "Error running command" "please correct and rerun" ; exit 1 ; }
-    done
+    done < <(echo "$run_commands")
 )

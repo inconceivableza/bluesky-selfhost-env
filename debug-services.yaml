@@ -2,6 +2,7 @@ services:
   bsky:
     working_dir: './repos/atproto/services/bsky/'
     build:
+      - 'cd ../../packages/bsky'
       - 'pnpm install'
       - 'pnpm build'
     run:
