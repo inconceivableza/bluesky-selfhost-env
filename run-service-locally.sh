@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+script_path="`realpath "$0"`"
+script_dir="`dirname "$script_path"`"
+. "$script_dir/utils.sh"
+
+debug_config="$script_dir/debug-services.yaml"
+
+[[ "$1" == "" ]] && { echo Syntax $0 service >&2 ; exit 1 ; }
+service="$(echo "$1" | sed 's/ /\n/g')"
+shift 1
+service_present="$(yq -oj -r ".services | has(\"${service}\")" $debug_config)"
+
+[ "$service_present" == "true" ] || { echo Service $service not found in $debug_config >&2 ; exit 1 ; }
+
+show_heading "Running service $service" "$*"
+service_json="$(yq -oj .services.${service} $debug_config)"
+
+function jq_service() {
+  echo "$service_json" | jq -r "$@"
+}
+
+function adopt_environment() {
+  env_lines="$1"
+  # exclude any excluded keys, plus those that will be overridden later
+  env_lines="`echo "$env_lines" | grep -v "^export \($(jq_service '.env_exclude + (.env_override | keys_unsorted) | join("\\\\|")')\)="`"
+  for subst in $(jq_service '.env_subst | join ("\n")')
+    do
+      env_lines="$(echo "$env_lines" | sed "$subst")"
+    done
+  echo "$env_lines"
+  for override in $(jq_service '.env_override | keys_unsorted[] as $k | "\($k)=\(.[$k])"')
+    do
+      echo "export ${override//\$script_dir/$script_dir/}"
+    done
+}
+
+working_dir="$(jq_service .working_dir)"
+cd $script_dir
+cd "$working_dir"
+
+running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
+readarray -t build_commands < <(jq_service '.build[]')
+readarray -t run_commands < <(jq_service '.run[]')
+
+for cmd in "$build_commands"
+  do
+    show_info --oneline "Running build command" "$cmd"
+    $cmd || { show_warning --oneline "Error running build command" "please correct and rerun" ; exit 1 ; }
+  done
+ 
+adopt_environment "$running_env" > bsky-export.env
+(
+  . bsky-export.env
+  rm bsky-export.env
+  for cmd in "$run_commands"
+    do
+      show_info --oneline "Running build command" "$cmd"
+      $cmd "$@" || { show_warning --oneline "Error running command" "please correct and rerun" ; exit 1 ; }
+    done
+)
