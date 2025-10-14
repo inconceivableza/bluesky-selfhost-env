@@ -4,7 +4,7 @@ dockerPullPolicy ?= missing
 auto_watchlog ?= true
 COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
 
-_dockerUp: secret-envs
+_dockerUp: envs
 	${dockerCompose} -f ${f} up --pull ${dockerPullPolicy} -d ${services}
 
 docker-pull:
@@ -78,11 +78,11 @@ docker-rm-all:
 	-docker volume ls | tail -n +2 | awk '{print $$2}' | xargs docker volume rm -f
 	-docker system prune -f
 
-docker-exec: secret-envs
+docker-exec: envs
 docker-exec:
 	docker ${cmd}
 
-docker-compose-exec: secret-envs
+docker-compose-exec: envs
 docker-compose-exec:
 	${dockerCompose} --env-file=${params_file} ${cmd}
 

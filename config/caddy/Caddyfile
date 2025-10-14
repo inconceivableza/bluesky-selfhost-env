@@ -160,7 +160,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://bsky:2584
+	reverse_proxy {$bskyPROXY:http://bsky:2584}
 }
 
 {$socialappFQDN} {

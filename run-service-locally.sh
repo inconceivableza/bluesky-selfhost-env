@@ -49,7 +49,7 @@ while IFS= read -r cmd
   do
     show_info --oneline "Running build command" "$cmd"
     $cmd || { show_warning --oneline "Error running build command" "please correct and rerun" ; exit 1 ; }
-  done < <(echo "$build_commands")
+  done <<< "$build_commands"
  
 cd $script_dir
 cd "$working_dir"
@@ -63,5 +63,5 @@ adopt_environment "$running_env" > bsky-export.env
     do
       show_info --oneline "Running command" "$cmd"
       $cmd "$@" || { show_warning --oneline "Error running command" "please correct and rerun" ; exit 1 ; }
-    done < <(echo "$run_commands")
+    done <<< "$run_commands"
 )

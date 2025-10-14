@@ -40,6 +40,23 @@ rDir ?=${wDir}/repos
 # file path to store generated passwords with openssl, during ops.
 passfile ?=${wDir}/config/secrets-passwords.env
 
+DERIVED_ENV_FILES := config/caddy-dynamic.env
+
+# derived configuration for caddy
+
+config/caddy-dynamic.env: .env
+ifeq ($(bskyDEBUG), true)
+	@echo "# optional configuration to redirect caddy ports to local debug instances" > $@
+	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
+else
+	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
+endif
+
+derived-envs: $(DERIVED_ENV_FILES)
+
+clean-derived-envs:
+	rm -f $(DERIVED_ENV_FILES)
+
 # List of all secret env files that can be generated
 SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env config/social-link-secrets.env
 
@@ -99,6 +116,8 @@ clean-secret-envs:
 	rm -f $(SECRET_ENV_FILES)
 
 secret-envs: $(SECRET_ENV_FILES)
+
+envs: derived-envs secret-envs
 
 # docker-compose file
 f ?=${wDir}/docker-compose.yaml
