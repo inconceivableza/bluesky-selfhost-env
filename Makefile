@@ -45,11 +45,16 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 # derived configuration for caddy
 
 config/caddy-dynamic.env: .env
-ifeq ($(bskyDEBUG), true)
-	@echo "# optional configuration to redirect caddy ports to local debug instances" > $@
-	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
-else
+ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
+else
+	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
+endif
+ifeq ($(bskyDEBUG), true)
+	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
+endif
+ifeq ($(pdsDEBUG), true)
+	@echo "pdsPROXY=http://host.docker.internal:$(shell yq -r .services.pds.env_override.PDS_PORT ./debug-services.yaml)" >> $@
 endif
 
 derived-envs: $(DERIVED_ENV_FILES)

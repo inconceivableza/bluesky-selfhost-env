@@ -6,7 +6,7 @@ script_dir="`dirname "$script_path"`"
 
 debug_config="$script_dir/debug-services.yaml"
 
-[[ "$1" == "" ]] && { echo Syntax $0 service >&2 ; exit 1 ; }
+[[ "$1" == "" ]] && { echo "Syntax $0 service [-k||--keep-tmp]" >&2 ; exit 1 ; }
 service="$(echo "$1" | sed 's/ /\n/g')"
 shift 1
 service_present="$(yq -oj -r ".services | has(\"${service}\")" $debug_config)"
@@ -14,6 +14,10 @@ service_present="$(yq -oj -r ".services | has(\"${service}\")" $debug_config)"
 [ "$service_present" == "true" ] || { echo Service $service not found in $debug_config >&2 ; exit 1 ; }
 
 show_heading "Running service $service" "$*"
+
+keep_tmp=
+[[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; }
+
 service_json="$(yq -oj .services.${service} $debug_config)"
 
 function jq_service() {
@@ -53,15 +57,28 @@ while IFS= read -r cmd
  
 cd $script_dir
 cd "$working_dir"
+export local_service_tmp_dir="`mktemp -d -t localdebug-$service`"
 
 # run commands are run in the adopted environment
-adopt_environment "$running_env" > bsky-export.env
+adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.env"
 (
-  . bsky-export.env
-  rm bsky-export.env
+  . "$local_service_tmp_dir/local-service-export.env"
+  rm "$local_service_tmp_dir/local-service-export.env"
+  set | grep ^PDS
   while IFS= read -r cmd
     do
+      cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
       show_info --oneline "Running command" "$cmd"
-      $cmd "$@" || { show_warning --oneline "Error running command" "please correct and rerun" ; exit 1 ; }
+      $cmd || { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
     done <<< "$run_commands"
 )
+
+if [ "$keep_tmp" == 1 ]
+  then
+    show_info --oneline "Keeping temporary directory" "$local_service_tmp_dir"
+elif [ -d "$local_service_tmp_dir" ]
+  then
+    show_info --oneline "Removing temporary directory" "$local_service_tmp_dir"
+    rm -r "$local_service_tmp_dir"
+  fi
+

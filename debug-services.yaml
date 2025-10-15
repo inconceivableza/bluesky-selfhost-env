@@ -24,4 +24,33 @@ services:
       BSKY_DATAPLANE_URLS: 'http://localhost:30010'
       BSKY_PORT: 25840
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
+  pds:
+    working_dir: './repos/atproto/services/pds/'
+    build:
+      - 'cd ../../packages/pds'
+      - 'pnpm install'
+      - 'pnpm build'
+      - 'cd ../../services/pds'
+      - 'pnpm install'
+    run:
+      - 'docker compose cp pds:/pds $local_service_tmp_dir/pds'
+      - 'node --enable-source-maps --require=./tracer.js index.js'
+      # - 'docker compose cp $local_service_tmp_dir/pds pds:/pds'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+      - 'DD_TRACE_AGENT_URL' # docker-internal so can't access
+      - 'OTEL_EXPORTER_OTLP_ENDPOINT' # docker-internal so can't access
+    env_subst:
+      - 's#_URL=http://\([a-z]*\):#_URL=https://\1.dallan.inclan#' # actually use FQDN properly here
+    env_override:
+      PDS_PORT: 25830
+      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
+      PDS_BLOBSTORE_DISK_LOCATION: '$local_service_tmp_dir/pds/blobs'
+      PDS_DATA_DIRECTORY: '$local_service_tmp_dir/pds'
+    volumes:
+      - pds: '$local_service_tmp_dir/pds'
+
 
