@@ -24,11 +24,11 @@ def adjust_vars(record):
 
 def main(args):
     for line in sys.stdin:
-        if not '|' in line and not args.no_prefix:
+        if not '|' in line and not args.no_json_prefix:
             sys.stdout.write(line)
             continue
-        if args.no_prefix:
-            service_prefix, log_json = 'stdout', line
+        if args.no_json_prefix:
+            service_prefix, log_json = args.default_service_prefix, line
         else:
             service_prefix, log_json = line.split('|',1)
             service_name = service_prefix.strip()
@@ -53,7 +53,8 @@ def main(args):
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
-   parser.add_argument('--no-prefix', action='store_true', help='Read JSON from each line rather than the service prefix that docker produces')
+   parser.add_argument('--no-json-prefix', action='store_true', help='Read JSON from each line rather than the service prefix that docker produces')
+   parser.add_argument('--default-service-prefix', default='stdout', help='Use this as the service prefix for output when none is supplied')
    args = parser.parse_args()
    try:
        main(args)
