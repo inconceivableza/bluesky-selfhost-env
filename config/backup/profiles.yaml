@@ -9,6 +9,9 @@ global:
   priority: low
   restic-lock-retry-after: 1m
   restic-stale-lock-age: 1h
+  lock: "/resticprofile/profile-global.lock"
+  schedule-lock-mode: 'default'
+  schedule-lock-wait: 30m
 
 mixins:
   schedule-defaults:
@@ -35,6 +38,7 @@ mixins:
       tag...: ["postgres"]
 
   sqlite-tree:
+    lock: /resticprofile/sqlite-{{ .Profile.Name }}.lock
     default-vars:
       NAME: {{ .Profile.Name }}
       SRC_TREE: /data/{{ .Profile.Name | replace "sqlite-" "" }}/
