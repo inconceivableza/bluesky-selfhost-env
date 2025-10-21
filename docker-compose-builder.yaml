@@ -1054,7 +1054,10 @@ services:
 
   # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: ${BRANDED_NAMESPACE}/otel-collector:latest
+    build:
+      context: .
+      dockerfile: ops/otel-collector-Dockerfile
     volumes:
       - "./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml"
     command:
@@ -1075,13 +1078,11 @@ services:
     depends_on:
       # - jaeger
       - prometheus
-    # No healthcheck as can't run wget/curl
-    # See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/cmd/otelcontribcol/Dockerfile
-    # healthcheck:
-    #   test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
-    #   timeout: 10s
-    #   interval: 10s
-    #   retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 50
     restart: always
 
   prometheus:

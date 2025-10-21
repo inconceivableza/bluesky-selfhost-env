@@ -1,0 +1,19 @@
+# forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/cmd/otelcontribcol/Dockerfile
+# to include alpine-base
+FROM otel/opentelemetry-collector-contrib:latest AS otel-collector
+
+FROM alpine:latest
+RUN apk --update add ca-certificates wget
+RUN update-ca-certificates
+
+ARG USER_UID=10001
+ARG USER_GID=10001
+USER ${USER_UID}:${USER_GID}
+
+# COPY /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=otel-collector /otelcol-contrib /otelcol-contrib
+EXPOSE 4317 55680 55679
+ENTRYPOINT ["/otelcol-contrib"]
+CMD ["--config", "/etc/otel/config.yaml"]
+
+

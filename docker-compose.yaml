@@ -369,8 +369,8 @@ services:
     profiles: ['', 'atproto']
     ports:
       - 2584:2584
-      # - 3001:3001 # dataplane port
-      # - 3002:3002 # bsync port
+      - 3001:3001 # dataplane port # temporarily exposing for debugging
+      - 3002:3002 # bsync port # temporarily exposing for debugging
     expose:
       - 2584
     command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
@@ -885,7 +885,7 @@ services:
 
   # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: ${BRANDED_NAMESPACE}/otel-collector:latest
     volumes:
       - "./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml"
     command:
@@ -906,13 +906,11 @@ services:
     depends_on:
       # - jaeger
       - prometheus
-    # No healthcheck as can't run wget/curl
-    # See https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/cmd/otelcontribcol/Dockerfile
-    # healthcheck:
-    #   test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
-    #   timeout: 10s
-    #   interval: 10s
-    #   retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 50
     restart: always
 
   prometheus:
