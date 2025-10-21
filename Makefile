@@ -154,7 +154,7 @@ origin_repo_did_prefix  ?=${gh}did-method-plc/
 #    export Sdep='caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin'
 #    # no plc in Sdep, comparing below line.
 #
-Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc dd-collector jaeger prometheus
+Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
 Sbsky ?=plc pds bgs bsky social-app social-card social-embed social-link palomar
 Sfeed ?=feed-generator
 #Sozone ?=ozone ozone-daemon

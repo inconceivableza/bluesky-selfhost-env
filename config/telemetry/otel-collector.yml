@@ -1,4 +1,9 @@
 receivers:
+  protocols:
+    grpc:
+      endpoint: 0.0.0.0:4317
+    http:
+      endpoint: 0.0.0.0:4318
   # Optional: collect host metrics
   hostmetrics:
     collection_interval: 10s
@@ -55,14 +60,14 @@ exporters:
 service:
   pipelines:
     traces:
-      receivers: [datadog]
+      receivers: [otlp, datadog]
       processors: [memory_limiter, batch]
       # exporters: [jaeger, logging]
       # exporters: [otlp/jaeger]
       exporters: [debug, otlp/jaeger]
     
     metrics:
-      receivers: [hostmetrics, datadog]
+      receivers: [otlp, hostmetrics, datadog]
       processors: [memory_limiter, batch]
       # exporters: [prometheus, logging]
       exporters: [prometheus]
