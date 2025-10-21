@@ -12,7 +12,6 @@ services:
       - 'HOSTNAME'
       - 'PATH'
       - 'PWD'
-      - 'DD_TRACE_AGENT_URL' # docker-internal so can't access
     env_subst:
       - 's/@database/@localhost/'
       - 's#_URL=http://\([a-z]*\):#_URL=https://\1.dallan.inclan#' # actually use FQDN properly here
@@ -23,6 +22,7 @@ services:
       BSKY_DATAPLANE_PORT: 30010
       BSKY_DATAPLANE_URLS: 'http://localhost:30010'
       BSKY_PORT: 25840
+      DD_TRACE_AGENT_URL: 'http://localhost:8126'
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
   pds:
     working_dir: './repos/atproto/services/pds/'
@@ -41,15 +41,15 @@ services:
       - 'HOSTNAME'
       - 'PATH'
       - 'PWD'
-      - 'DD_TRACE_AGENT_URL' # docker-internal so can't access
-      - 'OTEL_EXPORTER_OTLP_ENDPOINT' # docker-internal so can't access
     env_subst:
       - 's#_URL=http://\([a-z]*\):#_URL=https://\1.dallan.inclan#' # actually use FQDN properly here
     env_override:
-      PDS_PORT: 25830
+      DD_TRACE_AGENT_URL: 'http://localhost:8126'
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318'
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
       PDS_BLOBSTORE_DISK_LOCATION: '$local_service_tmp_dir/pds/blobs'
       PDS_DATA_DIRECTORY: '$local_service_tmp_dir/pds'
+      PDS_PORT: 25830
     volumes:
       - pds: '$local_service_tmp_dir/pds'
 

@@ -889,15 +889,16 @@ services:
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
-      # - "4317:4317"   # OTLP gRPC receiver
-      # - "4318:4318"   # OTLP HTTP receiver
+      # also expose receivers on localhost for when debugging local services
+      - "127.0.0.1:4317:4317"   # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318"   # OTLP HTTP receiver
       # - "8888:8888"   # Prometheus metrics
       # - "8889:8889"   # Prometheus exporter metrics
       # - "13133:13133" # health_check extension
       - "127.0.0.1:55679:55679" # ZPages for direct view
       # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
       # - "14278:14278" # alternate jaeger thrift_http receiver
-      # - "8126:8126"   # datadog receiver for services instrumented with ddtrace
+      - "127.0.0.1:8126:8126"   # datadog receiver for services instrumented with ddtrace
     depends_on:
       # - jaeger
       - prometheus
