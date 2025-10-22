@@ -71,6 +71,13 @@ copy_files:
   files:
     - "logo.svg"
 
+- src_dir: "${BRAND_IMAGES_DIR}/generated/"
+  dest_dir: "bskyembed/static/"
+  files:
+    - "favicon.png"
+    - "favicon-16x16.png"
+    - "favicon-32x32.png"
+
 svg_html_subst:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "web"
