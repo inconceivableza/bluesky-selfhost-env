@@ -19,6 +19,9 @@ include .make-env
 # this is used for identifying restic backups; try to get as specifica a FQDN name as possible
 HOST_HOSTNAME ?= $(shell { hostname -A 2>/dev/null | sed 's/ /\n/g' | sed 's/.internal//g' ; hostname ; } | head -n 1)
 
+# ends: definitions, need to care in especial.
+##########################################################################################
+
 ##########################################################################################
 # other definitions
 
@@ -319,6 +322,7 @@ echo:
 	@echo "plcFQDN       ${plcFQDN}"
 	@echo "publicApiFQDN ${publicApiFQDN}"
 	@echo "socialappFQDN ${socialappFQDN}"
+	@echo "EXPO_PUBLIC_BLUESKY_PROXY_DID=${EXPO_PUBLIC_BLUESKY_PROXY_DID}"
 	@echo ""
 	@echo "EMAIL4CERTS: ${EMAIL4CERTS}"
 	@echo "PDS_EMAIL_SMTP_URL: ${PDS_EMAIL_SMTP_URL}"

@@ -32,7 +32,17 @@ This repository aims to get self-hosted a bluesky environment easy, with:
  - Simplicity: all bluesky components run on one host, powered by docker-compose.
  - Minimal remapping: the simplest possible mapping rules between FQDN, reverse proxy, and docker-container, for easy understanding and tuning.
 
-Currently, my latest release is <strong>2025-08-30</strong>, based on the <strong>2025-08-30</strong> code from bluesky-social.<br>
+Currently, my latest release is <strong>2025-10-18</strong>, based on the <strong>2025-10-18</strong> code from bluesky-social.<br>
+
+### Special notes about big impact changes in upstream regarding selfhost
+
+- changes in Aug-Sep 2025, atproto-proxy(bluesky proxy header) is required by social-app, which value can tune only at build time.
+  It breaks 'build once, run with any domain' manner on this tool, and the manner is recovered by involving local static CDN in social-app container.
+  this technique is inspired from STATIC_CDN_HOST in social-app(bskyweb) codes.
+  to achieve it, social-app got some patches for bskyweb + Dockerfile + additional shell command and docker-compose*.yaml.<br>
+   - in docker-compose-build.yaml, EXPO_PUBLIC_BLUESKY_PROXY_DID=@@EXPO_PUBLIC_BLUESKY_PROXY_DID@@ as build arg, to embed placeholder(mark) within js files.
+   - on booting phase at runtime, it rewrites placeholder with real val by runtime env EXPO_PUBLIC_BLUESKY_PROXY_DID=did:web:..., before being used by social-app.
+   - refer comments in docker-compose.yaml for detail.
 
 ## <a id="status"/>Current status regarding self-hosting
 
@@ -89,8 +99,8 @@ set the default domains used by builds of the social-app.
 export DOMAIN=whatever.yourdomain.com
 
 # 2) Set 'asof' date (YYYY-MM-DD or 'latest') to select docker images and sources.
-#    Example: 2025-08-30 (latest prebuild) or 'latest' (following docker image naming).
-export asof=2025-08-30
+#    Example: 2025-10-18 (latest prebuild) or 'latest' (following docker image naming).
+export asof=2025-10-18
 
 # 3) Set email addresses:
 
@@ -336,14 +346,6 @@ make patch-dockerbuild
 
 # 1) Build the images
 make build DOMAIN= f=./docker-compose-builder.yaml
-
-# The following operation is obsolete and no longer supported due to its fragile nature (high cost and low return). Also, this patch has no effect on PDS scaling out (multiple PDS domains).
-# ~~ 2) Optionally apply a patch for self-hosting and rebuild the image ~~
-# ~~  'optional' signifies that applying this patch is not essential for achieving a self-hosting environment. ~~
-# ~~ NOTE: This operation will create a new branch, apply the patch, and keep you on that branch. ~~
-#
-# ~~ make _patch-selfhost-even-not-mandatory ~~
-# ~~ make build services=social-app f=./docker-compose-builder.yaml ~~
 ```
 
 [back to top](#top)
