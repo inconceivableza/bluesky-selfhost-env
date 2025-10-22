@@ -47,7 +47,7 @@ x-definitions:
       # - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/host-ca-certificates.crt:ro
 
 networks:
- default:
+  default:
     name: ${docker_network}
 
 services:
@@ -582,6 +582,10 @@ services:
       # - LINK_DB_POSTGRES_POOL_SIZE=
       # - LINK_DB_POSTGRES_POOL_MAX_USES=
       # - LINK_DB_POSTGRES_POOL_IDLE_TIMEOUT_MS=
+      - LINK_SAFELINK_ENABLED=0
+      - LINK_SAFELINK_PDS_URL=https://${pdsFQDN}
+      - LINK_SAFELINK_AGENT_IDENTIFIER=
+      - LINK_SAFELINK_AGENT_PASS=
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
