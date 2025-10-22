@@ -169,7 +169,8 @@ services:
 # debug for bluesky with indigo subcmds <<<
 
   database:
-    image: postgres:17-trixie
+    image: postgres:16-trixie
+    # image: postgres:17-trixie
     ports:
       - 5432:5432
     env_file:
@@ -450,7 +451,10 @@ services:
       - BSKY_BSYNC_HTTP_VERSION=1.1
       - BSKY_BSYNC_PORT=3002
       - BSKY_BSYNC_URL=http://bsky:3002
-      - BSKY_COURIER_URL=http://fake-courier.example.invalid/
+      - BSKY_COURIER_API_KEY=
+      - BSKY_COURIER_HTTP_VERSION=
+      - BSKY_COURIER_IGNORE_BAD_TLS=
+      - BSKY_COURIER_URL=
       - BSKY_DATAPLANE_HTTP_VERSION=1.1
       - BSKY_DATAPLANE_PORT=3001
       - BSKY_DATAPLANE_URLS=http://bsky:3001
