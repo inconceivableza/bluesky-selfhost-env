@@ -54,6 +54,10 @@ rules:
 
 - id: hosting-provider
   patterns:
+    - patterns:
+      - pattern-regex: 'https://bsky.social[/a-zA-Z0-9_.-]*'
+      - pattern-not: 'https://bsky.social/about/blog/08-22-2025-mississippi-hb1126'
+      - pattern-not: 'https://bsky.social/about/blog/08-14-2025-updated-terms-and-policies'
     - pattern: 'https://bsky.social'
   # fix: 'https://{{ env.pdsFQDN }}'
   # link+preconnect in bskyweb, lots more in src
@@ -77,7 +81,11 @@ rules:
 
 - id: hosting-provider-name
   patterns:
-    - pattern: 'bsky.social'
+    - patterns: # these allow excluding broader patterns that include bsky.social
+      - pattern-regex: '@?[a-zA-Z0-9_:./-]*bsky[.]social'
+      - pattern-not: 'https://bsky.social' # these are covered by hosting-provider above
+      - pattern-not-regex: '@[a-zA-Z0-9_]*[.]bsky[.]social' # profile references
+    - pattern: 'bsky.social' # this focuses down to the actual text
   # fix: '{{ env.pdsFQDN }}'
   # src/screens/Signup and also links to support places
   message: Hardcoded reference to PDS/entryway domain ${env.pdsFQDN}
@@ -190,8 +198,41 @@ rules:
       - src/lib/hooks/useCreateSupportLink.ts
       - src/screens/Settings/PrivacyAndSecuritySettings.tsx
 
+- id: did-with-app-domain
+  patterns:
+    - pattern-either:
+      - pattern-regex: 'did:web:[a-zA-Z0-9_.]*bsky[.]social' # did references
+      - pattern-regex: 'did:web:[a-zA-Z0-9_.]*bsky[.]app' # did references
+  message: Hardcoded did needs renaming ${env.socialappFQDN} or ${env.pdsFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - src/env/common.ts # lots of default fallbacks; but should recheck this after each release
+      - src/lib/constants.ts # some fallbacks; should recheck after release
+      - src/state/env-config.tsx # lots of default fallbacks
+
+- id: link-domain
+  patterns:
+    - pattern: 'https://go.bsky.app'
+  message: Hardcoded link needs renaming ${env.linkFQDN}
+  languages:
+    - generic
+  severity: WARNING
+  paths:
+    exclude:
+      - bskyembed/src/env-config.ts # default fallback
+      - bskyweb/cmd/embedr/main.go # default fallback
+      - src/state/env-config.tsx # default fallback
+      - web/index.html # preconnect that isn't actually use because bskyweb uses a template
+
 - id: app-domain
   patterns:
+    - patterns: # these allow excluding broader patterns that include bsky.app
+      - pattern-regex: '[a-zA-Z0-9_:./-]*bsky[.]app'
+      - pattern-not-regex: 'did:web:[a-zA-Z0-9_.]*bsky[.]app' # did-with-app-domain covers these
+      - pattern-not: 'https://go.bsky.app' # link-domain covers this
     - pattern: 'bsky.app'
   # fix: '{{ env.socialappFQDN }}'
   # quite a few occurrences still: app.config.js, bskylink/web, modules/, package.json (!), and other places in src/
