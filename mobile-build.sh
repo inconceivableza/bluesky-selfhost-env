@@ -206,10 +206,9 @@ function pre_exit {
       show_info --oneline "Build directory" "$build_dir"
     else
       conditional_remove_atproto
-      show_info --oneline "Build directory" "$build_dir"
-      du -hs "$build_dir"
-      show_info --oneline "Build output directory" "$output_dir"
+      [ -d "$build_dir" ] && { show_info --oneline "Build directory" "$build_dir" ; du -hs "$build_dir" ; }
     fi
+  [ -d "$output_dir" ] && show_info --oneline "Build output directory" "$output_dir"
 }
 
 function interrupt_handler {
