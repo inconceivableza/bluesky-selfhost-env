@@ -22,7 +22,7 @@ function show_help() {
   echo "  build_profile       name of the expo build profile for android - defaults to development"
   echo "                      options: "$(get_build_profiles)
   echo "  env_profile         name of the env-config to use by default - for non-production, can be selected at runtime."
-  echo "                      defaults to the build_profile's corresponding environment, with testflight/preview -> test"
+  echo "                      defaults to the build_profile's corresponding environment, with testflight*/preview* -> test"
   echo "                      options: development test production"
   echo
 }
@@ -52,7 +52,7 @@ while [ "$#" -gt 0 ]
 if [ "$selfhost_env_profile" == "" ]
   then
     selfhost_env_profile="$build_profile"
-    [[ "$selfhost_env_profile" == "testflight" || "$selfhost_env_profile" == "preview" ]] && selfhost_env_profile=test
+    [[ "${selfhost_env_profile#testflight}" != "$selfhost_env_profile" || "${selfhost_env_profile#preview}" != "$selfhost_env_profile" ]] && selfhost_env_profile=test
   else
     manually_set_env_profile=1
   fi
@@ -187,6 +187,13 @@ nvm use 20
 yarn || { pre_exit --oneline "Error installing" "check yarn output" ; exit 1 ; }
 
 show_heading "Packaging atproto" "from src repo"
+(
+  cd "$script_dir/repos/atproto"
+  if [[ -n "$(git status --porcelain -u no)" ]]; then
+    show_warning "Changes in atproto" "that haven't been committed"
+    exit 1
+  fi
+) || { show_warning --oneline "Uncommitted changes in atproto" "will not be included in packed packages used in social-app for this build" ; }
 ./scripts/pack-atproto-packages.sh
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
