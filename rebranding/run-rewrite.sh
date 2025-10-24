@@ -7,6 +7,11 @@ commit_parts=0
     commit_parts=1
     shift
 }
+check_only=0
+[[ "$1" == "--check-only" ]] && {
+    check_only=1
+    shift
+}
 BRAND_CONFIG_DIR="$1"
 REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
 export MANUAL_REBRANDED_REPOS="$REBRANDED_REPOS"
@@ -30,14 +35,14 @@ function show_subdirs_with_brand_images() {
 }
 
 function usage() {
-    echo syntax "$0" [--commit-parts] brand_config_dir >&2
+    echo syntax "$0" "[--commit-parts|--check-only] brand_config_dir" >&2
     echo defined brand config dirs may include: `ls */*-branding.svg 2>/dev/null | sed 's#/.*-branding.svg##' | sort -u`
     echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
     [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
     echo to create a new one, copy opensky and adjust for your images
 }
 
-[[ "$1" == "-h" || "$1" == "--help" || "$BRAND_CONFIG_DIR" == "" ]] && {
+[[ "$1" == "-h" || "$1" == "--help" || "$BRAND_CONFIG_DIR" == "" || "$commit_parts$check_only" == 11 ]] && {
     usage
     exit 1
 }
@@ -102,10 +107,14 @@ for branded_repo in $REBRANDED_REPOS
     # generate the branding rules from the template
     repo_dir="$script_dir/../repos/${branded_repo}"
     [ -d "$repo_dir" ] || { echo could not find dir for $repo_dir - place at $repo_dir  >&2 ; exit 1 ; }
-    (cd "$repo_dir" ; git diff --exit-code --stat) || { show_error "Local changes exist" "in $repo_dir so aborting; please commit / stash first" ; exit 1 ; }
+    if [ "$check_only" != 1 ]; then
+      (cd "$repo_dir" ; git diff --exit-code --stat ) || { show_error "Local changes exist" "in $repo_dir so aborting; please commit / stash first" ; exit 1 ; }
+    fi
+    branding_part_failures=""
     for branding_plan in "check:hardcoded" "check:verbage" "change:change-ids" "change:styles" "change:images"
       do
         branding_action="${branding_plan%%:*}"
+        [[ "$branding_action" != "check" && "$check_only" == 1 ]] && { echo skipping $branding_plan as only checking ; continue ; }
         branding_part="${branding_plan##*:}"
         branding_part_basename=${branded_repo}${branding_part:+-}${branding_part}
         [ -f ${REBRAND_TEMPLATE_DIR}/${branding_part_basename}.mustache.yml ] || { echo could not find ${branding_part_basename}.mustache.yml in ${REBRAND_TEMPLATE_DIR} >&2 ; continue ; }
@@ -116,8 +125,10 @@ for branded_repo in $REBRANDED_REPOS
             (
               cd "$repo_dir"
               show_heading --oneline "Applying ${branding_part:-(global)}" "changes to $branded_repo in $(basename "`pwd`") with $(basename ${BRAND_CONFIG_DIR})"
-              git diff --exit-code --stat || { show_error "Local changes exist" "so aborting; please commit / stash first" ; exit 1 ; }
-              git reset --hard
+              if [ "$check_only" != 1 ]; then
+                git diff --exit-code --stat || { show_error "Local changes exist" "so aborting; please commit / stash first" ; exit 1 ; }
+                git reset --hard
+              fi
               # we no longer do renames of files
               # python ${script_dir}/apply_files.py --config "${BRANDING_PART_RULES}" --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
               (
@@ -171,9 +182,20 @@ for branded_repo in $REBRANDED_REPOS
                   show_info --oneline "Showing changes" "for ${branding_part:-(global)}"
                   git diff
                 fi
-            ) || { show_error "Patching ${branded_repo} failed:" "examine above error messages and correct" ; exit 1 ; }
+            ) || {
+              if [ "$check_only" == 1 ]; then
+                show_warning "Detected needed changes in ${branded_repo} under ${branding_part:-(global)}:" "examine above error messages and correct"
+                branding_part_failures="$branding_part_failures ${branding_part:-(global)}"
+              else
+                show_error "Patching ${branded_repo} failed ${branding_part:-(global)}:" "examine above error messages and correct"
+                exit 1
+              fi
+            }
           fi
       done
   done
-
+[ "$check_only" == 1 ] && [ "$branding_part_failures" != "" ] && {
+  show_error "Changes needed in ${branded_repo}:" $branding_part_failures
+  exit 1
+}
 
