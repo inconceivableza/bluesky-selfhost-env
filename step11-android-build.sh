@@ -182,39 +182,12 @@ function interrupt_handler {
 
 trap interrupt_handler SIGINT
 
-show_heading "Building atproto" "in build folder"
-show_info --oneline "Copying atproto files" "into build folder"
-atproto_src="$script_dir/repos/atproto"
-# cpio doesn't handle copying to symlinks, so find the actual directory target if required
-atproto_dst="$(readlink -f $build_dir)/atproto"
-mkdir "$atproto_dst"
-cp -a "$atproto_src"/{tsconfig,*.js*,*.yaml} "$atproto_dst"
-atpkg_src="$atproto_src/packages"
-atpkg_dst="$atproto_dst/packages"
-mkdir "$atpkg_dst"
-for pkg in api common-web syntax lexicon xrpc
-  do
-    (
-      cd "$atpkg_src"/"$pkg"
-      git ls-files | cpio -pdm "$atpkg_dst"/"$pkg"
-    )
-  done
-show_info --oneline "Running atproto install" "using pnpm"
-(
-  cd "$atpkg_dst"
-  corepack prepare --activate
-  pnpm install --frozen-lockfile
-)
-show_info --oneline "Running atproto build" "using pnpm"
-(
-  cd "$atpkg_dst"
-  pnpm build
-)
-
-cd "$script_dir/repos/social-app"
 show_heading "Running yarn" "to ensure everything is installed"
 nvm use 20
 yarn || { pre_exit --oneline "Error installing" "check yarn output" ; exit 1 ; }
+
+show_heading "Packaging atproto" "from src repo"
+./scripts/pack-atproto-packages.sh
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
 
