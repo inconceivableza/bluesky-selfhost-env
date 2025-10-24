@@ -13,8 +13,10 @@ target_args_usage="-a|--android|-i|--ios "
 [ "${script_name/ios/}" != "$script_name" ] && named_target=ios
 [ "$named_target" != "" ] && { argselected_target= ; target_args_usage= ; }
 
+intl_target=build
+
 function show_usage() {
-  echo "Syntax $0 [-?|-h|--help] $target_args_usage[-k|--keep-tmp] [build_profile [env_profile]]"
+  echo "Syntax $0 [-?|-h|--help] $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
 }
 
 function get_build_profiles() {
@@ -22,7 +24,7 @@ function get_build_profiles() {
 }
 
 function show_help() {
-  echo "Usage: $0 $target_args_usage[-k|--keep-tmp] [build_profile [env_profile]]"
+  echo "Usage: $0 $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
   echo
   if [ "$named_target" != "" ]; then
     echo "Build the social-app for $named_target"
@@ -32,6 +34,8 @@ function show_help() {
   echo
   echo "Options:"
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in"
+  echo "  --no-intl           skips yarn intl: preparation"
+  echo "  --intl=TARGET       runs yarn intl:build or intl:compile or skips if missing (default build)"
   [ "$argselected_target" == 1 ] && {
     echo "  -a, --android       targets android build"
     echo "  -i, --ios           targets ios build"
@@ -60,6 +64,8 @@ while [ "$#" -gt 0 ]
       [[ "$target_os" != "" && "$target_os" != "ios" ]] && { show_error "Target configured" "but already targetting $target_os - $1 not valid" ; show_usage 1 ; exit ; }
       target_os="ios" ; shift 1 ; continue
     }
+    [[ "${1#--intl=}" != "$1" ]] && { intl_target="${1#--intl=}" ; shift 1 ; continue ; }
+    [[ "${1}" == "--no-intl" ]] && { intl_target= ; shift 1 ; continue ; }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
     [[ "${1#-}" != "$1" ]] && {
       show_error "Unknown parameter" "$1"
@@ -220,6 +226,19 @@ trap interrupt_handler SIGINT
 show_heading "Running yarn" "to ensure everything is installed"
 nvm use 20
 yarn || { pre_exit --oneline "Error installing" "check yarn output" ; exit 1 ; }
+
+if [ "$intl_target" == "" ]; then
+  show_info --oneline "Skipping intl compilation" "as requested"a
+else
+  if [ "$intl_target" == "build" ]; then
+    show_heading --oneline "Building intl" "by extracting strings and compiling"
+  elif [ "$intl_target" == "compile" ]; then
+    show_heading --oneline "Preparing intl" "by extracting compiling"
+  else
+    show_heading --oneline "Preparing intl" "by custom intl:$intl_target script"
+  fi
+  yarn intl:"$intl_target" || { pre_exit --oneline "Error with intl" "check yarn output" ; exit 1 ; }
+fi
 
 show_heading "Packaging atproto" "from src repo"
 (
