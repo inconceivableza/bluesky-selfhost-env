@@ -7,13 +7,17 @@ script_dir="`dirname "$script_path"`"
 [[ "$1" == "" ]] && { echo Syntax $0 service... >&2 ; exit 1 ; }
 services="$(echo "$@" | sed 's/ /\n/g')"
 selected_bsky=
+selected_caddy=
+selected_pds=
 restart_bsky=
-[[ "$(echo "$services" | grep '^bsky$')" == "bsky" ]] && {
+[[ "$(echo "$services" | grep '^bsky$')" == "bsky" ]] && selected_bsky=1
+[[ "$(echo "$services" | grep '^caddy$')" == "caddy" ]] && selected_caddy=1
+[[ "$(echo "$services" | grep '^pds$')" == "pds" ]] && selected_pds=1
+[ "$selected_bsky" == 1 ] && {
   show_info "Bsky service selected" "will restart after other services"
-  selected_bsky=1
   services="$(echo "$services" | grep -v '^bsky$')"
 }
-[[ "$selected_bsky" != "1" &&"$(echo "$services" | grep '^\(caddy\|pds\)$')" != "" ]] && {
+[[ "$selected_bsky" != "1" && "$selected_caddy$selected_bsky" != "" ]] && {
   bsky_running=$(docker compose ps -q bsky)
   if [ "$bsky_running" == "" ]
     then
@@ -26,6 +30,7 @@ restart_bsky=
 }
 services="$(echo $services)"
 
+[ "$selected_caddy" == 1 ] && { show_info --oneline "Rebuilding derived envs" "for caddy" ; make derived-envs ; }
 show_heading "Running docker down" "$*"
 make docker-compose-exec cmd="down $*"
 [ "$services" != "" ] && {
