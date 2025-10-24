@@ -196,7 +196,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://social-link:3004
+	reverse_proxy {$linkPROXY:http://social-link:3004}
 }
 
 {$ozoneFQDN} {
