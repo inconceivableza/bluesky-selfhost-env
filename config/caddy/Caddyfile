@@ -3,14 +3,37 @@
 # cf. https://caddyserver.com/docs/caddyfile
 #
 # global options: starts >>>>
+
+(haproxy_support_true) {
+	# for getting real IP if forwarded over these networks
+	trusted_proxies static 127.0.0.1/32 {$TRUSTED_PROXIES}
+	# for supporting haproxy forwarding requests over PROXY protocol to allow ip detection - see .env
+	listener_wrappers {
+		proxy_protocol {
+			timeout 2s
+			allow 127.0.0.1/32
+			allow {$TRUSTED_PROXIES}
+		}
+		tls
+	}
+}
+
+(haproxy_support_false) {
+}
+
+(haproxy_support_) {
+}
+
 {
 	#	debug
 	on_demand_tls {
 		permission http "http://caddy-sidecar:80" # this just response with 200 to everything so will allow all certificates
 	}
-	#    limits to HTTP/1.1 >>>
 	servers {
+		#    limits to HTTP/1.1 >>>
 		protocols h1
+		# optional haproxy forwarding support - should be set to `true` or left empty
+		import haproxy_support_{$haproxyFORWARD}
 	}
 	#    limits to HTTP/1.1 <<<
 	metrics {

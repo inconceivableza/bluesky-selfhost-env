@@ -56,9 +56,10 @@ services:
     #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
     image: ${BRANDED_NAMESPACE}/caddy:2
     ports:
-      - 80:80
-      - 443:443
-      - 443:443/udp
+      # these ports can be overridden in .env if using haproxy to forward requests to caddy
+      - "${CADDY_HTTP_PORT-80}:80"
+      - "${CADDY_HTTPS_PORT-443}:443"
+      - "${CADDY_HTTPS_PORT-443}:443/udp"
       # - 9000:9000 # internal CA server; doesn't need to be public
     # this gets created by make and redirects caddy to local debug services if populated
     env_file: config/caddy-dynamic.env
@@ -81,6 +82,8 @@ services:
       - plcFQDN=${plcFQDN}
       - publicApiFQDN=${publicApiFQDN}
       - socialappFQDN=${socialappFQDN}
+      - haproxyFORWARD=${haproxyFORWARD-}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES-}
       - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER-}
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
