@@ -79,6 +79,7 @@ services:
       - cardFQDN=${cardFQDN}
       - embedFQDN=${embedFQDN}
       - feedgenFQDN=${feedgenFQDN}
+      - ipFQDN=${ipFQDN}
       - jetstreamFQDN=${jetstreamFQDN}
       - linkFQDN=${linkFQDN}
       - ozoneFQDN=${ozoneFQDN}
@@ -548,6 +549,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - HTTP_ADDRESS=:8100
+      - EXPO_PUBLIC_GEOLOCATION_CONFIG_URL=https://${ipFQDN}/config
       - IPCC_HOST=http://ipcc:8080
       - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
