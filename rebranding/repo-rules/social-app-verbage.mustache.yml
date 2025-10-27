@@ -1,6 +1,15 @@
 rules:
 - id: app-name
   patterns:
+    - patterns:
+      - pattern-regex: '^.*Bluesky.*$'
+      - pattern-not-regex: '^.*appName [?][?] "Bluesky".*$' # fallback default
+      - pattern-not-regex: "^.*appName [?][?] 'Bluesky'.*$" # fallback default
+      - pattern-not-regex: '^.*[|][|] "Bluesky".*$' # fallback default
+      - pattern-not-regex: "^.*[|][|] 'Bluesky'.*$" # fallback default
+      - pattern-not-regex: '^.*[|][|] _[(]msg`Bluesky`[)].*$' # fallback default
+      - pattern-not-regex: '^.*/[*].*Bluesky.*[*]/.*$' # fallback default
+      - pattern-not-regex: '^.*//.*Bluesky.*$' # fallback default
     - pattern: "Bluesky"
   # fix: "{{ naming.app_name }}"
   # all over the place. We should do something in app.config.js, but lots of the others are more rebranding than config
@@ -30,6 +39,7 @@ rules:
       - plugins/withMobileBuildConfig.js # fallback defaults
       - scripts/*.sh # we don't use these
       - src/components/moderation/ReportDialog/index.tsx # comment
+      - src/env/common.ts # comment
       - src/lib/moderation/useModerationCauseDescription.ts # actually the bluesky service (can patch later)
       - src/lib/notifications/notifications.ts # comments mentioning Bluesky
       - src/locale/**/*.po # not going to handle localization now...
