@@ -192,7 +192,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://social-app:8100
+	reverse_proxy {$socialappPROXY:http://social-app:8100}
 }
 
 {$cardFQDN} {
@@ -219,7 +219,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy {$linkPROXY:http://social-link:3004}
+	reverse_proxy {$sociallinkPROXY:http://social-link:3004}
 }
 
 {$ipFQDN} {

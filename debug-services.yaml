@@ -52,9 +52,34 @@ services:
       PDS_PORT: 25830
     volumes:
       - pds: '$local_service_tmp_dir/pds'
+  social-app:
+    working_dir: './repos/social-app/bskyweb'
+    build:
+      - 'cd ../../atproto/'
+      - 'pnpm install'
+      - 'cd packages/api'
+      - 'pnpm build'
+      - 'cd ../../../social-app'
+      - 'yarn install'
+      - 'yarn intl:build'
+      - 'yarn build-web'
+      - 'cd bskyweb'
+      - 'go mod download'
+    run:
+      - 'go run ./cmd/bskyweb serve'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+      - 'IPCC_HOST' # http://ipcc:8080 won't work outside docker
+    env_override:
+      HTTP_ADDRESS: :8101
+      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
   social-link:
     working_dir: './repos/social-app/bskylink'
     build:
+      - 'set | grep ANDROID'
       - 'yarn install'
       - 'yarn build'
     run:

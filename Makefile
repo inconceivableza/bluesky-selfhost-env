@@ -48,7 +48,7 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 # derived configuration for caddy
 
 config/caddy-dynamic.env: .env
-ifeq ($(findstring true,$(bskyDEBUG)$(linkDEBUG)$(pdsDEBUG)),)
+ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(sociallinkDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
 else
 	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
@@ -56,11 +56,14 @@ endif
 ifeq ($(bskyDEBUG), true)
 	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
 endif
-ifeq ($(linkDEBUG), true)
-	@echo "linkPROXY=http://host.docker.internal:$(shell yq -r .services.social-link.env_override.LINK_PORT ./debug-services.yaml)" >> $@
-endif
 ifeq ($(pdsDEBUG), true)
 	@echo "pdsPROXY=http://host.docker.internal:$(shell yq -r .services.pds.env_override.PDS_PORT ./debug-services.yaml)" >> $@
+endif
+ifeq ($(sociallinkDEBUG), true)
+	@echo "sociallinkPROXY=http://host.docker.internal:$(shell yq -r .services.social-link.env_override.LINK_PORT ./debug-services.yaml)" >> $@
+endif
+ifeq ($(socialappDEBUG), true)
+	@echo "socialappPROXY=http://host.docker.internal:$(shell yq -r .services.social-app.env_override.HTTP_ADDRESS ./debug-services.yaml | sed 's/^.*://')" >> $@
 endif
 
 derived-envs: $(DERIVED_ENV_FILES)

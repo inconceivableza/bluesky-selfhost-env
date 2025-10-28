@@ -70,8 +70,8 @@ function jq_service() {
 function adopt_environment() {
   env_lines="$1"
   # exclude any excluded keys, plus those that will be overridden later
-  env_lines="`echo "$env_lines" | grep -v "^export \($(jq_service '.env_exclude + (.env_override | keys_unsorted) | join("\\\\|")')\)="`"
-  for subst in $(jq_service '.env_subst | join ("\n")')
+  env_lines="`echo "$env_lines" | grep -v "^export \($(jq_service '.env_exclude // [] + (.env_override // {} | keys_unsorted) | join("\\\\|")')\)="`"
+  for subst in $(jq_service '.env_subst // [] | join ("\n")')
     do
       env_lines="$(echo "$env_lines" | sed "$subst")"
     done
@@ -117,7 +117,7 @@ adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.
     do
       cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
       show_info --oneline "Running command" "$cmd"
-      { $cmd || { show_warning --oneline "Error running command" "please correct and rerun" ; break ; } ; } | {
+      $cmd | {
         if [ "$format_logs" == 1 ]
           then
             "$script_dir/selfhost_scripts/log_formatter.py" --no-json-prefix --default-service-prefix "$service"
@@ -125,6 +125,7 @@ adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.
             cat
           fi
       }
+      [ ${PIPESTATUS[0]} -ne 0 ] && { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
     done <<< "$run_commands"
 )
 
