@@ -24,23 +24,6 @@ services:
       BSKY_PORT: 25840
       DD_TRACE_AGENT_URL: 'http://localhost:8126'
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
-  social-link:
-    working_dir: './repos/social-app/bskylink'
-    build:
-      - 'yarn install'
-      - 'yarn build'
-    run:
-      - 'node --enable-source-maps dist/bin.js'
-    env_exclude:
-      - 'HOME'
-      - 'HOSTNAME'
-      - 'PATH'
-      - 'PWD'
-    env_subst:
-      - 's/@database/@localhost/'
-    env_override:
-      LINK_PORT: 30040
-      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
   pds:
     working_dir: './repos/atproto/services/pds/'
     build:
@@ -69,5 +52,22 @@ services:
       PDS_PORT: 25830
     volumes:
       - pds: '$local_service_tmp_dir/pds'
+  social-link:
+    working_dir: './repos/social-app/bskylink'
+    build:
+      - 'yarn install'
+      - 'yarn build'
+    run:
+      - 'node --enable-source-maps dist/bin.js'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+    env_subst:
+      - 's/@database/@localhost/'
+    env_override:
+      LINK_PORT: 30040
+      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
 
 
