@@ -23,6 +23,10 @@ function get_build_profiles() {
   jq -r '.build | keys[]' $script_dir/repos/social-app/eas.json | grep -v base
 }
 
+function query_eas_profile() {
+  jq -r '.build."'${build_profile}'"'"$1" $script_dir/repos/social-app/eas.json
+}
+
 function show_help() {
   echo "Usage: $0 $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
   echo
@@ -91,6 +95,7 @@ if [ "$selfhost_env_profile" == "" ]
   then
     selfhost_env_profile="$build_profile"
     [[ "${selfhost_env_profile#testflight}" != "$selfhost_env_profile" || "${selfhost_env_profile#preview}" != "$selfhost_env_profile" ]] && selfhost_env_profile=test
+    [[ "${selfhost_env_profile#development}" != "$selfhost_env_profile" ]] && selfhost_env_profile=development
   else
     manually_set_env_profile=1
   fi
@@ -133,7 +138,11 @@ which nvm || . ~/.nvm/nvm.sh
 nvm use 20
 
 function get_expected_extension() {
-  [ "$target_os" == "ios" ] && { echo ipa ; return 0 ; }
+  [ "$target_os" == "ios" ] && {
+    forSimulator="`query_eas_profile ".ios.simulator"`"
+    [ "$forSimulator" == "true" ] && { echo tgz ; return 0 ; }
+    echo ipa ; return 0
+  }
   # based on https://docs.expo.dev/build-reference/apk/
   devClient="`jq -r .build.${build_profile}.developmentClient eas.json`"
   dist="`jq -r .build.${build_profile}.distribution eas.json`"
