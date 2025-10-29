@@ -552,7 +552,7 @@ services:
       # we rather use a combination of .env.go-templates which puts "{{ .varname }}" syntax into the templates, for server-side rendering
       # and a /env-config.json URL which is served up using the environment or command-line parameters
       - OGCARD_URL=https://${cardFQDN}
-      - SOCIAL_EMBED_SERVICE=${embedFQDN}
+      - SOCIAL_EMBED_SERVICE=https://${embedFQDN}
       - LINK_URL=https://${linkFQDN}
       - SOCIAL_APP_ABOUT=https://${pdsFQDN}/about
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
