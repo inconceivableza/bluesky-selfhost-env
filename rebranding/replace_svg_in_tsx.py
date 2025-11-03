@@ -81,9 +81,9 @@ def adjust_svg_and_import(src, svg, config_file=replace_svg_contents_config):
         imported_svg_objects.extend(tag.strip() for tag in used_tags if tag.strip())
     tsx_tags = [tag for tag in tsx_tags if tag not in imported_svg_objects]
     new_tags_str = ', '.join(sorted(dict.fromkeys(tsx_tags)))
-    result = result.replace('@SVG_INNER@', tsx_svg_inner).replace('@SVG_TAGS@', new_tags_str)
     for import_original, import_new in import_replacements.items():
         result = result.replace(import_original, import_new)
+    result = result.replace('@SVG_INNER@', tsx_svg_inner).replace('@SVG_TAGS@', new_tags_str)
     return result
 
 if __name__ == '__main__':
