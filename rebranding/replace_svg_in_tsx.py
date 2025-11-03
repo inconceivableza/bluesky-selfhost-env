@@ -5,6 +5,7 @@ import argparse
 import subprocess
 from os.path import abspath, dirname, join
 import comby_tsx
+import logging
 import re
 
 script_dir = dirname(abspath(__file__))
@@ -92,12 +93,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--in-place', action='store_true', help='alter source file')
     parser.add_argument('-c', '--config', default=replace_svg_contents_config, type=str, help='comby config file')
+    parser.add_argument('-l', '--loglevel', type=str, default='INFO', help="log level")
     parser.add_argument('tsx_file', type=str, help='source .tsx filename')
     parser.add_argument('svg_file', type=str, help='source .svg filename')
     parser.add_argument('dest_file', type=str, nargs='?', help='dest filename')
     args = parser.parse_args()
     if args.in_place and args.dest_file:
        parser.error("specify either --in-place or dest_file, not both")
+    if args.loglevel:
+        logging.getLogger().setLevel(args.loglevel)
     with open(args.tsx_file) as f:
        src = f.read()
     with open(args.svg_file) as f:
