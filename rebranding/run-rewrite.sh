@@ -88,7 +88,9 @@ function needs_images() {
   show_info "Checking whether images should be rebuilt" "for $REBRANDED_REPOS"
   for branded_repo in $REBRANDED_REPOS
     do
-      if yq -e 'has("rename_paths") or has("copy_files") or has("svg_html_subst") or has("svg_tsx_subst")' ${REBRAND_TEMPLATE_DIR}/${branded_repo}.mustache.yml > /dev/null 2>&1
+      if [ -f ${REBRAND_TEMPLATE_DIR}/${branded_repo}-images.mustache.yml ]
+      # this isn't working now that this is really a mustache template
+      # if yq -e 'has("rename_paths") or has("copy_files") or has("svg_html_subst") or has("svg_tsx_subst")' ${REBRAND_TEMPLATE_DIR}/${branded_repo}-images.mustache.yml > /dev/null 2>&1
         then
           show_info "Image build required" "for $branded_repo"
           return 0

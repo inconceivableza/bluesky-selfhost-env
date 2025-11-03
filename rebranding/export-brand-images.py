@@ -10,6 +10,7 @@ from os.path import abspath, basename, dirname, exists, getmtime, join
 import compactify_svg
 import xml.etree.ElementTree as ET
 import re
+import math
 
 src_dir = dirname(abspath(__file__))
 
@@ -45,20 +46,61 @@ def should_recreate(source_file, target_file):
     target_mtime = getmtime(target_file)
     return source_mtime > target_mtime
 
-def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False):
+text_dim_cache = {}
+
+def get_text_dimensions(text_args, text):
+    text_args = tuple(text_args)
+    if (text_args, text) in text_dim_cache:
+        return text_dim_cache[text_args, text]
+    output = subprocess.check_output(["magick"] + list(text_args) + ['label:%s' % text, '-format', '%wx%h', 'info:'], encoding='utf-8')
+    if 'x' in output:
+        ws, hs = output.strip().split('x', 1)
+        w, h = int(ws), int(hs)
+        text_dim_cache[text_args, text] = (w, h)
+        return w, h
+    raise ValueError("Error getting text dimensions with imagemagick: %s" % error)
+
+def add_badges(src_id, src_dir, src_ext, badges={}):
+    src_path = join(src_dir, f"{src_id}.{src_ext}")
+    src_info = subprocess.check_output(magick_prefix + ['identify', src_path]).decode('utf-8').strip().split()
+    src_width, src_height = [int(s) for s in src_info[2].split('x', 1)]
+    diagonal = math.sqrt(src_width**2 + src_height**2)
+    circle_radius = int(diagonal * 0.33)
+    if (circle_radius < 16): circle_radius = max(8, int(diagonal/3))
+    point_size = "%d" % int((circle_radius * 0.9 * 72) / 300)
+    stroke_width = "%d" % int(circle_radius / 16)
+    padding = int(circle_radius * 0.25)
+    print(f"Source width {src_width} height {src_height} pixel size {circle_radius} point size {point_size}")
+    font_args = ["-font", "Roboto-Mono-Bold", "-density", "300", "-pointsize", point_size]
+    circle_center = src_width - padding - circle_radius/2, src_height - padding - circle_radius/2
+    circle_edge = src_width - padding - circle_radius, src_height - padding - circle_radius/2
+    format_point = lambda xy: f'{xy[0]},{xy[1]}'
+    badge_args = ["-fill", "grey", "-draw", f'circle {format_point(circle_center)} {format_point(circle_edge)}', "-fill", "white", "-stroke", "black", "-strokewidth", stroke_width, "-draw"]
+    for suffix, badge in badges.items():
+        if not (badge.isalnum() and suffix.isalnum()):
+           raise ValueError(f"Invalid badge {badge} or suffix {suffix}")
+        badge_path = join(src_dir, f"{src_id}.{suffix}.{src_ext}")
+        if True or should_recreate(src_path, badge_path):
+            logging.info(f"Adding badge {badge} to {badge_path}")
+            text_dims = get_text_dimensions(font_args, badge)
+            text_location = circle_center[0] - text_dims[0]/2, circle_center[1] - text_dims[1]/2
+            print(["magick", src_path] + font_args + badge_args + [f"text {format_point(text_location)} '{badge}'", badge_path])
+            subprocess.run(["magick", src_path] + font_args + badge_args + [f"gravity NorthWest text {format_point(text_location)} '{badge}'", badge_path])
+
+def inkscape_convert(src_path, src_id, target_dir, target_ext, id_only=False, badges={}):
     exportargs = []
     target_path = join(target_dir, f"{src_id}.{target_ext}")
-    if not should_recreate(src_path, target_path):
-        return
-    if target_ext == "svg":
-        exportargs.append('--export-plain-svg')
-    if id_only:
-        exportargs.extend([
-            f'--actions=select:{src_id};clone-unlink;export-text-to-path',
-            '--export-id-only',
-        ])
-    logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
-    subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path])
+    if should_recreate(src_path, target_path):
+        if target_ext == "svg":
+            exportargs.append('--export-plain-svg')
+        if id_only:
+            exportargs.extend([
+                f'--actions=select:{src_id};clone-unlink;export-text-to-path',
+                '--export-id-only',
+            ])
+        logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
+        subprocess.run([exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path])
+    add_badges(src_id, target_dir, target_ext, badges)
 
 def parse_css_styles(css_string):
     styles = {}
@@ -184,7 +226,7 @@ def copy_style_between_elements(svg_string, source_id, target_id):
     target_element.set('style', style)
     return ET.tostring(root, encoding='unicode')
 
-def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_id_bases, theme_style_id_bases):
+def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_id_bases, theme_style_id_bases, badges={}):
     with open(src_path, 'rb') as f:
         svg_src = f.read()
     orig_src_path = src_path
@@ -202,28 +244,28 @@ def inkscape_export_app_icons(src_path, src_id, target_dir, target_ext, target_i
         ])
     for target_id, theme_style_id_base in zip(target_id_bases, theme_style_id_bases):
         target_path = join(target_dir, f"{target_id}.{target_ext}")
-        if not should_recreate(orig_src_path, target_path):
-            continue
-        tmp_file = None
-        if theme_style_id_base:
-            new_svg_src = copy_style_between_elements(svg_src, f"{theme_style_id_base}_bg", f"{src_id}_bg")
-            # this repeats the operation for the foreground element, but ignores failures as most don't have a foreground element
-            try:
-                new_svg_src = copy_style_between_elements(new_svg_src, f"{theme_style_id_base}_fg", f"{src_id}_icon")
-            except ValueError as e:
-                pass # ignore there not being a foreground style to copy
-            tmp_file = tempfile.NamedTemporaryFile(prefix=basename(orig_src_path).replace('.svg', '')+'-'+target_id, suffix=".svg", delete_on_close=False, mode='w')
-            tmp_file.write(new_svg_src)
-            tmp_file.close()
-            src_path = tmp_file.name
-        else:
-            src_path = orig_src_path
-        logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
-        args = [exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path]
-        logging.debug(f"Extraction command: {' '.join(args)}")
-        subprocess.run(args)
-        if tmp_file:
-            os.unlink(tmp_file.name)
+        if should_recreate(orig_src_path, target_path):
+            tmp_file = None
+            if theme_style_id_base:
+                new_svg_src = copy_style_between_elements(svg_src, f"{theme_style_id_base}_bg", f"{src_id}_bg")
+                # this repeats the operation for the foreground element, but ignores failures as most don't have a foreground element
+                try:
+                    new_svg_src = copy_style_between_elements(new_svg_src, f"{theme_style_id_base}_fg", f"{src_id}_icon")
+                except ValueError as e:
+                    pass # ignore there not being a foreground style to copy
+                tmp_file = tempfile.NamedTemporaryFile(prefix=basename(orig_src_path).replace('.svg', '')+'-'+target_id, suffix=".svg", delete_on_close=False, mode='w')
+                tmp_file.write(new_svg_src)
+                tmp_file.close()
+                src_path = tmp_file.name
+            else:
+                src_path = orig_src_path
+            logging.info(f"Extracting {src_path}:{src_id} to {target_path}")
+            args = [exe_name, f"--export-type={target_ext}", f"--export-id={src_id}"] + exportargs + [f"--export-filename={target_path}", src_path]
+            logging.debug(f"Extraction command: {' '.join(args)}")
+            subprocess.run(args)
+            if tmp_file:
+                os.unlink(tmp_file.name)
+        add_badges(target_id, target_dir, target_ext, badges)
 
 def wait_for_file(look_for_file, max_looks=20):
     t = 0
@@ -239,20 +281,20 @@ def compactify(src_path, target_path):
         return
     compactify_svg.compactify(src_path, target_path)
 
-def export_images(src, target_dir, force=False):
-    inkscape_convert(src, 'splash-dark', target_dir, 'png')
-    inkscape_convert(src, 'splash', target_dir, 'png')
-    inkscape_convert(src, 'splash-android-icon-dark', target_dir, 'png')
-    inkscape_convert(src, 'splash-android-icon', target_dir, 'png')
+def export_images(src, target_dir, force=False, badges={}):
+    inkscape_convert(src, 'splash-dark', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'splash', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'splash-android-icon-dark', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'splash-android-icon', target_dir, 'png', badges=badges)
     inkscape_convert(src, 'default-avatar', target_dir, 'png')
     inkscape_convert(src, 'logo', target_dir, 'png')
     inkscape_convert(src, 'icon', target_dir, 'png')
     inkscape_convert(src, 'icon-android-background', target_dir, 'png', id_only=True)
-    inkscape_convert(src, 'icon-android-foreground', target_dir, 'png', id_only=True)
-    inkscape_convert(src, 'icon-android-notification', target_dir, 'png')
-    inkscape_convert(src, 'favicon', target_dir, 'png')
-    inkscape_convert(src, 'favicon-32x32', target_dir, 'png')
-    inkscape_convert(src, 'favicon-16x16', target_dir, 'png')
+    inkscape_convert(src, 'icon-android-foreground', target_dir, 'png', id_only=True, badges=badges)
+    inkscape_convert(src, 'icon-android-notification', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'favicon', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'favicon-32x32', target_dir, 'png', badges=badges)
+    inkscape_convert(src, 'favicon-16x16', target_dir, 'png', badges=badges)
     inkscape_convert(src, 'apple-touch-icon', target_dir, 'png')
     inkscape_convert(src, 'social-card-default', target_dir, 'png')
     inkscape_convert(src, 'social-card-default-gradient', target_dir, 'png')
@@ -268,13 +310,13 @@ def export_images(src, target_dir, force=False):
     (join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
     compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
     # app icon themes; aurora is used as the base and the others have their styles copied on before export
-    inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True)
-    inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'png', id_only=True)
+    inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True, badges=badges)
+    inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'png', id_only=True, badges=badges)
     icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
     for os in ['android', 'ios']:
         target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
         theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
-        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'png', target_id_bases, theme_style_id_bases)
+        inkscape_export_app_icons(src, f'{os}_icon_core_aurora', target_dir, 'png', target_id_bases, theme_style_id_bases, badges=badges)
 
 
 def show_files(target_dir):
@@ -297,6 +339,7 @@ if __name__ == '__main__':
         os.makedirs(args.target_dir)
     if args.force:
         force_recreate = True # global variable to stop having to pass this everywhere
-    export_images(args.src_image, args.target_dir)
-    show_files(args.target_dir)
+    badges = {'development': 'D', 'preview': 'P', 'testflight': 'T'}
+    export_images(args.src_image, args.target_dir, badges=badges)
+    # show_files(args.target_dir)
 

@@ -9,6 +9,18 @@ import sys
 # Import from selfhost_scripts via requirements.txt link  
 from env_utils import read_env
 
+variants = ['development', 'preview', 'testflight']
+
+def variant_files(text):
+    results = []
+    for line in text.splitlines():
+        if '.' in line:
+            prefix, ext = line.rsplit('.', 1)
+            results.append('\n'.join([line] + [f'{prefix}.{variant}.{ext}' for variant in variants]))
+        else:
+            results.append(line)
+    return '\n'.join(results) + '\n'
+
 def main():
     parser = argparse.ArgumentParser(description='Generate YAML files from Mustache templates using config variables')
     parser.add_argument('-c', '--config', required=True, help='YAML config file with variables')
@@ -31,6 +43,7 @@ def main():
         # Add env variables under 'env' key
         if env_vars:
             config_vars['env'] = env_vars
+        config_vars['variant_files'] = variant_files
         
         # Read the Mustache template
         with open(args.input_file, 'r') as f:

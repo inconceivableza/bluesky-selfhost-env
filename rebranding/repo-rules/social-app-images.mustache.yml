@@ -5,15 +5,17 @@ copy_files:
   dest_dir: "assets/"
   files:
     - "default-avatar.png"
-    - "favicon.png"
     - "icon-android-background.png"
+{{#variant_files}}
+    - "favicon.png"
     - "icon-android-foreground.png"
     - "icon-android-notification.png"
-    - "logo.png"
     - "splash-dark.png"
     - "splash.png"
     - "splash-android-icon-dark.png"
     - "splash-android-icon.png"
+{{/variant_files}}
+    - "logo.png"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "assets/"
@@ -24,9 +26,11 @@ copy_files:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "bskyweb/static/"
   files:
+{{#variant_files}}
     - "favicon.png"
     - "favicon-16x16.png"
     - "favicon-32x32.png"
+{{/variant_files}}
     - "apple-touch-icon.png"
     - "safari-pinned-tab.svg" # TODO: make this get the compact one
     - "social-card-default.png"
@@ -43,6 +47,7 @@ copy_files:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "assets/app-icons/"
   files:
+{{#variant_files}}
     - "android_icon_core_aurora.png"
     - "android_icon_core_bonfire.png"
     - "android_icon_core_classic.png"
@@ -65,6 +70,7 @@ copy_files:
     - "ios_icon_core_sunset.png"
     - "ios_icon_default_dark.png"
     - "ios_icon_default_light.png"
+{{/variant_files}}
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "bskyembed/assets/"
@@ -72,11 +78,13 @@ copy_files:
     - "logo.svg"
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
-  dest_dir: "bskyembed/static/"
+  dest_dir: "bskyweb/embedr-static/"
   files:
+{{#variant_files}}
     - "favicon.png"
     - "favicon-16x16.png"
     - "favicon-32x32.png"
+{{/variant_files}}
 
 svg_html_subst:
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
