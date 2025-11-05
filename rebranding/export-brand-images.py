@@ -75,7 +75,7 @@ def add_badges(src_id, src_dir, src_ext, badges={}):
     circle_center = src_width - padding - circle_radius/2, src_height - padding - circle_radius/2
     circle_edge = src_width - padding - circle_radius, src_height - padding - circle_radius/2
     format_point = lambda xy: f'{xy[0]},{xy[1]}'
-    badge_args = ["-fill", "grey", "-draw", f'circle {format_point(circle_center)} {format_point(circle_edge)}', "-fill", "white", "-stroke", "black", "-strokewidth", stroke_width, "-draw"]
+    badge_args = ["-fill", "white", "-stroke", "black", "-strokewidth", stroke_width, "-draw"]
     for suffix, badge in badges.items():
         if not (badge.isalnum() and suffix.isalnum()):
            raise ValueError(f"Invalid badge {badge} or suffix {suffix}")
