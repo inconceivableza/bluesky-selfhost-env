@@ -12,9 +12,14 @@ corresponding .env files for the social-app Docker image using a mustache templa
 import argparse
 import json
 import sys
+import yaml
 from pathlib import Path
 
+from env_utils import get_branding_filename
+
 base_dir = Path(__file__).parent.parent
+
+is_example = True # this is still using -example suffixes
 
 def get_output_path(profile, args):
     """Get the output path for social-app env file based on profile."""
@@ -35,16 +40,36 @@ PACKAGE_NAME_PROFILE_SUFFIXES = {
     'production': '',
 }
 
+def get_branding():
+    branding_file = get_branding_filename()
+    if not branding_file:
+        print(f"error locating branding file; will not customize google-services for branding", file=sys.stderr)
+        return {}
+    with open(branding_file, 'r') as f:
+        return yaml.safe_load(f)
+
 def patch_google_services_content(template_content, profile):
+    branding = get_branding()
+    gs_project_name = branding.get('code', {}).get('google_service_project_name', 'blueskyweb')
+    if is_example:
+        gs_project_name += '-example'
+    gs_firebase_url = f'https://{gs_project_name}.firebaseio.com'
+    package_name = branding.get('code', {}).get('web_package_id', 'xyz.blueskyweb.app')
     profile_suffix = PACKAGE_NAME_PROFILE_SUFFIXES.get(profile)
+    profile_package_name = package_name + profile_suffix
     gs = json.loads(template_content)
     patched = False
+    old_project_id = gs['project_info']['project_id']
+    old_firebase_url = gs['project_info']['firebase_url']
+    gs['project_info']['project_id'] = gs_project_name
+    gs['project_info']['firebase_url'] = gs_firebase_url
+    patched = old_project_id != gs_project_name or old_firebase_url != gs_firebase_url
     for client in gs.get('client', []):
         android_client_info = client.get('client_info', {}).get('android_client_info', {})
         if android_client_info and 'package_name' in android_client_info:
-            package_name = android_client_info['package_name']
-            android_client_info['package_name'] = package_name + profile_suffix
-            patched = True
+            old_package_name = android_client_info.get('package_name')
+            android_client_info['package_name'] = profile_package_name
+            patched = old_package_name != old_package_name != profile_package_name
     if not patched:
         print(f"No changes were made to google services content for {profile}", file=sys.stderr)
     return gs

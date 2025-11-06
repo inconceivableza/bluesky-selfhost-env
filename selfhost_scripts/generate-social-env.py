@@ -16,7 +16,7 @@ import pystache
 
 base_dir = Path(__file__).parent.parent
 
-from env_utils import get_existing_profile_names, read_env, validate_profile_name
+from env_utils import get_existing_profile_names, get_branding_filename, read_env, validate_profile_name
 
 def render_mustache_template(template_content, variables):
     """Simple mustache template renderer for basic variable substitution."""
@@ -87,21 +87,10 @@ def generate_social_env_for_profile(profile, template_content, args):
         return False
 
 def generate_branding_file(args):
-    env_file_path = base_dir / Path(f".env.production")
-    if not env_file_path.exists():
-        print(f"Warning: Environment file {env_file_path} not found for production profile; will not generate branding file", file=sys.stderr)
+    branding_file_path = get_branding_filename()
+    if not branding_file_path:
+        print(f"Will not generate branding file", file=sys.stderr)
         return False
-    try:
-        # Read environment with interpolation to resolve variables
-        env_vars = read_env(str(env_file_path), interpolate=True)
-    except Exception as e:
-        print(f"Error reading environment file {env_file_path}: {e}; will not generate branding file", file=sys.stderr)
-        return False
-    rebranding_dir = env_vars['REBRANDING_DIR'].strip('"')
-    rebranding_path = base_dir / Path(rebranding_dir)
-    branding_file_path = rebranding_path / "branding.yml"
-    if not branding_file_path.exists():
-        print(f"Warning: Expected branding file {branding_file_path} does not exist; will not generate branding file", file=sys.stderr)
     target_branding_file_path = base_dir / Path("repos/social-app/branding.json")
     try:
         with target_branding_file_path.open('w') as f:

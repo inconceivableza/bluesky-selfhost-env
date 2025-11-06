@@ -4,6 +4,8 @@ import configparser
 import re
 from pathlib import Path
 
+base_dir = Path(__file__).parent.parent
+
 def get_env_filename(profile):
     """Get the environment filename for a given profile."""
     if profile:
@@ -44,6 +46,25 @@ def validate_profile_name(profile):
     if not re.match(r'^[a-zA-Z0-9_.+-]+$', profile):
         return False
     return True
+
+def get_branding_filename():
+    env_file_path = base_dir / Path(f".env.production")
+    if not env_file_path.exists():
+        print(f"Warning: Environment file {env_file_path} not found for production profile", file=sys.stderr)
+        return None
+    try:
+        # Read environment with interpolation to resolve variables
+        env_vars = read_env(str(env_file_path), interpolate=True)
+    except Exception as e:
+        print(f"Error reading environment file {env_file_path}: {e}", file=sys.stderr)
+        return None
+    rebranding_dir = env_vars['REBRANDING_DIR'].strip('"')
+    rebranding_path = base_dir / Path(rebranding_dir)
+    branding_file_path = rebranding_path / "branding.yml"
+    if not branding_file_path.exists():
+        print(f"Warning: Expected branding file {branding_file_path} does not exist", file=sys.stderr)
+        return None
+    return branding_file_path
 
 def check_syntax_issues(filepath):
     """Check for syntax issues like trailing spaces that Docker Compose would read into variables"""
@@ -141,3 +162,5 @@ def replace_env(src, env):
         src = src.replace('${%s}' % key, value)
     
     return src
+
+
