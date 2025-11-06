@@ -172,7 +172,7 @@ android_platform="$(echo "$android_versions" | jq -r .compileSdkVersion)"
 android_build_tools="$(echo "$android_versions" | jq -r .buildToolsVersion)"
 # - In "SDK Platforms": "Android x" (where x is Android's current version).
 # - In "SDK Tools": "Android SDK Build-Tools" and "Android Emulator" are required.
-android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator"
+android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator ndk"
 android_installed="$(sdkmanager $sdkmanager_params --list_installed)"
 needed_android_reqs=""
 for android_req in $android_reqs
