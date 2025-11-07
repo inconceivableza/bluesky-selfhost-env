@@ -14,6 +14,7 @@ target_args_usage="-a|--android|-i|--ios "
 [ "$named_target" != "" ] && { argselected_target= ; target_args_usage= ; }
 
 intl_target=build
+build_number_increment=1
 
 function show_usage() {
   echo "Syntax $0 [-?|-h|--help] $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
@@ -38,6 +39,7 @@ function show_help() {
   echo
   echo "Options:"
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in"
+  echo "  --no-build-incr     doesn't increment the current build number before building"
   echo "  --no-intl           skips yarn intl: preparation"
   echo "  --intl=TARGET       runs yarn intl:build or intl:compile or skips if missing (default build)"
   [ "$argselected_target" == 1 ] && {
@@ -60,6 +62,7 @@ target_os="$named_target"
 while [ "$#" -gt 0 ]
   do
     [[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; continue ; }
+    [[ "$1" == "--no-build-incr" ]] && { build_number_increment=0 ; shift 1 ; continue ; }
     [[ "$1" == "-a" || "$1" == "--android" ]] && {
       [[ "$target_os" != "" && "$target_os" != "android" ]] && { show_error "Target configured" "but already targetting $target_os - $1 not valid" ; show_usage 1 ; exit ; }
       target_os="android" ; shift 1 ; continue
@@ -162,6 +165,7 @@ show_heading "Determining build info" "to set filename etc"
 build_flavour=${build_profile}
 build_name="`jq -r .name package.json`"
 build_version="`jq -r .version package.json`"
+current_build_number=$(npx eas-cli build:version:get -p $target_os -e $build_profile --non-interactive --json | jq -r '.[]')
 build_date="`date +%Y%m%d`"
 build_timestamp="`date +%H%M%S`"
 output_dir="$script_dir/tmp-builds/${target_os}-${build_name}-${build_version}-${build_date}-${build_timestamp}"
@@ -170,6 +174,10 @@ target_ext=`get_expected_extension`
 [ "$target_ext" == "" ] && exit 1
 target_dir="$script_dir/${target_os}-builds/"
 build_file="$build_id.$target_ext"
+build_number=$((current_build_number+build_number_increment))
+show_info --oneline "Build number" "current ${current_build_number}, building ${build_number}"
+[ "$target_os" == android ] && export BSKY_ANDROID_VERSION_CODE=${build_number}
+[ "$target_os" == ios ] && export BSKY_IOS_BUILD_NUMBER=${build_number}
 show_info --oneline "Expected build" "${build_file}"
 show_info --oneline "Creating temporary build output directory" "at ${output_dir}"
 mkdir -p "$output_dir"
@@ -253,6 +261,17 @@ show_heading "Packaging atproto" "from src repo"
   fi
 ) || { show_warning --oneline "Uncommitted changes in atproto" "will not be included in packed packages used in social-app for this build" ; }
 ./scripts/pack-atproto-packages.sh
+
+show_heading "Running prebuild" "for profile $build_profile"
+
+export EXPO_PUBLIC_ENV=${build_profile}
+if yarn prebuild -p $target_os
+  then
+    show_info --oneline "Prebuild completed" "for profile $build_profile"
+  else
+    pre_exit "Prebuild failed" "for profile $build_profile"
+    exit 1
+  fi
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
 
