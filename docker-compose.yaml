@@ -660,7 +660,8 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:latest
+    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    #   image: itaru2622/bluesky-ozone:latest
     profiles: ['', 'ozone']
     ports:
       - 3005:3005

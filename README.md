@@ -32,7 +32,7 @@ This repository aims to get self-hosted a bluesky environment easy, with:
  - Simplicity: all bluesky components run on one host, powered by docker-compose.
  - Minimal remapping: the simplest possible mapping rules between FQDN, reverse proxy, and docker-container, for easy understanding and tuning.
 
-Currently, my latest release is <strong>2025-10-18</strong>, based on the <strong>2025-10-18</strong> code from bluesky-social.<br>
+Currently, my latest release is <strong>2025-11-08</strong>, based on the <strong>2025-11-08</strong> code from bluesky-social.<br>
 
 ### Note about IP address-based services
 
@@ -110,8 +110,8 @@ set the default domains used by builds of the social-app.
 export DOMAIN=whatever.yourdomain.com
 
 # 2) Set 'asof' date (YYYY-MM-DD or 'latest') to select docker images and sources.
-#    Example: 2025-10-18 (latest prebuild) or 'latest' (following docker image naming).
-export asof=2025-10-18
+#    Example: 2025-11-08 (latest prebuild) or 'latest' (following docker image naming).
+export asof=2025-11-08
 
 # 3) Set email addresses:
 
