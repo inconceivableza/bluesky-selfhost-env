@@ -34,6 +34,17 @@ This repository aims to get self-hosted a bluesky environment easy, with:
 
 Currently, my latest release is <strong>2025-10-18</strong>, based on the <strong>2025-10-18</strong> code from bluesky-social.<br>
 
+### Note about IP address-based services
+
+Bluesky uses a service at https://ip.bsky.app/ to retrieve configuration information about the client's IP address, especially for identifying regions and
+moderation rules applied at the regional level. There is currently no source code available for this service. A simplified minimal version is available at
+https://github.com/inconceivableza/ip-location-api which supports some of the API calls. This has been included in the ipcc container in this setup.
+
+The way docker networks forward requests to the container on certain operating systems (including MacOS) prevents identifying the actual client IP address.
+If you need to reproduce this functionality, you may need to run an haproxy front-end that forwards the HTTPS requests to caddy using the PROXY protocol
+which allows caddy to terminate the SSL connection and manage the certificates, whilst still forwarding the necessary IP address information as received
+by the host. See the section on haproxy forwarding to enable this; you will need to run haproxy manually with the provided config/haproxy.cfg
+
 ### Special notes about big impact changes in upstream regarding selfhost
 
 - changes in Aug-Sep 2025, atproto-proxy(bluesky proxy header) is required by social-app, which value can tune only at build time.
