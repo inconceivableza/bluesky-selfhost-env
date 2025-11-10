@@ -59,6 +59,7 @@ copy_files:
     - "android_icon_core_sunset.png"
     - "android_icon_default_dark.png"
     - "android_icon_default_light.png"
+    - "android_icon_default_next.png"
     - "ios_icon_core_aurora.png"
     - "ios_icon_core_bonfire.png"
     - "ios_icon_core_classic.png"
@@ -70,6 +71,7 @@ copy_files:
     - "ios_icon_core_sunset.png"
     - "ios_icon_default_dark.png"
     - "ios_icon_default_light.png"
+    - "ios_icon_default_next.png"
 {{/variant_files}}
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"

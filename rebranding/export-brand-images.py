@@ -312,7 +312,7 @@ def export_images(src, target_dir, force=False, badges={}):
     # app icon themes; aurora is used as the base and the others have their styles copied on before export
     inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True, badges=badges)
     inkscape_convert(src, 'ios_icon_core_aurora', target_dir, 'png', id_only=True, badges=badges)
-    icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light']
+    icon_themes = ['core_bonfire', 'core_classic', 'core_flat_black', 'core_flat_blue', 'core_flat_white', 'core_midnight', 'core_sunrise', 'core_sunset', 'default_dark', 'default_light', 'default_next']
     for os in ['android', 'ios']:
         target_id_bases = [f'{os}_icon_{icon_theme}' for icon_theme in icon_themes]
         theme_style_id_bases = [f'app_icon_theme_{icon_theme}' for icon_theme in icon_themes]
