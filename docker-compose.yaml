@@ -217,6 +217,11 @@ services:
         hard: -1
     volumes:
       - opensearch:/usr/share/opensearch/data/
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200/_cluster/health | grep '\"status\":' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
 
   plc:
@@ -629,7 +634,13 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
+      - PALOMAR_DISCOVER_REPOS=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3999/_health | grep '\"status\":\"ok\"' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - opensearch
@@ -865,6 +876,13 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+    depends_on:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "which psql && resticprofile all.status"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
 
   jaeger:

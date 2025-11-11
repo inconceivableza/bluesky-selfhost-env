@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+script_path="`realpath "$0"`"
+script_dir="$(cd `dirname "$script_path"`/.. ; pwd)"
+. "$script_dir/utils.sh"
+source_env
+
+show_heading "Taking down search containers" "palomar, opensearch and backup in order to drop opensearch volume and palomar database and reindex"
+docker compose down palomar backup
+show_info --oneline "Dropping database" "palomar"
+docker compose exec database sh -c 'dropdb -U pg palomar'
+show_info --oneline "Downing opensearch" "and its volume"
+docker compose down -v opensearch
+
+show_info "Checking volume deletion" "for opensearch"
+docker compose volumes opensearch | grep opensearch >/dev/null && {
+  show_error "Error dropping volume" "opensearch - please investigate and adjust manually"
+  exit 1
+}
+
+show_info "Recreating database" "palomar - will restart backup"
+
+docker compose exec database sh -c 'createdb -U pg palomar ; psql -U pg healthcheck -c "grant all privileges on database palomar to pg"' || {
+  show_error "Error creating database" "palomar - please investigate and adjust manually"
+  exit 1
+}
+
+show_heading "Restarting opensearch" "and waiting for it to be ready"
+docker compose up -d opensearch backup
+wait_for_container opensearch
+
+show_info --oneline "Restarting palomar" "and waiting for it to be ready"
+docker compose up -d palomar
+wait_for_container palomar
+
+show_info "Search containers restarted" "but backfill indexing still needs to be triggered"
+

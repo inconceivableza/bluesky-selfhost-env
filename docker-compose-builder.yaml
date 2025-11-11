@@ -240,6 +240,11 @@ services:
         hard: -1
     volumes:
       - opensearch:/usr/share/opensearch/data/
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200/_cluster/health | grep '\"status\":' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
 
   plc:
@@ -663,7 +668,7 @@ services:
       # we rather use a combination of .env.go-templates which puts "{{ .varname }}" syntax into the templates, for server-side rendering
       # and a /env-config.json URL which is served up using the environment or command-line parameters
       - OGCARD_URL=https://${cardFQDN}
-      - SOCIAL_EMBED_SERVICE=${embedFQDN}
+      - SOCIAL_EMBED_SERVICE=https://${embedFQDN}
       - LINK_URL=https://${linkFQDN}
       - SOCIAL_APP_ABOUT=https://${pdsFQDN}/about
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
@@ -763,7 +768,13 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PALOMAR_BIND=0.0.0.0:3999
+      - PALOMAR_DISCOVER_REPOS=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3999/_health | grep '\"status\":\"ok\"' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
     depends_on:
       - opensearch
@@ -802,7 +813,8 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:latest
+    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    #   image: itaru2622/bluesky-ozone:latest
     profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
@@ -1038,6 +1050,13 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
     entrypoint: ["/bin/sh"]
     command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+    depends_on:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "which psql && resticprofile all.status"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
     restart: always
 
   jaeger:
