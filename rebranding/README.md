@@ -45,7 +45,7 @@ Creating a Rebranding
 Image Branding
 --------------
 
-It's easiest to start from the example in `opensky/opensky-branding.svg`.
+It's easiest to start from the example in `opensky/branding.svg`.
 The tool expects an SVG image that has separate IDs for each target image that will be exported (by `./export-brand-images.py`)
 These IDs can be individual objects or groups; to create margin around something add a group with a transparent rectangle.
 The objects with the export IDs should be sized appropriately for the target image.
@@ -65,7 +65,7 @@ Running from Parent
 
 The script in the parent directory, `../step02-update-branches.sh`, can run these branding changes
 To use it, in the `bluesky-params.env` you create, set `REBRANDING_SCRIPT` to `rebranding/run-rewrite.sh`,
-`REBRANDING_PARAMS` to a directory containing the custom branding image and `branding.yml` rules,
+`REBRANDING_PARAMS` to a directory containing the custom branding image and `branding.json` rules,
 and set `REBRANDING_NAME` to match the name you chose to replace `opensky-local-com`.
 
 Running Manually

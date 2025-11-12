@@ -58,9 +58,9 @@ def get_branding_filename():
     except Exception as e:
         print(f"Error reading environment file {env_file_path}: {e}", file=sys.stderr)
         return None
-    rebranding_dir = env_vars['REBRANDING_DIR'].strip('"')
+    rebranding_dir = env_vars.get('REBRANDING_DIR', '').strip('"') or 'repos/social-app/conf'
     rebranding_path = base_dir / Path(rebranding_dir)
-    branding_file_path = rebranding_path / "branding.yml"
+    branding_file_path = rebranding_path / "branding.json"
     if not branding_file_path.exists():
         print(f"Warning: Expected branding file {branding_file_path} does not exist", file=sys.stderr)
         return None

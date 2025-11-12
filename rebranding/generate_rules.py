@@ -23,7 +23,7 @@ def variant_files(text):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate YAML files from Mustache templates using config variables')
-    parser.add_argument('-c', '--config', required=True, help='YAML config file with variables')
+    parser.add_argument('-c', '--config', required=True, help='JSON5 config file with variables')
     parser.add_argument('-e', '--env', action='append', default=[], help='Environment file (can specify multiple)')
     parser.add_argument('input_file', help='Input Mustache template file')
     parser.add_argument('output_file', help='Output YAML file')
@@ -33,7 +33,7 @@ def main():
     try:
         # Load config variables from YAML file
         with open(args.config, 'r') as f:
-            config_vars = yaml.safe_load(f)
+            config_vars = json5.load(f)
         
         # Load environment variables from env files
         env_vars = {}

@@ -2,40 +2,40 @@
 "exec" """$(dirname $0)/venv/bin/python""" "$0" "$@" # this is a polyglot shell exec which will drop down to the relative virtualenv's python
 
 """
-Generate env-content JSON files for bsky appview from YAML configurations.
+Generate env-content JSON files for bsky appview from JSON5 configurations.
 
-This script reads env-content YAML files and converts them to JSON format
+This script reads env-content JSON files and converts them to JSON format
 for inclusion in the bsky appview Docker image.
 """
 
 import argparse
 import json
 import sys
-import yaml
+import json5
 from pathlib import Path
 
 base_dir = Path(__file__).parent.parent
 
 from env_utils import get_existing_profile_names, validate_profile_name
 
-def load_yaml_file(filepath):
-    """Load YAML file and return its contents"""
+def load_json5_file(filepath):
+    """Load JSON5 file and return its contents"""
     try:
         with open(filepath, 'r') as f:
-            return yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in {filepath}: {e}")
+            return json5.load(f)
+    except json5.JSON5DecodeError as e:
+        raise ValueError(f"Invalid JSON5 in {filepath}: {e}")
     except Exception as e:
         raise ValueError(f"Error reading {filepath}: {e}")
 
 def get_env_content_input_path(profile):
-    """Get the input path for env-content YAML file based on profile."""
-    base_path = base_dir
+    """Get the input path for env-content JSON5 file based on profile."""
+    base_path = base_dir / "repos" / "atproto"
 
     if profile is None:
-        return base_path / "env-content.yml"
+        return base_path / "env-content.json"
     else:
-        return base_path / f"env-content.{profile}.yml"
+        return base_path / f"env-content.{profile}.json"
 
 def get_env_content_output_paths(profile, args):
     """Get the output path for env-content JSON file based on profile."""
@@ -62,8 +62,8 @@ def generate_env_content_for_profile(profile, args):
         return True
 
     try:
-        # Load YAML data
-        env_content_data = load_yaml_file(input_path)
+        # Load JSON5 data
+        env_content_data = load_json5_file(input_path)
 
         for output_path in output_paths:
             if args.dry_run:
@@ -90,7 +90,7 @@ def generate_env_content_for_profile(profile, args):
             print("🔍 DRY RUN MODE - No files will be written")
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate bsky appview env-content JSON files from YAML')
+    parser = argparse.ArgumentParser(description='Generate bsky appview env-content JSON files from JSON5')
     parser.add_argument('-s', '--silent', action='store_true',
                        help='Silent mode - no output except errors')
     parser.add_argument('--dry-run', action='store_true',

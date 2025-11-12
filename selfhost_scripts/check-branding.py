@@ -4,10 +4,10 @@
 import argparse
 import os
 import sys
-import yaml
+import json5
 from pathlib import Path
 
-from env_utils import read_env, check_syntax_issues
+from env_utils import base_dir, check_syntax_issues, read_env
 
 def get_file_info(filepath):
     """Get information about a file, including symlink resolution"""
@@ -18,18 +18,18 @@ def get_file_info(filepath):
     else:
         return str(path.resolve())
 
-def load_yaml_file(filepath):
-    """Load YAML file and return its contents"""
+def load_json5_file(filepath):
+    """Load JSON5 file and return its contents"""
     try:
         with open(filepath, 'r') as f:
-            return yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in {filepath}: {e}")
+            return json5.load(f)
+    except json5.JSON5DecodeError as e:
+        raise ValueError(f"Invalid JSON5 in {filepath}: {e}")
     except Exception as e:
         raise ValueError(f"Error reading {filepath}: {e}")
 
-def compare_yaml_values(example_data, target_data, path="", show_value_changes=False):
-    """Recursively compare YAML values and return differences"""
+def compare_json5_values(example_data, target_data, path="", show_value_changes=False):
+    """Recursively compare JSON5 values and return differences"""
     missing_keys = []
     extra_keys = []
     value_changes = []
@@ -41,7 +41,7 @@ def compare_yaml_values(example_data, target_data, path="", show_value_changes=F
             if key not in target_data:
                 missing_keys.append(f"❌ MISSING: {current_path}")
             else:
-                sub_missing, sub_extra, sub_changes = compare_yaml_values(
+                sub_missing, sub_extra, sub_changes = compare_json5_values(
                     example_data[key], target_data[key], current_path, show_value_changes
                 )
                 missing_keys.extend(sub_missing)
@@ -67,13 +67,13 @@ def compare_yaml_values(example_data, target_data, path="", show_value_changes=F
     return missing_keys, extra_keys, value_changes
 
 def main():
-    parser = argparse.ArgumentParser(description='Compare branding.yml file with example template')
+    parser = argparse.ArgumentParser(description='Compare branding.json file with example template')
     parser.add_argument('-b', '--branding-file', 
-                       help='Branding YAML file to check (default: derived from .env REBRANDING_DIR)')
+                       help='Branding JSON5 file to check (default: derived from .env REBRANDING_DIR)')
     parser.add_argument('-e', '--env-file', default='.env', 
                        help='Environment file to read (default: .env)')
-    parser.add_argument('-t', '--template-file', default='rebranding/repo-rules/branding.yml.example',
-                       help='Template file to compare against (default: rebranding/repo-rules/branding.yml.example)')
+    parser.add_argument('-t', '--template-file', default='rebranding/repo-rules/branding.example.json5',
+                       help='Template file to compare against (default: rebranding/repo-rules/branding.example.json5)')
     parser.add_argument('-v', '--show-value-changes', action='store_true',
                        help='Show variables with different values (default: only show missing keys)')
     parser.add_argument('-s', '--silent', action='store_true',
@@ -95,12 +95,7 @@ def main():
             env_vars = read_env(args.env_file, interpolate=False)
             
             if 'REBRANDING_DIR' not in env_vars:
-                if not args.silent:
-                    print("Error: Could not find REBRANDING_DIR in environment file", file=sys.stderr)
-                    print("Please specify branding file with -b/--branding-file", file=sys.stderr)
-                sys.exit(1)
-            
-            # Get the branding directory
+                env_vars['REBRANDING_DIR'] = os.path.join(base_dir, 'repos', 'social-app', 'conf')
             branding_dir = env_vars['REBRANDING_DIR'].strip('"')
             if not branding_dir:
                 if not args.silent:
@@ -108,7 +103,7 @@ def main():
                     print("Please specify branding file with -b/--branding-file", file=sys.stderr)
                 sys.exit(1)
             
-            args.branding_file = f"{branding_dir}/branding.yml"
+            args.branding_file = f"{branding_dir}/branding.json"
                 
         except Exception as e:
             if not args.silent:
@@ -134,13 +129,13 @@ def main():
         print()
     
     try:
-        # Load YAML files
-        example_data = load_yaml_file(args.template_file)
-        target_data = load_yaml_file(args.branding_file)
+        # Load JSON5 files
+        example_data = load_json5_file(args.template_file)
+        target_data = load_json5_file(args.branding_file)
         
     except Exception as e:
         if not args.silent:
-            print(f"Error loading YAML files: {e}", file=sys.stderr)
+            print(f"Error loading JSON5 files: {e}", file=sys.stderr)
         sys.exit(1)
     
     # Check for syntax issues in the environment file if we read it
@@ -148,8 +143,8 @@ def main():
     if not args.branding_file and os.path.exists(args.env_file):
         env_syntax_issues = check_syntax_issues(args.env_file)
     
-    # Compare the YAML structures
-    missing_keys, extra_keys, value_changes = compare_yaml_values(
+    # Compare the JSON5 structures
+    missing_keys, extra_keys, value_changes = compare_json5_values(
         example_data, target_data, show_value_changes=args.show_value_changes
     )
     

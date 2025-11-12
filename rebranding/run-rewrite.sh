@@ -31,12 +31,12 @@ function show_subdirs_with_brand_config() {
 function show_subdirs_with_brand_images() {
   base_dir="$1"
   [ "$base_dir" = "" ] && base_dir=.
-  ls $base_dir/*/*-branding.svg 2>/dev/null | sed 's#/[^/]*-branding.svg##' | sort -u
+  ls $base_dir/*/*branding.svg 2>/dev/null | sed 's#/[^/]*branding.svg##' | sort -u
 }
 
 function usage() {
     echo syntax "$0" "[--commit-parts|--check-only] brand_config_dir" >&2
-    echo defined brand config dirs may include: `ls */*-branding.svg 2>/dev/null | sed 's#/.*-branding.svg##' | sort -u`
+    echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
     echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
     [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
     echo to create a new one, copy opensky and adjust for your images
@@ -58,16 +58,16 @@ cd "$script_dir"
 
 [ -f venv/bin/activate ] && . venv/bin/activate
 
-BRAND_IMAGES_FILE="`basename "$BRAND_CONFIG_DIR"`-branding.svg" 
+BRAND_IMAGES_FILE=branding.svg
 
 [ -f "$BRAND_CONFIG_DIR/$BRAND_IMAGES_FILE" ] || {
     show_error "Brand images not found" "in directory $BRAND_CONFIG_DIR under $BRAND_IMAGES_FILE"
     exit 1
 }
 
-[ -f "$BRAND_CONFIG_DIR/branding.yml" ] || {
-    show_error "Branding config not found" "in directory $BRAND_CONFIG_DIR under branding.yml"
-    show_info "Copy and adjust the template" "from $REBRAND_TEMPLATE_DIR/branding.yml.example"
+[ -f "$BRAND_CONFIG_DIR/branding.json" ] || {
+    show_error "Branding config not found" "in directory $BRAND_CONFIG_DIR under branding.json"
+    show_info "Copy and adjust the template" "from $REBRAND_TEMPLATE_DIR/branding.example.json5"
     exit 1
 }
 
@@ -120,7 +120,7 @@ for branded_repo in $REBRANDED_REPOS
         branding_part="${branding_plan##*:}"
         branding_part_basename=${branded_repo}${branding_part:+-}${branding_part}
         [ -f ${REBRAND_TEMPLATE_DIR}/${branding_part_basename}.mustache.yml ] || { echo could not find ${branding_part_basename}.mustache.yml in ${REBRAND_TEMPLATE_DIR} >&2 ; continue ; }
-        python ${script_dir}/generate_rules.py -c ${BRAND_CONFIG_DIR}/branding.yml -e ${params_file} ${REBRAND_TEMPLATE_DIR}/${branding_part_basename}.mustache.yml ${BRAND_CONFIG_DIR}/${branding_part_basename}.yml
+        python ${script_dir}/generate_rules.py -c ${BRAND_CONFIG_DIR}/branding.json -e ${params_file} ${REBRAND_TEMPLATE_DIR}/${branding_part_basename}.mustache.yml ${BRAND_CONFIG_DIR}/${branding_part_basename}.yml
         BRANDING_PART_RULES=${BRAND_CONFIG_DIR}/${branding_part_basename}.yml
         if [ -f $BRANDING_PART_RULES ]
           then

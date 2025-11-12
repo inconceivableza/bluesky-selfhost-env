@@ -259,6 +259,7 @@ function apply_rebranding() {
   REBRANDING_SCRIPT_ABS="`cd $script_dir ; realpath "$REBRANDING_SCRIPT"`"
   [ "$REBRANDING_NAME" == "" ] && { show_error "Brand name undefined:" "please set REBRANDING_NAME in $params_file" ; return 1 ; }
   show_info "Rebranding for $REBRANDING_NAME" "by scripted changes"
+  [ "$REBRANDING_DIR" == "" ] && REBRANDING_DIR=repos/social-app/conf
   REBRANDING_DIR_ABS="$(cd $script_dir ; cd $REBRANDING_DIR ; pwd)"
   "$REBRANDING_SCRIPT_ABS" --commit-parts "$REBRANDING_DIR_ABS" || {
     show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS \"$REBRANDING_DIR_ABS\""

@@ -4,10 +4,10 @@
 import argparse
 import os
 import sys
-import yaml
+import json5
 from pathlib import Path
 
-from env_utils import read_env, check_syntax_issues
+from env_utils import base_dir, check_syntax_issues, read_env
 
 def get_file_info(filepath):
     """Get information about a file, including symlink resolution"""
@@ -18,18 +18,18 @@ def get_file_info(filepath):
     else:
         return str(path.resolve())
 
-def load_yaml_file(filepath):
-    """Load YAML file and return its contents"""
+def load_json5_file(filepath):
+    """Load JSON5 file and return its contents"""
     try:
         with open(filepath, 'r') as f:
-            return yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in {filepath}: {e}")
+            return json5.load(f)
+    except json5.JSON5DecodeError as e:
+        raise ValueError(f"Invalid JSON5 in {filepath}: {e}")
     except Exception as e:
         raise ValueError(f"Error reading {filepath}: {e}")
 
-def compare_yaml_values(example_data, target_data, path="", show_value_changes=False):
-    """Recursively compare YAML values and return differences"""
+def compare_json5_values(example_data, target_data, path="", show_value_changes=False):
+    """Recursively compare JSON5 values and return differences"""
     missing_keys = []
     extra_keys = []
     value_changes = []
@@ -41,7 +41,7 @@ def compare_yaml_values(example_data, target_data, path="", show_value_changes=F
             if key not in target_data:
                 missing_keys.append(f"❌ MISSING: {current_path}")
             else:
-                sub_missing, sub_extra, sub_changes = compare_yaml_values(
+                sub_missing, sub_extra, sub_changes = compare_json5_values(
                     example_data[key], target_data[key], current_path, show_value_changes
                 )
                 missing_keys.extend(sub_missing)
@@ -67,13 +67,15 @@ def compare_yaml_values(example_data, target_data, path="", show_value_changes=F
     return missing_keys, extra_keys, value_changes
 
 def main():
-    parser = argparse.ArgumentParser(description='Compare env-content.yml file with example template')
+    parser = argparse.ArgumentParser(description='Compare env-content.json file with example template')
     parser.add_argument('-c', '--env-content-file',
-                       help='Env-content YAML file to check (default: derived from .env ENV_CONTENT_FILE)')
+                       help='Env-content JSON5 file to check (default: derived from .env ENV_CONTENT_FILE)')
+    parser.add_argument('-d', '--env-content-dir', default=base_dir / 'repos' / 'atproto', type=Path,
+                       help='Directory to locate Env-content files to check (default: ./repos/atproto/')
     parser.add_argument('-e', '--env-file', default='.env',
                        help='Environment file to read (default: .env)')
-    parser.add_argument('-t', '--template-file', default='bluesky-env-content.yml.example',
-                       help='Template file to compare against (default: bluesky-env-content.yml.example)')
+    parser.add_argument('-t', '--template-file', default='bluesky-env-content.example.json5',
+                       help='Template file to compare against (default: bluesky-env-content.example.json5)')
     parser.add_argument('-v', '--show-value-changes', action='store_true',
                        help='Show variables with different values (default: only show missing keys)')
     parser.add_argument('-s', '--silent', action='store_true',
@@ -98,15 +100,16 @@ def main():
             if 'ENV_CONTENT_FILE' in env_vars and env_vars['ENV_CONTENT_FILE'].strip():
                 args.env_content_file = env_vars['ENV_CONTENT_FILE'].strip('"')
             else:
-                # Use convention: .env.NAME -> env-content.NAME.yml
+                # Use convention: .env.NAME -> env-content.NAME.json
                 env_file_path = Path(args.env_file)
                 if env_file_path.name == '.env':
-                    args.env_content_file = 'env-content.yml'
+                    env_content_file = 'env-content.json'
                 elif env_file_path.name.startswith('.env.'):
                     env_name = env_file_path.name[5:]  # Remove '.env.' prefix
-                    args.env_content_file = f'env-content.{env_name}.yml'
+                    env_content_file = f'env-content.{env_name}.json'
                 else:
-                    args.env_content_file = 'env-content.yml'
+                    env_content_file = 'env-content.json'
+                args.env_content_file = args.env_content_dir / env_content_file
 
         except Exception as e:
             if not args.silent:
@@ -133,13 +136,13 @@ def main():
         print()
 
     try:
-        # Load YAML files
-        example_data = load_yaml_file(args.template_file)
-        target_data = load_yaml_file(args.env_content_file)
+        # Load JSON5 files
+        example_data = load_json5_file(args.template_file)
+        target_data = load_json5_file(args.env_content_file)
 
     except Exception as e:
         if not args.silent:
-            print(f"Error loading YAML files: {e}", file=sys.stderr)
+            print(f"Error loading JSON5 files: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Check for syntax issues in the environment file if we read it
@@ -147,8 +150,8 @@ def main():
     if not args.env_content_file and os.path.exists(args.env_file):
         env_syntax_issues = check_syntax_issues(args.env_file)
 
-    # Compare the YAML structures
-    missing_keys, extra_keys, value_changes = compare_yaml_values(
+    # Compare the JSON5 structures
+    missing_keys, extra_keys, value_changes = compare_json5_values(
         example_data, target_data, show_value_changes=args.show_value_changes
     )
 

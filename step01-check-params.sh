@@ -22,6 +22,12 @@ show_heading "Checking for missing params" "in branding configuration"
 show_heading "Checking for missing params" "in env-content configuration"
 "$script_dir"/selfhost_scripts/check-env-content.py || { show_error "Missing env-content config:" "please correct" ; exit 1 ;}
 
+show_heading "Checking for missing params" "in env-content production configuration"
+"$script_dir"/selfhost_scripts/check-env-content.py -e .env.production || { show_error "Missing production env-content config:" "please correct" ; exit 1 ;}
+
+show_heading "Checking for missing params" "in env-content test configuration (not required)"
+"$script_dir"/selfhost_scripts/check-env-content.py -e .env.test || { show_warning "Missing test env-content config:" "better to correct at some point" ; }
+
 show_heading "Checking secrets configuration"
 "$script_dir"/selfhost_scripts/check-secrets.py || { show_error "Secrets issues:" "please review and correct" ; exit 1 ;}
 

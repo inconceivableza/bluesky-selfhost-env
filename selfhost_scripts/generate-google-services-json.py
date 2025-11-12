@@ -12,7 +12,7 @@ corresponding .env files for the social-app Docker image using a mustache templa
 import argparse
 import json
 import sys
-import yaml
+import json5
 from pathlib import Path
 
 from env_utils import get_branding_filename
@@ -46,7 +46,7 @@ def get_branding():
         print(f"error locating branding file; will not customize google-services for branding", file=sys.stderr)
         return {}
     with open(branding_file, 'r') as f:
-        return yaml.safe_load(f)
+        return json5.load(f)
 
 def patch_google_services_content(template_content, profile):
     branding = get_branding()

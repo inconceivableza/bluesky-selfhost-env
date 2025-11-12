@@ -1,3 +1,4 @@
+json-five
 rich
 PyYAML
 pystache

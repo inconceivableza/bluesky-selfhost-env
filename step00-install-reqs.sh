@@ -17,7 +17,7 @@ if [ "$os" == "linux-ubuntu" ]
     # make is used to run setup scripts etc
     # pwgen is used to generate new securish passwords
     # jq in are used in extracting json data for config and tests
-    apt_packages="make pwgen jq"
+    apt_packages="make pwgen jq json5"
 
     if dpkg-query -l $apt_packages
       then
@@ -55,7 +55,7 @@ elif [ "$os" == "macos" ]
     if which brew >/dev/null
       then
         required_packages= 
-        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools bundletool go pnpm
+        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools bundletool go pnpm json5
           do
             cmd=$pkg
             check_cmd=which
