@@ -12,6 +12,11 @@ check_only=0
     check_only=1
     shift
 }
+keep_going=0
+[[ "$1" == "--keep-going" || "$1" == "-k" ]] && {
+    keep_going=1
+    shift
+}
 BRAND_CONFIG_DIR="$1"
 REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
 export MANUAL_REBRANDED_REPOS="$REBRANDED_REPOS"
@@ -35,7 +40,7 @@ function show_subdirs_with_brand_images() {
 }
 
 function usage() {
-    echo syntax "$0" "[--commit-parts|--check-only] brand_config_dir" >&2
+    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] brand_config_dir" >&2
     echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
     echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
     [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
@@ -146,7 +151,7 @@ for branded_repo in $REBRANDED_REPOS
                     show_info "Running semgrep" "to check for things requiring changes"
                     semgrep scan --config "${BRANDING_PART_RULES}" --exclude="branding*.json" --exclude=".env*" --exclude="env-config*.json" --error || {
                       show_warning "intervention required" "semgrep found code needing changes..." >&2
-                      exit 1
+                      [ "$keep_going" == "0" ] && exit 1
                     }
                 elif [ "$branding_action" == "change" ]
                   then
