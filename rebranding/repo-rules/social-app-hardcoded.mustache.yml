@@ -12,6 +12,7 @@ rules:
       - __tests__
       - README.md
       - bskyembed/src/env-config.ts
+      - bskyembed/test.html
       - bskyweb/README.embed.md
       - bskyweb/cmd/bskyweb/main.go
       - bskyweb/cmd/embedr/main.go
@@ -98,6 +99,7 @@ rules:
       - README.md
       - bskyembed/src/env-config.ts
       - bskyembed/src/screens/landing.tsx # fallback constant
+      - bskyembed/test.html
       - bskyweb/cmd/bskyweb/main.go # default fallbacks
       - bskyweb/cmd/bskyweb/server.go # comment about this
       - bskyweb/cmd/embedr/main.go # default fallbacks
@@ -233,6 +235,8 @@ rules:
       - pattern-regex: '[a-zA-Z0-9_:./-]*bsky[.]app'
       - pattern-not-regex: 'did:web:[a-zA-Z0-9_.]*bsky[.]app' # did-with-app-domain covers these
       - pattern-not: 'https://go.bsky.app' # link-domain covers this
+      - pattern-not-regex: '@bsky[.]app/alf' # this is an import of a valid module
+      - pattern-not-regex: '@bsky[.]app/react-native-mmkv' # this is an import of a valid module
     - pattern: 'bsky.app'
   # fix: '{{ env.socialappFQDN }}'
   # quite a few occurrences still: app.config.js, bskylink/web, modules/, package.json (!), and other places in src/
@@ -250,6 +254,7 @@ rules:
       - jest
       - app.config.js
       - bskyembed/src/env-config.ts
+      - bskyembed/test.html
       - bskylink/src/config.ts
       - bskylink/src/routes/index.ts # command reference
       - bskylink/tests/
