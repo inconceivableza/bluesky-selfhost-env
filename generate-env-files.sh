@@ -11,6 +11,6 @@ $script_dir/selfhost_scripts/generate-social-env.py -P -p development -o repos/s
 $script_dir/selfhost_scripts/generate-google-services-json.py -PDTV || show_warning "Error generating google services for all build environments"
 
 show_heading "Creating env-content files" "for bsky appview from production, development and test environments"
-$script_dir/selfhost_scripts/generate-appview-env.py -PD -o repos/social-app/conf/ -o repos/atproto/services/bsky/ || show_error "Error generating production/development bsky appview env-content files"
-$script_dir/selfhost_scripts/generate-appview-env.py -T -o repos/social-app/conf/ -o repos/atproto/services/bsky/ || show_warning "Error generating test/staging bsky appview env-content files"
+$script_dir/selfhost_scripts/generate-appview-env.py -PD -o repos/social-app/conf/ -o repos/social-app/submodules/atproto/services/bsky/ || show_error "Error generating production/development bsky appview env-content files"
+$script_dir/selfhost_scripts/generate-appview-env.py -T -o repos/social-app/conf/ -o repos/social-app/submodules/atproto/services/bsky/ || show_warning "Error generating test/staging bsky appview env-content files"
 

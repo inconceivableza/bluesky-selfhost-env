@@ -1,6 +1,6 @@
 services:
   bsky:
-    working_dir: './repos/atproto/services/bsky/'
+    working_dir: './repos/social-app/submodules/atproto/services/bsky/'
     build:
       - 'cd ../../packages/bsky'
       - 'pnpm install'
@@ -25,7 +25,7 @@ services:
       DD_TRACE_AGENT_URL: 'http://localhost:8126'
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
   pds:
-    working_dir: './repos/atproto/services/pds/'
+    working_dir: './repos/social-app/submodules/atproto/services/pds/'
     build:
       - 'cd ../../packages/pds'
       - 'pnpm install'
@@ -55,11 +55,9 @@ services:
   social-app:
     working_dir: './repos/social-app/bskyweb'
     build:
-      - 'cd ../../atproto/'
-      - 'pnpm install'
-      - 'cd packages/api'
-      - 'pnpm build'
-      - 'cd ../../../social-app'
+      - 'cd ../'
+      - 'yarn atproto:install'
+      - 'yarn atproto:build'
       - 'yarn install'
       - 'yarn intl:build'
       - 'yarn build-web'

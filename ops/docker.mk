@@ -3,7 +3,7 @@ docker_network ?= bsky_${DOMAIN}
 dockerPullPolicy ?= missing
 dockerCompose ?= docker compose
 auto_watchlog ?= true
-COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g')
+COMPOSE_PROFILES ?= $(shell echo ${_nrepo} | sed 's/ /,/g' | sed 's@.*/\([^/]*\)@\1@')
 
 _dockerUp: envs
 	${dockerCompose} -f ${f} up --pull ${dockerPullPolicy} -d ${services}

@@ -30,7 +30,7 @@ def load_json5_file(filepath):
 
 def get_env_content_input_path(profile):
     """Get the input path for env-content JSON5 file based on profile."""
-    base_path = base_dir / "repos" / "atproto"
+    base_path = base_dir / "repos" / "social-app" / "submodules" / "atproto"
 
     if profile is None:
         return base_path / "env-content.json"
@@ -40,7 +40,7 @@ def get_env_content_input_path(profile):
 def get_env_content_output_paths(profile, args):
     """Get the output path for env-content JSON file based on profile."""
     base_path = base_dir
-    for output in args.output or [base_dir / Path("repos/atproto/services/bsky")]:
+    for output in args.output or [base_dir / Path("repos/social-app/submodules/atproto/services/bsky")]:
         if output.endswith('/'):
             base_path = base_dir / Path(output)
         else:
@@ -131,7 +131,7 @@ def main():
     )
     parser.add_argument(
         '-o', '--output', default=[], action='append',
-        help='Set a filename or directory prefix (if ending with /) to output (relative to base selfh-host directory; defaults to repos/atproto/services/bsky and .env or .env.$profile) - multiple supported',
+        help='Set a filename or directory prefix (if ending with /) to output (relative to base self-host directory; defaults to repos/social-app/submodules/atproto/services/bsky and .env or .env.$profile) - multiple supported',
     )
 
     args = parser.parse_args()

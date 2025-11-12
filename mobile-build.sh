@@ -203,14 +203,6 @@ if [ "$keep_tmp" == 1 ]
     show_info --oneline "Temporary build output directory" $build_dir
   fi
 
-function conditional_remove_atproto {
-  [[ -d "$build_dir" && -d "$build_dir/atproto" && "$(cd $build_dir ; ls)" == "atproto" && "$keep_tmp" == "" ]] && {
-    show_info --oneline "Cleaning up atproto" "from build directory as only item remaining"
-    rm -r "$build_dir/atproto"
-    rmdir "$build_dir"
-  }
-}
-
 function pre_exit {
   [ "$#" -gt 0 ] && show_error "$@"
   if [ "$keep_tmp" == 1 ]
@@ -218,7 +210,6 @@ function pre_exit {
       show_info --oneline "Kept temporary files" "for inspection after build - remove once finished"
       show_info --oneline "Build directory" "$build_dir"
     else
-      conditional_remove_atproto
       [ -d "$build_dir" ] && { show_info --oneline "Build directory" "$build_dir" ; du -hs "$build_dir" ; }
     fi
   [ -d "$output_dir" ] && show_info --oneline "Build output directory" "$output_dir"
@@ -227,7 +218,6 @@ function pre_exit {
 function interrupt_handler {
   show_warning --oneline "Interrupted" "you may need to clean up temporary directories manually"
   show_info --oneline "Build directory" "$build_dir"
-  conditional_remove_atproto
   show_info --oneline "Build output directory" "$output_dir"
   show_error --oneline "Exiting after Ctrl-C"
   exit 1
@@ -251,16 +241,6 @@ else
   fi
   yarn intl:"$intl_target" || { pre_exit --oneline "Error with intl" "check yarn output" ; exit 1 ; }
 fi
-
-show_heading "Packaging atproto" "from src repo"
-(
-  cd "$script_dir/repos/atproto"
-  if [[ -n "$(git status --porcelain -u no)" ]]; then
-    show_warning "Changes in atproto" "that haven't been committed"
-    exit 1
-  fi
-) || { show_warning --oneline "Uncommitted changes in atproto" "will not be included in packed packages used in social-app for this build" ; }
-./scripts/pack-atproto-packages.sh
 
 show_heading "Running prebuild" "for profile $build_profile"
 

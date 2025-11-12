@@ -70,8 +70,8 @@ def main():
     parser = argparse.ArgumentParser(description='Compare env-content.json file with example template')
     parser.add_argument('-c', '--env-content-file',
                        help='Env-content JSON5 file to check (default: derived from .env ENV_CONTENT_FILE)')
-    parser.add_argument('-d', '--env-content-dir', default=base_dir / 'repos' / 'atproto', type=Path,
-                       help='Directory to locate Env-content files to check (default: ./repos/atproto/')
+    parser.add_argument('-d', '--env-content-dir', default=base_dir / 'repos' / 'social-app' / 'submodules' / 'atproto', type=Path,
+                       help='Directory to locate Env-content files to check (default: ./repos/social-app/submodules/atproto/')
     parser.add_argument('-e', '--env-file', default='.env',
                        help='Environment file to read (default: .env)')
     parser.add_argument('-t', '--template-file', default='bluesky-env-content.example.json5',

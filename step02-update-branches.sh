@@ -28,7 +28,7 @@ if [ $# -gt 0 ]
   fi
 
 function git_repo_changes() {
-  git status --porcelain --untracked-files=no
+  git status --porcelain --untracked-files=no --ignore-submodules=all
 }
 
 function git_current_branch() {

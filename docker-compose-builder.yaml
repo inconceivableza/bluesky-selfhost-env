@@ -302,7 +302,7 @@ services:
     command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     profiles: ['', 'atproto']
     build:
-      context: ./repos/atproto/
+      context: ./repos/social-app/submodules/atproto/
       dockerfile: services/pds/Dockerfile
       args:
        - http_proxy=${http_proxy-}
@@ -434,7 +434,7 @@ services:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof}
     profiles: ['', 'atproto']
     build:
-      context: ./repos/atproto/
+      context: ./repos/social-app/submodules/atproto/
       dockerfile: services/bsky/Dockerfile
       args:
        - http_proxy=${http_proxy-}
@@ -517,8 +517,6 @@ services:
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
-      additional_contexts:
-        atproto: ./repos/atproto
       dockerfile: Dockerfile
       args:
        - http_proxy=${http_proxy-}
@@ -595,8 +593,6 @@ services:
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
-      additional_contexts:
-        atproto: ./repos/atproto
       dockerfile: Dockerfile.bskyogcard
       args:
        - http_proxy=${http_proxy-}
@@ -637,8 +633,6 @@ services:
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
-      additional_contexts:
-        atproto: ./repos/atproto
       dockerfile: Dockerfile.embedr
       args:
        - http_proxy=${http_proxy-}
@@ -690,8 +684,6 @@ services:
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
-      additional_contexts:
-        atproto: ./repos/atproto
       dockerfile: Dockerfile.bskylink
       args:
        - http_proxy=${http_proxy-}
@@ -828,7 +820,7 @@ services:
       - 3005:3005
     <<: *certificate-volumes
     volumes: []
-#     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+#     - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
 #     https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
@@ -871,7 +863,7 @@ services:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
     profiles: ['', 'atproto']
     build:
-      context: ./repos/atproto/
+      context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
       args:
        - http_proxy=${http_proxy-}
@@ -883,7 +875,7 @@ services:
       - 3006:3006
     <<: *certificate-volumes
 #    volumes:
-#      - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+#      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1
@@ -918,7 +910,7 @@ services:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
     profiles: ['', 'atproto']
     build:
-      context: ./repos/atproto/
+      context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
       args:
        - http_proxy=${http_proxy-}

@@ -1,6 +1,6 @@
 // Bluesky Environment Content Configuration
 // This file defines structured content that can be configured per environment
-// Copy this file to repos/atproto/env-content*.json and customize as needed
+// Copy this file to repos/social-app/submodules/atproto/env-content*.json and customize as needed
 // Different profiles are supported in env-content.production.json etc
 // This file is in JSON5 format to allow comments and trailing commas
 // But the actual env-content files should be pure JSON

@@ -3,7 +3,7 @@
 echo "rDir:   ${rDir}"
 echo "pDir:   ${pDir}"
 
-d_=${rDir}/atproto
+d_=${rDir}/social-app/submodules/atproto
 p1_=${pDir}/010-atproto-devenv-debug.diff
 p2_=${pDir}/010-atproto-devenv-debug-others.diff
 

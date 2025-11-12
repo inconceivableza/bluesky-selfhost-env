@@ -57,7 +57,7 @@ function prepare_apply_feature_branches {
   repoDir="`pwd`"
   repoName="`basename "$repoDir"`"
 
-  [ "$repoDir" == "$script_dir/repos/$repoName" ] || { echo "In wrong directory: this script should be run from $script_dir/repos/\$repoName" 2>&1 ; exit 1 ; }
+  [[ "$repoDir" == "$script_dir/repos/$repoName" || "$repoDir" == "$script_dir/repos/social-app/submodules/$repoName" ]] || { echo "In wrong directory: this script should be run from $script_dir/repos/\$repoName" 2>&1 ; exit 1 ; }
 
   cd "$script_dir"
   . "$script_dir/utils.sh"

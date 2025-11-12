@@ -678,7 +678,7 @@ services:
       - 3005:3005
     <<: *certificate-volumes
     volumes: []
-#     - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+#     - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
 #     https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
@@ -725,7 +725,7 @@ services:
       - 3006:3006
     <<: *certificate-volumes
 #    volumes:
-#      - ./repos/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+#      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     env_file: config/ozone-secrets.env
     environment:
       - DEBUG_MODE=1

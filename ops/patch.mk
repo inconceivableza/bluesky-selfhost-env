@@ -3,8 +3,8 @@ branch2patch=
 checkoutbranchargs ?= -b
 commitargs ?=
 
-#patch-dockerbuild: ${rDir}/feed-generator/.dockerbuild  ${rDir}/indigo/.dockerbuild  ${rDir}/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild
-#patch-dockerbuild: ${rDir}/indigo/.dockerbuild  ${rDir}/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild ${rDir}/social-app/.dockerbuild ${rDir}/jetstream/.dockerbuild
+#patch-dockerbuild: ${rDir}/feed-generator/.dockerbuild  ${rDir}/indigo/.dockerbuild  ${rDir}/social-app/submodules/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild
+#patch-dockerbuild: ${rDir}/indigo/.dockerbuild  ${rDir}/social-app/submodules/atproto/.dockerbuild ${rDir}/ozone/.dockerbuild ${rDir}/social-app/.dockerbuild ${rDir}/jetstream/.dockerbuild
 
 # generate targets for patch-dockerbuild from variables like above sample;   items=${_nrepo}-${nopatch},  with prefix=${rDir}  and  suffix=/.dockerbuild
 _nopatch ?=did-method-plc pds
@@ -32,12 +32,12 @@ ${rDir}/indigo/.dockerbuild:
 	touch $@
 	(cd ${rDir}/indigo; git add . ; git commit $(commitargs) -m "update: dockerbuild"; )
 
-${rDir}/atproto/.dockerbuild:
+${rDir}/social-app/submodules/atproto/.dockerbuild:
 	@echo "make branch and applying patch..."
-	(cd ${rDir}/atproto; git status; git checkout ${branch2patch} $(checkoutbranchargs) dockerbuild )
+	(cd ${rDir}/social-app/submodules/atproto; git status; git checkout ${branch2patch} $(checkoutbranchargs) dockerbuild )
 	for ops in `ls ${wDir}/patching/1*.sh | grep atproto`; do wDir=${wDir} rDir=${rDir} pDir=${wDir}/patching DOMAIN=${DOMAIN} asof=${asof}  $${ops} ; done
 	touch $@
-	(cd ${rDir}/atproto; git add . ; git commit $(commitargs) -m "update: dockerbuild"; )
+	(cd ${rDir}/social-app/submodules/atproto; git add . ; git commit $(commitargs) -m "update: dockerbuild"; )
 
 ${rDir}/social-app/.dockerbuild:
 	@echo "make branch and applying patch..."

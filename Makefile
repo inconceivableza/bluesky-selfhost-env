@@ -138,8 +138,8 @@ f ?=${wDir}/docker-compose.yaml
 #f ?=${wDir}/docker-compose-builder.yaml
 
 # folders of repos
-#_nrepo  ?=atproto indigo social-app feed-generator did-method-plc pds ozone jetstream
-_nrepo   ?=atproto indigo social-app feed-generator did-method-plc ozone jetstream
+#_nrepo  ?=social-app/submodules/atproto indigo social-app feed-generator did-method-plc pds ozone jetstream
+_nrepo   ?=social-app/submodules/atproto indigo social-app feed-generator did-method-plc ozone jetstream
 repoDirs ?=$(addprefix ${rDir}/, ${_nrepo})
 _nofork  ?=feed-generator ozone jetstream
 
@@ -190,25 +190,37 @@ else
 _frn := ${fork_repo_name}
 endif
 
+ifeq (${bsky_repo_name},)
+_brn := origin
+else
+_brn := ${bsky_repo_name}
+endif
+
 ifneq ($(fork_repo_prefix),)
-_prepr ?=$(filter-out ${_nofork},${_nrepo})
-remoteForks: $(addprefix ${rDir}/,$(addsuffix /.git/refs/remotes/${fork_repo_name},${_prepr}))
+_prepr ?=$(filter-out ${_nofork} social-app/submodules/%,${_nrepo})
+remoteForks: $(addprefix ${rDir}/,$(addsuffix /.git/refs/remotes/${_frn},${_prepr}))
+remoteForks: $(addprefix ${rDir}/,$(addsuffix /.git/refs/remotes/${_brn},${_prepr}))
+# submodules are more complex so work this out manually
+remoteForks: ${rDir}/social-app/.git/modules/submodules/atproto/refs/remotes/$(_frn)/
+remoteForks: ${rDir}/social-app/.git/modules/submodules/atproto/refs/remotes/$(_brn)/
 else
 remoteForks:
 	$(warning define fork_repo_prefix in .env (and optionally fork_repo_name) for remoteForks to be fetched)
 endif
 
-${rDir}/atproto:
-	git clone ${origin_repo_bsky_prefix}atproto.git $@
+${rDir}/social-app/submodules/atproto:
+	cd ${rDir}/social-app; git submodule update
 
 ifneq ($(fork_repo_prefix),)
-${rDir}/atproto/.git/refs/remotes/$(_frn)/:
-	-(cd ${rDir}//atproto/; git remote add ${_frn} ${fork_repo_prefix}atproto.git; git remote update ${_frn})
+${rDir}/social-app/.git/modules/submodules/atproto/refs/remotes/$(_frn)/:
+	-(cd ${rDir}/social-app/submodules/atproto/; git remote add ${_frn} ${fork_repo_prefix}atproto.git; git remote update ${_frn})
 endif
 
+${rDir}/social-app/.git/modules/submodules/atproto/refs/remotes/$(_brn)/:
+	-(cd ${rDir}/social-app/submodules/atproto/; git remote add ${_brn} ${origin_repo_bsky_prefix}atproto.git; git remote update ${_brn})
 
 ${rDir}/indigo:
-	git clone ${origin_repo_bsky_prefix}indigo.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}indigo.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/indigo/.git/refs/remotes/brightsun/:
@@ -217,7 +229,7 @@ endif
 
 
 ${rDir}/social-app:
-	git clone ${origin_repo_bsky_prefix}social-app.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}social-app.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/social-app/.git/refs/remotes/${_frn}/:
@@ -226,7 +238,7 @@ endif
 
 
 ${rDir}/feed-generator:
-	git clone ${origin_repo_bsky_prefix}feed-generator.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}feed-generator.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/feed-generator/.git/refs/remotes/${_frn}/:
@@ -235,7 +247,7 @@ endif
 
 
 ${rDir}/pds:
-	git clone ${origin_repo_bsky_prefix}pds.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}pds.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/pds/.git/refs/remotes/${_frn}/:
@@ -244,7 +256,7 @@ endif
 
 
 ${rDir}/ozone:
-	git clone ${origin_repo_bsky_prefix}ozone.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}ozone.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/ozone/.git/refs/remotes/${_frn}/:
@@ -253,7 +265,7 @@ endif
 
 
 ${rDir}/did-method-plc:
-	git clone ${origin_repo_did_prefix}did-method-plc.git $@
+	git clone -o ${_brn} ${origin_repo_did_prefix}did-method-plc.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/did-method-plc/.git/refs/remotes/${_frn}/:
@@ -262,7 +274,7 @@ endif
 
 
 ${rDir}/jetstream:
-	git clone ${origin_repo_bsky_prefix}jetstream.git $@
+	git clone -o ${_brn} ${origin_repo_bsky_prefix}jetstream.git $@
 
 ifneq ($(fork_repo_prefix),)
 ${rDir}/jetstream/.git/refs/remotes/${_frn}/:
