@@ -32,6 +32,30 @@ make docker-pull-unbranded unbranded_services="${unbranded_services//$'\n'/ }" |
 show_heading "Deploy required containers" "(database, caddy etc)"
 make docker-start || { show_error "Required Containers failed:" "Please see error above" ; exit 1 ; }
 
+show_heading "Checking certificates" "which may need to refresh with letsencrypt"
+domains_to_test="${DOMAIN} ${socialappFQDN} ${cardFQDN} ${embedFQDN} ${linkFQDN} ${pdsFQDN} ${bgsFQDN} ${bskyFQDN} ${feedgenFQDN} ${ipFQDN} ${jetstreamFQDN} ${ozoneFQDN} ${palomarFQDN} ${plcFQDN} ${publicApiFQDN} ${apiFQDN} ${gifFQDN} ${videoFQDN}"
+num_checks=0
+while [[ "$domains_to_test" != "" ]]
+  do
+    [ "$num_checks" -gt 0 ] && {
+      show_info --oneline "Sleeping before retesting" "for domains $domains_to_test..."
+      sleep 10
+    }
+    show_info "Testing certificates" "for domains $domains_to_test"
+    error_domains=
+    for domain in $domains_to_test
+      do
+        show_info --oneline "Testing" "$domain"
+        { echo 'HEAD / HTTP/1.0' ; echo ; } | openssl s_client -connect ${domain}:443 >/dev/null 2>&1 || {
+          show_warning --oneline "Connection error" "for domain $domain"
+          error_domains="$error_domains $domain"
+        }
+      done
+    domains_to_test="$error_domains"
+    num_checks=$((num_checks+1))
+    [ "$num_checks" -gt "3" ] && { show_error "Certificates not successful" "after $num_checks_tries" ; break ; }
+  done
+
 show_heading "Deploy bluesky containers" "(plc, bgs, appview, pds, ozone, ...)"
 make docker-start-bsky || { show_error "BlueSky Containers failed:" "Please see error above" ; exit 1 ; }
 
