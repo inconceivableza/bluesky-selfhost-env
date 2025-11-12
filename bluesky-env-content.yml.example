@@ -1,6 +1,7 @@
 # Bluesky Environment Content Configuration
 # This file defines structured content that can be configured per environment
-# Copy this file to env-content.yml and customize as needed
+# Copy this file to repos/atproto/env-content*.yml and customize as needed
+# Different profiles are supported in env-content.production.yml etc
 
 # Onboarding configuration
 onboarding:
