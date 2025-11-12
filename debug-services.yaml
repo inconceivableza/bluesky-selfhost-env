@@ -2,9 +2,10 @@ services:
   bsky:
     working_dir: './repos/social-app/submodules/atproto/services/bsky/'
     build:
-      - 'cd ../../packages/bsky'
-      - 'pnpm install'
-      - 'pnpm build'
+      - 'cd ../../'
+      - 'pnpm --filter bsky... install'
+      - 'pnpm --filter bsky... build'
+      - 'cd services/bsky'
     run:
       - 'node --enable-source-maps api.js'
     env_exclude:
@@ -27,10 +28,10 @@ services:
   pds:
     working_dir: './repos/social-app/submodules/atproto/services/pds/'
     build:
-      - 'cd ../../packages/pds'
-      - 'pnpm install'
-      - 'pnpm build'
-      - 'cd ../../services/pds'
+      - 'cd ../../'
+      - 'pnpm --filter pds... install'
+      - 'pnpm --filter pds... build'
+      - 'cd services/pds'
       - 'pnpm install'
     run:
       - 'docker compose cp pds:/pds $local_service_tmp_dir/pds'
