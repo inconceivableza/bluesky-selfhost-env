@@ -2,23 +2,15 @@
 
 script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
-commit_parts=0
-[[ "$1" == "--commit-parts" ]] && {
-    commit_parts=1
-    shift
+
+function usage() {
+    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] brand_config_dir" >&2
+    echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
+    echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
+    [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
+    echo to create a new one, copy opensky and adjust for your images
 }
-check_only=0
-[[ "$1" == "--check-only" ]] && {
-    check_only=1
-    shift
-}
-keep_going=0
-[[ "$1" == "--keep-going" || "$1" == "-k" ]] && {
-    keep_going=1
-    shift
-}
-BRAND_CONFIG_DIR="$1"
-REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
+
 export MANUAL_REBRANDED_REPOS="$REBRANDED_REPOS"
 . $script_dir/../utils.sh
 
@@ -39,15 +31,48 @@ function show_subdirs_with_brand_images() {
   ls $base_dir/*/*branding.svg 2>/dev/null | sed 's#/[^/]*branding.svg##' | sort -u
 }
 
-function usage() {
-    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] brand_config_dir" >&2
-    echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
-    echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
-    [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
-    echo to create a new one, copy opensky and adjust for your images
-}
+commit_parts=0
+check_only=0
+keep_going=0
 
-[[ "$1" == "-h" || "$1" == "--help" || "$BRAND_CONFIG_DIR" == "" || "$commit_parts$check_only" == 11 ]] && {
+while [ "$#" -gt 0 ]
+  do
+    [[ "$1" == "--commit-parts" ]] && {
+      commit_parts=1
+      shift
+    }
+    [[ "$1" == "--check-only" ]] && {
+      check_only=1
+      shift
+    }
+    [[ "$1" == "--keep-going" || "$1" == "-k" ]] && {
+      keep_going=1
+      shift
+    }
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && {
+      usage
+      exit 1
+    }
+    [[ "${1#-}" != "$1" ]] && {
+      show_error "Unknown parameter" "$1"
+      show_usage >&2
+      exit 1
+    }
+    [[ "$BRAND_CONFIG_DIR" != "" ]] && {
+      show_error "Brand config dir already set" "to $BRAND_CONFIG_DIR - unexpected parameter $1"
+      show_usage >&2
+      exit 1
+    }
+    BRAND_CONFIG_DIR="$1"
+    shift
+  done
+
+REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
+
+[[ "$BRAND_CONFIG_DIR" == "" ]] && BRAND_CONFIG_DIR="$script_dir/../repos/social-app/conf"
+
+[[ "$commit_parts$check_only" == 11 ]] && {
+    show_error "Cannot have both flags" "--commit-parts and --check-only"
     usage
     exit 1
 }
