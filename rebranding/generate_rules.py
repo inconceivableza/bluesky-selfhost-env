@@ -2,6 +2,7 @@
 "exec" """$(dirname $0)/venv/bin/python""" "$0" "$@" # this is a shell exec which will drop down to the relative virtualenv's python
 
 import argparse
+import json5
 import yaml
 import pystache
 import sys
@@ -62,7 +63,7 @@ def main():
     except FileNotFoundError as e:
         print(f"Error: File not found - {e}", file=sys.stderr)
         sys.exit(1)
-    except yaml.YAMLError as e:
+    except json5.JSONDecodeError as e:
         print(f"Error: Invalid YAML in config file - {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
