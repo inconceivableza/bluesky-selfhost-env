@@ -104,7 +104,7 @@ make docker-start-bsky || { show_error "BlueSky Containers failed:" "Please see 
 
 show_info --oneline "Adjusting relay settings" "to allow PDS crawling"
 wait_for_container bgs
-"$script_dir/selfhost_scripts/adjust-bgs-crawl-limit.sh" || { show_warning "Error adjusting relay settings" "this could prevent the PDS from being crawled; check..." ; }
+"$script_dir/selfhost_scripts/adjust-bgs-limits.sh" || { show_warning "Error adjusting relay settings" "this could prevent the PDS from being crawled; check..." ; }
 
 show_heading "Wait for startup" "of social app"
 # could also wait for Sbsky ?=pds bgs bsky social-app palomar
