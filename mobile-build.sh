@@ -255,6 +255,8 @@ if yarn prebuild -p $target_os
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
 
+rm -r $TMPDIR/metro-cache/
+
 if npx eas-cli build -p ${target_os} --local -e ${build_profile} --output="$output_dir/$build_file"
   then
     cd "$output_dir"
