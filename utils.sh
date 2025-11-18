@@ -28,7 +28,7 @@ function get_relative_path() {
 
 function wait_for_container {
   container_name=$1
-  compose_file=${2:-docker-compose.yaml}
+  compose_file=${2:-$script_dir/docker-compose.yaml}
   
   # might need to look up the name outside docker compose
   echo -n "Waiting for $container_name... "
