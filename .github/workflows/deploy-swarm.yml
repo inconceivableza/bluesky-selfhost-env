@@ -1,30 +1,26 @@
 name: Deploy to Docker Swarm
 
 on:
-  push:
-    branches:
-      - main  # Trigger on push to main branch
-      - nvh-dev-compose  # Add your development branches
-    paths:
-      - 'docker-compose.swarm.yaml'
-      - 'config/**'
-      - '.github/workflows/deploy-swarm.yml'
-
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
     inputs:
-      services:
-        description: 'Specific services to update (comma-separated, leave empty for all)'
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      force_recreate_secrets:
+        description: 'Force recreate all Docker secrets'
         required: false
-        default: ''
-
-env:
-  STACK_NAME: bluesky
-  COMPOSE_FILE: docker-compose.swarm.yaml
+        type: boolean
+        default: false
 
 jobs:
   deploy:
-    name: Deploy to Swarm
+    name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout code
@@ -38,195 +34,410 @@ jobs:
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SWARM_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ vars.SWARM_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create deployment directory on server
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} "mkdir -p ~/bluesky-deploy"
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} "mkdir -p ~/bluesky-deploy/${{ inputs.environment }}"
+
+      - name: Create .env file from environment variables
+        run: |
+          cat > .env << 'EOF'
+          # Generated from GitHub Environment: ${{ inputs.environment }}
+          # Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Domain Configuration
+          DOMAIN=${{ vars.DOMAIN }}
+          HOST_HOSTNAME=${{ vars.HOST_HOSTNAME }}
+
+          # FQDNs
+          apiFQDN=${{ vars.API_FQDN }}
+          bgsFQDN=${{ vars.BGS_FQDN }}
+          bskyFQDN=${{ vars.BSKY_FQDN }}
+          cardFQDN=${{ vars.CARD_FQDN }}
+          embedFQDN=${{ vars.EMBED_FQDN }}
+          feedgenFQDN=${{ vars.FEEDGEN_FQDN }}
+          ipFQDN=${{ vars.IP_FQDN }}
+          jetstreamFQDN=${{ vars.JETSTREAM_FQDN }}
+          linkFQDN=${{ vars.LINK_FQDN }}
+          ozoneFQDN=${{ vars.OZONE_FQDN }}
+          palomarFQDN=${{ vars.PALOMAR_FQDN }}
+          pdsFQDN=${{ vars.PDS_FQDN }}
+          plcFQDN=${{ vars.PLC_FQDN }}
+          publicApiFQDN=${{ vars.PUBLIC_API_FQDN }}
+          socialappFQDN=${{ vars.SOCIAL_APP_FQDN }}
+
+          # Email Configuration
+          EMAIL4CERTS=${{ vars.EMAIL_FOR_CERTS }}
+          PDS_EMAIL_FROM_ADDRESS=${{ vars.PDS_EMAIL_FROM_ADDRESS }}
+          PDS_EMAIL_IMAGES_BASE_URL=${{ vars.PDS_EMAIL_IMAGES_BASE_URL }}
+          PDS_EMAIL_SMTP_URL=${{ secrets.PDS_EMAIL_SMTP_URL }}
+
+          # Image Configuration
+          BRANDED_NAMESPACE=${{ vars.BRANDED_NAMESPACE }}
+          UNBRANDED_NAMESPACE=${{ vars.UNBRANDED_NAMESPACE }}
+          REBRANDING_NAME=${{ vars.REBRANDING_NAME }}
+          asof=${{ vars.IMAGE_TAG_ASOF }}
+          branded_asof=${{ vars.IMAGE_TAG_BRANDED_ASOF }}
+
+          # Database Configuration
+          POSTGRES_USER=${{ vars.POSTGRES_USER }}
+
+          # Network Configuration
+          docker_network=bluesky-net
+          CUSTOM_CERTS_DIR=/usr/local/share/ca-certificates
+
+          # TLS Configuration
+          GOINSECURE=${{ vars.GOINSECURE }}
+          NODE_TLS_REJECT_UNAUTHORIZED=${{ vars.NODE_TLS_REJECT_UNAUTHORIZED }}
+
+          # Logging
+          LOG_LEVEL_DEFAULT=${{ vars.LOG_LEVEL_DEFAULT || 'info' }}
+
+          # PDS Configuration
+          PDS_INVITE_REQUIRED=${{ vars.PDS_INVITE_REQUIRED || 'false' }}
+          PDS_INVITE_INTERVAL=${{ vars.PDS_INVITE_INTERVAL }}
+
+          # Social App Configuration
+          SOCIAL_APP_NAME=${{ vars.SOCIAL_APP_NAME }}
+          SOCIAL_APP_DESCRIPTION=${{ vars.SOCIAL_APP_DESCRIPTION }}
+          SOCIAL_APP_EMOJI=${{ vars.SOCIAL_APP_EMOJI }}
+          SOCIAL_APP_URL=${{ vars.SOCIAL_APP_URL }}
+          SOCIAL_HELP_DESK_URL=${{ vars.SOCIAL_HELP_DESK_URL }}
+          SOCIAL_POLICY_BASE_URL=${{ vars.SOCIAL_POLICY_BASE_URL }}
+
+          # Optional Configuration
+          BSKY_LABELS_FROM_ISSUER_DIDS=${{ vars.BSKY_LABELS_FROM_ISSUER_DIDS }}
+          BSKY_STATSIG_ENV=${{ vars.BSKY_STATSIG_ENV }}
+          FEEDGEN_PUBLISHER_DID=${{ vars.FEEDGEN_PUBLISHER_DID }}
+          dmServiceDID=${{ vars.DM_SERVICE_DID }}
+          gifFQDN=${{ vars.GIF_FQDN }}
+          OZONE_SERVER_DID=${{ vars.OZONE_SERVER_DID }}
+          OZONE_ADMIN_HANDLE=${{ vars.OZONE_ADMIN_HANDLE }}
+          OZONE_ADMIN_DIDS=${{ vars.OZONE_ADMIN_DIDS }}
+
+          # Statsig
+          STATSIG_CLIENT_KEY=${{ vars.STATSIG_CLIENT_KEY }}
+          STATSIG_API_URL=${{ vars.STATSIG_API_URL }}
+          STATUS_PAGE_URL=${{ vars.STATUS_PAGE_URL }}
+
+          # Backup Configuration
+          RESTIC_AUTO_REMOTE=${{ vars.RESTIC_AUTO_REMOTE }}
+          RESTIC_REMOTE_REPO1=${{ vars.RESTIC_REMOTE_REPO1 }}
+          RESTIC_REMOTE_REPO2=${{ vars.RESTIC_REMOTE_REPO2 }}
+          RESTIC_REMOTE_REPO3=${{ vars.RESTIC_REMOTE_REPO3 }}
+          RESTIC_AWS_ACCESS_KEY_ID=${{ secrets.RESTIC_AWS_ACCESS_KEY_ID }}
+          RESTIC_GOOGLE_PROJECT_ID=${{ vars.RESTIC_GOOGLE_PROJECT_ID }}
+          RESTIC_GOOGLE_APPLICATION_CREDENTIALS=${{ vars.RESTIC_GOOGLE_APPLICATION_CREDENTIALS }}
+
+          # Caddy Configuration
+          CADDY_HTTP_PORT=${{ vars.CADDY_HTTP_PORT || '80' }}
+          CADDY_HTTPS_PORT=${{ vars.CADDY_HTTPS_PORT || '443' }}
+          CADDY_DNS_PROVIDER=${{ vars.CADDY_DNS_PROVIDER }}
+          CADDY_DNS_API_TOKEN=${{ secrets.CADDY_DNS_API_TOKEN }}
+          CADDY_DNS_RESOLVER=${{ vars.CADDY_DNS_RESOLVER }}
+          CADDY_DNS_USED=${{ vars.CADDY_DNS_USED }}
+          TRUSTED_PROXIES=${{ vars.TRUSTED_PROXIES }}
+          haproxyFORWARD=${{ vars.HAPROXY_FORWARD }}
+
+          # Update Certs Command
+          UPDATE_CERTS_CMD=${{ vars.UPDATE_CERTS_CMD || 'true' }}
+
+          # Static Web Directory
+          PDS_WEB_DIR=${{ vars.PDS_WEB_DIR || 'staticweb' }}
+          EOF
+
+      - name: Create config directory structure
+        run: |
+          mkdir -p config/init-postgres config/backup config/caddy config/telemetry
+
+      - name: Create database secrets file
+        run: |
+          cat > config/db-secrets.env << 'EOF'
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          EOF
+
+      - name: Create BGS secrets file
+        run: |
+          cat > config/bgs-secrets.env << 'EOF'
+          BGS_ADMIN_KEY=${{ secrets.BGS_ADMIN_KEY }}
+          DATABASE_URL=${{ secrets.BGS_DATABASE_URL }}
+          EOF
+
+      - name: Create PDS secrets file
+        run: |
+          cat > config/pds-secrets.env << 'EOF'
+          PDS_JWT_SECRET=${{ secrets.PDS_JWT_SECRET }}
+          PDS_ADMIN_PASSWORD=${{ secrets.PDS_ADMIN_PASSWORD }}
+          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY }}
+          DATABASE_URL=${{ secrets.PDS_DATABASE_URL }}
+          EOF
+
+      - name: Create Bsky secrets file
+        run: |
+          cat > config/bsky-secrets.env << 'EOF'
+          DATABASE_URL=${{ secrets.BSKY_DATABASE_URL }}
+          BSKY_APPVIEW_DB_POSTGRES_URL=${{ secrets.BSKY_APPVIEW_DB_URL }}
+          EOF
+
+      - name: Create PLC secrets file
+        run: |
+          cat > config/plc-secrets.env << 'EOF'
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
+          DB_CREDS_JSON=${{ secrets.PLC_DB_CREDS_JSON }}
+          DB_MIGRATE_CREDS_JSON=${{ secrets.PLC_DB_MIGRATE_CREDS_JSON }}
+          EOF
+
+      - name: Create Ozone secrets file
+        run: |
+          cat > config/ozone-secrets.env << 'EOF'
+          DATABASE_URL=${{ secrets.OZONE_DATABASE_URL }}
+          OZONE_ADMIN_PASSWORD=${{ secrets.OZONE_ADMIN_PASSWORD }}
+          OZONE_SIGNING_KEY_HEX=${{ secrets.OZONE_SIGNING_KEY_HEX }}
+          EOF
+
+      - name: Create OpenSearch secrets file
+        run: |
+          cat > config/opensearch-secrets.env << 'EOF'
+          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_ADMIN_PASSWORD }}
+          EOF
+
+      - name: Create Palomar secrets file
+        run: |
+          cat > config/palomar-secrets.env << 'EOF'
+          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
+          EOF
+
+      - name: Create Social Link secrets file
+        run: |
+          cat > config/social-link-secrets.env << 'EOF'
+          DATABASE_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
+          LINK_DB_POSTGRES_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
+          EOF
+
+      - name: Create Backup secrets file
+        run: |
+          cat > config/backup-secrets.env << 'EOF'
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          RESTIC_REMOTE_PASSWORD1=${{ secrets.RESTIC_REMOTE_PASSWORD1 }}
+          RESTIC_REMOTE_PASSWORD2=${{ secrets.RESTIC_REMOTE_PASSWORD2 }}
+          RESTIC_REMOTE_PASSWORD3=${{ secrets.RESTIC_REMOTE_PASSWORD3 }}
+          EOF
+
+      - name: Create Caddy dynamic config
+        run: |
+          touch config/caddy-dynamic.env
 
       - name: Copy files to server
         run: |
-          # Copy the swarm compose file
+          # Copy compose file
           scp docker-compose.swarm.yaml \
-            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
 
-          # Copy .env file if it exists
-          if [ -f .env ]; then
-            scp .env ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
-          fi
+          # Copy .env file
+          scp .env \
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
 
           # Copy config directory
           scp -r config/ \
-            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
 
-          # Copy certs directory
-          scp -r certs/ \
-            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
-
-          # Copy any other necessary directories
-          if [ -d "staticweb" ]; then
-            scp -r staticweb/ \
-              ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+          # Copy certs directory if exists (public certs only)
+          if [ -d "certs" ]; then
+            scp -r certs/ \
+              ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
           fi
 
-      - name: Initialize Docker Swarm if needed
+          # Copy other directories if they exist
+          for dir in staticweb selfhost_scripts; do
+            if [ -d "$dir" ]; then
+              scp -r $dir/ \
+                ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
+            fi
+          done
+
+      - name: Create certificate files on server
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            cd ~/bluesky-deploy/${{ inputs.environment }}
+            mkdir -p certs
+
+            # Create certs from secrets
+            echo "${{ secrets.TLS_ROOT_CRT }}" > certs/root.crt
+            echo "${{ secrets.TLS_INTERMEDIATE_CRT }}" > certs/intermediate.crt
+            echo "${{ secrets.TLS_CA_CERTIFICATES }}" > certs/ca-certificates.crt
+            echo "${{ secrets.TLS_ROOT_KEY }}" > certs/root.key
+            chmod 600 certs/root.key
+          ENDSSH
+
+      - name: Initialize Docker Swarm
+        run: |
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
             if ! docker info 2>/dev/null | grep -q "Swarm: active"; then
               echo "Initializing Docker Swarm..."
               docker swarm init || docker swarm init --advertise-addr $(hostname -I | awk '{print $1}')
             else
-              echo "Docker Swarm already initialized"
+              echo "Docker Swarm already active"
             fi
-          EOF
+          ENDSSH
 
-      - name: Create or update Docker secrets
+      - name: Manage Docker secrets
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
-            cd ~/bluesky-deploy
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            cd ~/bluesky-deploy/${{ inputs.environment }}
 
-            # Function to create or skip secrets
-            create_secret_if_not_exists() {
-              local secret_name=$1
-              local secret_file=$2
+            FORCE_RECREATE="${{ inputs.force_recreate_secrets }}"
+
+            create_or_update_secret() {
+              local secret_name="$1"
+              local secret_file="$2"
 
               if [ ! -f "$secret_file" ]; then
-                echo "Skipping $secret_name (file not found)"
+                echo "⚠️  Warning: $secret_file not found, skipping $secret_name"
                 return
               fi
 
               if docker secret inspect "$secret_name" &> /dev/null; then
-                echo "Secret $secret_name already exists (skipping)"
+                if [ "$FORCE_RECREATE" = "true" ]; then
+                  echo "🔄 Recreating secret: $secret_name"
+                  if ! docker secret rm "$secret_name" 2>/dev/null; then
+                    echo "❌ Cannot remove $secret_name (in use by services)"
+                    echo "   Run 'docker stack rm bluesky-${{ inputs.environment }}' first to recreate secrets"
+                    return 1
+                  fi
+                  docker secret create "$secret_name" "$secret_file"
+                  echo "✅ Recreated: $secret_name"
+                else
+                  echo "ℹ️  Secret exists: $secret_name (skipping)"
+                fi
               else
-                echo "Creating secret: $secret_name"
+                echo "🔐 Creating secret: $secret_name"
                 docker secret create "$secret_name" "$secret_file"
+                echo "✅ Created: $secret_name"
               fi
             }
 
-            # Create secrets from config files
-            create_secret_if_not_exists "db_secrets" "config/db-secrets.env"
-            create_secret_if_not_exists "bgs_secrets" "config/bgs-secrets.env"
-            create_secret_if_not_exists "pds_secrets" "config/pds-secrets.env"
-            create_secret_if_not_exists "bsky_secrets" "config/bsky-secrets.env"
-            create_secret_if_not_exists "plc_secrets" "config/plc-secrets.env"
-            create_secret_if_not_exists "ozone_secrets" "config/ozone-secrets.env"
-            create_secret_if_not_exists "opensearch_secrets" "config/opensearch-secrets.env"
-            create_secret_if_not_exists "palomar_secrets" "config/palomar-secrets.env"
-            create_secret_if_not_exists "social_link_secrets" "config/social-link-secrets.env"
-            create_secret_if_not_exists "backup_secrets" "config/backup-secrets.env"
-          EOF
+            echo "Managing Docker secrets..."
+            create_or_update_secret "db_secrets" "config/db-secrets.env"
+            create_or_update_secret "bgs_secrets" "config/bgs-secrets.env"
+            create_or_update_secret "pds_secrets" "config/pds-secrets.env"
+            create_or_update_secret "bsky_secrets" "config/bsky-secrets.env"
+            create_or_update_secret "plc_secrets" "config/plc-secrets.env"
+            create_or_update_secret "ozone_secrets" "config/ozone-secrets.env"
+            create_or_update_secret "opensearch_secrets" "config/opensearch-secrets.env"
+            create_or_update_secret "palomar_secrets" "config/palomar-secrets.env"
+            create_or_update_secret "social_link_secrets" "config/social-link-secrets.env"
+            create_or_update_secret "backup_secrets" "config/backup-secrets.env"
+
+            echo "✅ Secrets management complete"
+          ENDSSH
 
       - name: Deploy stack to Swarm
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
-            cd ~/bluesky-deploy
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            cd ~/bluesky-deploy/${{ inputs.environment }}
 
-            # Source environment variables if .env exists
-            if [ -f .env ]; then
-              set -a
-              source .env
-              set +a
-            fi
+            # Load environment variables
+            set -a
+            source .env
+            set +a
 
-            echo "Deploying stack: ${{ env.STACK_NAME }}"
-            docker stack deploy -c ${{ env.COMPOSE_FILE }} ${{ env.STACK_NAME }} --with-registry-auth
+            STACK_NAME="bluesky-${{ inputs.environment }}"
 
-            echo "Deployment initiated. Checking services..."
+            echo "🚀 Deploying stack: $STACK_NAME"
+            docker stack deploy \
+              -c docker-compose.swarm.yaml \
+              "$STACK_NAME" \
+              --with-registry-auth \
+              --prune
+
+            echo "✅ Deployment command executed"
             sleep 5
-            docker stack services ${{ env.STACK_NAME }}
-          EOF
 
-      - name: Wait for services to be ready
+            echo ""
+            echo "📊 Service Status:"
+            docker stack services "$STACK_NAME"
+          ENDSSH
+
+      - name: Wait for services
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
-            echo "Waiting for services to start..."
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            STACK_NAME="bluesky-${{ inputs.environment }}"
+            echo "⏳ Waiting for services to start..."
 
-            # Wait up to 5 minutes for services to be running
-            TIMEOUT=300
+            TIMEOUT=600
             ELAPSED=0
             INTERVAL=10
 
             while [ $ELAPSED -lt $TIMEOUT ]; do
-              # Count services that are not running
-              NOT_READY=$(docker stack ps ${{ env.STACK_NAME }} --format "{{.CurrentState}}" | grep -v "Running" | wc -l)
+              SERVICES_TOTAL=$(docker stack services "$STACK_NAME" --format "{{.Name}}" | wc -l)
+              SERVICES_READY=$(docker stack ps "$STACK_NAME" \
+                --filter "desired-state=running" \
+                --format "{{.CurrentState}}" | grep -c "Running" || true)
 
-              if [ "$NOT_READY" -eq 0 ]; then
-                echo "All services are running!"
-                docker stack services ${{ env.STACK_NAME }}
+              echo "📈 Services ready: $SERVICES_READY/$SERVICES_TOTAL (${ELAPSED}s/${TIMEOUT}s)"
+
+              if [ "$SERVICES_READY" -ge "$((SERVICES_TOTAL * 8 / 10))" ]; then
+                echo "✅ Deployment successful! Most services are running."
+                docker stack services "$STACK_NAME"
                 exit 0
               fi
 
-              echo "Waiting for $NOT_READY services to start... ($ELAPSED/$TIMEOUT seconds)"
               sleep $INTERVAL
               ELAPSED=$((ELAPSED + INTERVAL))
             done
 
-            echo "Timeout waiting for services to start"
-            echo "Current service status:"
-            docker stack services ${{ env.STACK_NAME }}
-            echo "Service tasks:"
-            docker stack ps ${{ env.STACK_NAME }} --no-trunc
+            echo "⚠️  Timeout reached. Current status:"
+            docker stack services "$STACK_NAME"
+            docker stack ps "$STACK_NAME" --no-trunc | head -20
             exit 1
-          EOF
+          ENDSSH
 
       - name: Show deployment status
         if: always()
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
-            echo "==================================="
-            echo "Stack Services Status"
-            echo "==================================="
-            docker stack services ${{ env.STACK_NAME }}
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            STACK_NAME="bluesky-${{ inputs.environment }}"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📊 Final Deployment Status"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            docker stack services "$STACK_NAME"
 
             echo ""
-            echo "==================================="
-            echo "Service Tasks (with errors if any)"
-            echo "==================================="
-            docker stack ps ${{ env.STACK_NAME }} --filter "desired-state=running"
-          EOF
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📋 Service Tasks"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            docker stack ps "$STACK_NAME" \
+              --filter "desired-state=running" \
+              --format "table {{.Name}}\t{{.CurrentState}}\t{{.Error}}" \
+              | head -30
+          ENDSSH
 
-      - name: Notify on failure
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            cd ~/bluesky-deploy/${{ inputs.environment }}
+            rm -f config/*-secrets.env
+            echo "🧹 Cleaned up sensitive files"
+          ENDSSH
+
+      - name: Collect failure diagnostics
         if: failure()
         run: |
-          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
-            echo "Deployment failed. Here are the last logs:"
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            STACK_NAME="bluesky-${{ inputs.environment }}"
+            echo "❌ Deployment failed. Collecting diagnostics..."
 
-            # Get logs from services that failed
-            for service in $(docker stack services ${{ env.STACK_NAME }} -q); do
+            for service in $(docker stack services "$STACK_NAME" -q | head -10); do
               service_name=$(docker service inspect $service --format '{{.Spec.Name}}')
-              echo "==================================="
-              echo "Logs for: $service_name"
-              echo "==================================="
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "📝 Logs: $service_name"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               docker service logs --tail 50 $service 2>&1 || true
             done
-          EOF
-
-  # Optional: Add a job to build and push custom images if needed
-  build-images:
-    name: Build and Push Images
-    runs-on: ubuntu-latest
-    # Only run this if you have custom images to build
-    if: false  # Set to true if you need to build images
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Build and push images
-        run: |
-          # Example: Build custom images
-          # docker buildx build --platform linux/amd64,linux/arm64 \
-          #   -t ${{ secrets.REGISTRY_URL }}/my-custom-image:latest \
-          #   --push \
-          #   ./path/to/dockerfile
-          echo "Add your image build commands here"
+          ENDSSH
