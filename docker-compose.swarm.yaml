@@ -1,0 +1,895 @@
+# Docker Swarm Compatible Compose File for Bluesky Self-Hosting
+# Deploy with: docker stack deploy -c docker-compose.swarm.yaml bluesky
+#
+# Prerequisites:
+# 1. Run the setup script first: ./deploy-swarm-setup.sh
+# 2. Ensure all config files and certs are in place
+# 3. Docker Swarm must be initialized: docker swarm init
+
+version: '3.8'
+
+volumes:
+  caddy-data:
+  caddy-config:
+  database:
+  opensearch:
+  bgs:
+  bsky:
+  feed-generator:
+  pds:
+  redis:
+  jetstream:
+  backup-staging:
+  backup-repo:
+  ipcc:
+
+networks:
+  bluesky-net:
+    driver: overlay
+    attachable: true
+
+x-certificate-volumes: &certificate-volumes
+  - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+  - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+
+x-deploy-defaults: &deploy-defaults
+  replicas: 1
+  update_config:
+    parallelism: 1
+    delay: 10s
+    order: stop-first
+  restart_policy:
+    condition: on-failure
+    delay: 5s
+    max_attempts: 3
+  placement:
+    constraints:
+      - node.role == manager
+
+services:
+  caddy:
+    image: ${BRANDED_NAMESPACE:-bluesky}/caddy:2
+    ports:
+      - target: 80
+        published: ${CADDY_HTTP_PORT:-80}
+        mode: host
+      - target: 443
+        published: ${CADDY_HTTPS_PORT:-443}
+        mode: host
+      - target: 443
+        published: ${CADDY_HTTPS_PORT:-443}
+        protocol: udp
+        mode: host
+    environment:
+      - GOINSECURE=${GOINSECURE}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - DOMAIN=${DOMAIN}
+      - EMAIL4CERTS=${EMAIL4CERTS}
+      - apiFQDN=${apiFQDN}
+      - bgsFQDN=${bgsFQDN}
+      - bskyFQDN=${bskyFQDN}
+      - cardFQDN=${cardFQDN}
+      - embedFQDN=${embedFQDN}
+      - feedgenFQDN=${feedgenFQDN}
+      - ipFQDN=${ipFQDN}
+      - jetstreamFQDN=${jetstreamFQDN}
+      - linkFQDN=${linkFQDN}
+      - ozoneFQDN=${ozoneFQDN}
+      - palomarFQDN=${palomarFQDN}
+      - pdsFQDN=${pdsFQDN}
+      - plcFQDN=${plcFQDN}
+      - publicApiFQDN=${publicApiFQDN}
+      - socialappFQDN=${socialappFQDN}
+      - haproxyFORWARD=${haproxyFORWARD-}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES-}
+      - CADDY_DNS_PROVIDER=${CADDY_DNS_PROVIDER-}
+      - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
+      - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
+      - CADDY_DNS_USED=${CADDY_DNS_USED-}
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=caddy
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
+      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
+      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/metrics"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  caddy-sidecar:
+    image: httpd:2
+    environment:
+      - GOINSECURE=${GOINSECURE}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    volumes: *certificate-volumes
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  database:
+    image: postgres:16-trixie
+    ports:
+      - target: 5432
+        published: 5432
+        mode: host
+    environment:
+      - GOINSECURE=${GOINSECURE}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - POSTGRES_INITDB_ARGS=-A scram-sha-256 --encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=healthcheck
+    secrets:
+      - db_secrets
+    volumes:
+      - ./config/init-postgres:/docker-entrypoint-initdb.d/:ro
+      - database:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pg -d healthcheck >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+      placement:
+        constraints:
+          - node.role == manager
+          # Add label constraint if you want to pin to specific node:
+          # - node.labels.postgres == true
+    networks:
+      - bluesky-net
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - target: 80
+        published: 54321
+        mode: host
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=example@example.com
+      - PGADMIN_DEFAULT_PASSWORD=password
+    deploy:
+      <<: *deploy-defaults
+      replicas: 0  # Set to 1 to enable pgadmin
+    networks:
+      - bluesky-net
+
+  redis:
+    image: redis:8-bookworm
+    volumes:
+      - redis:/data/
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  opensearch:
+    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-indigo-opensearch:${asof:-latest}
+    ports:
+      - target: 9200
+        published: 9200
+        mode: host
+    environment:
+      - GOINSECURE=${GOINSECURE}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - http.host=0.0.0.0
+      - node.name=os-node
+      - plugins.security.disabled=true
+      - transport.host=127.0.0.1
+    secrets:
+      - opensearch_secrets
+    volumes:
+      - opensearch:/usr/share/opensearch/data/
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9200/_cluster/health | grep '\"status\":' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - bluesky-net
+
+  plc:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof:-latest}
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
+    command: ''
+    ports:
+      - target: 2582
+        published: 2582
+        mode: host
+    volumes: *certificate-volumes
+    environment:
+      - DEBUG_MODE=1
+      - ENABLE_MIGRATIONS=true
+      - GOINSECURE=${GOINSECURE}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - PORT=2582
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    secrets:
+      - plc_secrets
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2582/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  pds:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof:-latest}
+    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
+    ports:
+      - target: 2583
+        published: 2583
+        mode: host
+    user: root
+    environment:
+      - DEBUG_MODE=1
+      - GOINSECURE=${GOINSECURE}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
+      - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
+      - PDS_BSKY_APP_VIEW_URL=https://${bskyFQDN}
+      - PDS_CRAWLERS=https://${bgsFQDN}
+      - PDS_DATA_DIRECTORY=/pds
+      - PDS_DEV_MODE=true
+      - PDS_DID_PLC_URL=https://${plcFQDN}
+      - PDS_EMAIL_FROM_ADDRESS=${PDS_EMAIL_FROM_ADDRESS}
+      - PDS_EMAIL_IMAGES_BASE_URL=${PDS_EMAIL_IMAGES_BASE_URL}
+      - PDS_EMAIL_SMTP_URL=${PDS_EMAIL_SMTP_URL}
+      - PDS_ENABLE_DID_DOC_WITH_SESSION=true
+      - PDS_HOSTNAME=${pdsFQDN}
+      - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
+      - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
+      - PDS_PORT=2583
+      - PDS_SERVICE_DID=did:web:${pdsFQDN}
+      - PDS_SOCIAL_APP_DESCRIPTION=${SOCIAL_APP_DESCRIPTION}
+      - PDS_SOCIAL_APP_EMOJI=${SOCIAL_APP_EMOJI}
+      - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_OTEL_ENABLED=true
+      - DD_SERVICE=pds
+      - DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+      - OTEL_PROPAGATORS=datadog,tracecontext,baggage
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    secrets:
+      - pds_secrets
+    volumes:
+      - pds:/pds
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - bluesky-net
+
+  bgs:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof:-latest}
+    ports:
+      - target: 2470
+        published: 2470
+        mode: host
+      - target: 2471
+        published: 2471
+        mode: host
+    command: "sh -c '${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
+    environment:
+      - ATP_PLC_HOST=https://${plcFQDN}
+      - DATA_DIR=/data/bigsky
+      - DEBUG_MODE=1
+      - GOINSECURE=${GOINSECURE}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - RELAY_NEWPDS_PERDAY_LIMIT=10000
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    secrets:
+      - bgs_secrets
+    volumes:
+      - bgs:/data/bigsky
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - bluesky-net
+
+  bsky:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof:-latest}
+    ports:
+      - target: 2584
+        published: 2584
+        mode: host
+      - target: 3001
+        published: 3001
+        mode: host
+      - target: 3002
+        published: 3002
+        mode: host
+    command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
+    user: root
+    environment:
+      - BSKY_BLOB_CACHE_LOC=/cache/
+      - BSKY_BSYNC_HTTP_VERSION=1.1
+      - BSKY_BSYNC_PORT=3002
+      - BSKY_BSYNC_URL=http://bsky:3002
+      - BSKY_COURIER_API_KEY=
+      - BSKY_COURIER_HTTP_VERSION=
+      - BSKY_COURIER_IGNORE_BAD_TLS=
+      - BSKY_COURIER_URL=
+      - BSKY_DATAPLANE_HTTP_VERSION=1.1
+      - BSKY_DATAPLANE_PORT=3001
+      - BSKY_DATAPLANE_URLS=http://bsky:3001
+      - BSKY_DB_POSTGRES_SCHEMA=bsky
+      - BSKY_DID_PLC_URL=https://${plcFQDN}
+      - BSKY_LABELS_FROM_ISSUER_DIDS=${BSKY_LABELS_FROM_ISSUER_DIDS}
+      - BSKY_PORT=2584
+      - BSKY_PUBLIC_URL=https://${bskyFQDN}
+      - BSKY_REPO_PROVIDER=wss://${bgsFQDN}
+      - BSKY_SEARCH_URL=https://${palomarFQDN}
+      - BSKY_SERVER_DID=did:web:${bskyFQDN}
+      - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV-}
+      - DEBUG_MODE=1
+      - DID_PLC_URL=https://${plcFQDN}
+      - ENABLE_MIGRATIONS=false
+      - GOINSECURE=${GOINSECURE}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - MOD_SERVICE_DID=did:web:${ozoneFQDN}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - REDIS_HOST=redis
+      - DD_TRACE_AGENT_URL=http://otel-collector:8126
+      - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
+      - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    secrets:
+      - bsky_secrets
+    volumes:
+      - bsky:/cache/
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - bluesky-net
+
+  social-app:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof:-latest}
+    platform: linux/amd64
+    ports:
+      - target: 8100
+        published: 8100
+        mode: host
+    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
+    volumes: *certificate-volumes
+    environment:
+      - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
+      - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
+      - EXPO_PUBLIC_ATP_PDS_DID=did:web:${pdsFQDN}
+      - EXPO_PUBLIC_ATP_PDS_URL=https://${pdsFQDN}
+      - EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
+      - EXPO_PUBLIC_BLUESKY_PROXY_DID=did:web:${bskyFQDN}
+      - EXPO_PUBLIC_CHAT_PROXY_DID=${dmServiceDID}
+      - EXPO_PUBLIC_CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
+      - EXPO_PUBLIC_GIF_HOST=${gifFQDN}
+      - GOINSECURE=${GOINSECURE}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - HTTP_ADDRESS=:8100
+      - EXPO_PUBLIC_GEOLOCATION_CONFIG_URL=https://${ipFQDN}/config
+      - IPCC_HOST=http://ipcc:8080
+      - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
+      - PRECONNECT_DOMAINS=https://${pdsFQDN},https://${linkFQDN}
+      - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY=
+      - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
+      - EXPO_PUBLIC_SOCIAL_APP_ABOUT=https://${pdsFQDN}
+      - EXPO_PUBLIC_SOCIAL_APP_HOST=${socialappFQDN}
+      - EXPO_PUBLIC_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - EXPO_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
+      - EXPO_PUBLIC_SOCIAL_EMBED_SERVICE=https://${embedFQDN}
+      - EXPO_PUBLIC_SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
+      - EXPO_PUBLIC_SOCIAL_POLICY_BASE_URL=${SOCIAL_POLICY_BASE_URL}
+      - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${STATSIG_CLIENT_KEY}
+      - EXPO_PUBLIC_STATSIG_API_URL=${STATSIG_API_URL}
+      - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
+      - EXPO_PUBLIC_VIDEO_SERVICE=
+      - EXPO_PUBLIC_VIDEO_SERVICE_DID=
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  social-card:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof:-latest}
+    platform: linux/amd64
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    volumes: *certificate-volumes
+    environment:
+      - CARD_PORT=3003
+      - CARD_APPVIEW_URL=https://${apiFQDN}
+      - CARD_ORIGIN_VERIFY=
+      - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  social-embed:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof:-latest}
+    platform: linux/amd64
+    entrypoint: ['sh', '-c', 'apt-get install -y wget ; ${UPDATE_CERTS_CMD:-true} ; dumb-init -- /usr/bin/embedr serve']
+    command: ''
+    volumes: *certificate-volumes
+    environment:
+      - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
+      - GOINSECURE=${GOINSECURE}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - HTTP_ADDRESS=:8101
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - OGCARD_URL=https://${cardFQDN}
+      - SOCIAL_EMBED_SERVICE=https://${embedFQDN}
+      - LINK_URL=https://${linkFQDN}
+      - SOCIAL_APP_ABOUT=https://${pdsFQDN}/about
+      - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
+      - SOCIAL_APP_URL=https://${socialappFQDN}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8101/ | grep 'Embed' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  social-link:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof:-latest}
+    platform: linux/amd64
+    user: root
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    volumes: *certificate-volumes
+    environment:
+      - LINK_PORT=3004
+      - LINK_HOSTNAMES=${linkFQDN}
+      - LINK_APP_HOSTNAME=${socialappFQDN}
+      - LINK_DB_POSTGRES_SCHEMA=
+      - LINK_SAFELINK_ENABLED=0
+      - LINK_SAFELINK_PDS_URL=https://${pdsFQDN}
+      - LINK_SAFELINK_AGENT_IDENTIFIER=
+      - LINK_SAFELINK_AGENT_PASS=
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    secrets:
+      - social_link_secrets
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/_health | grep 'version' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  palomar:
+    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
+    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
+    command: ['/palomar', 'run']
+    ports:
+      - target: 3999
+        published: 3999
+        mode: host
+    volumes: *certificate-volumes
+    environment:
+      - ATP_BGS_HOST=wss://${bgsFQDN}
+      - ATP_PLC_HOST=https://${plcFQDN}
+      - ES_HOSTS=http://opensearch:9200
+      - ES_INSECURE_SSL=true
+      - ES_USERNAME=admin
+      - GOINSECURE=${GOINSECURE}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - PALOMAR_BIND=0.0.0.0:3999
+      - PALOMAR_DISCOVER_REPOS=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    secrets:
+      - palomar_secrets
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3999/_health | grep '\"status\":\"ok\"' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  jetstream:
+    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-jetstream:latest
+    ports:
+      - target: 6008
+        published: 6008
+        mode: host
+    volumes:
+      - jetstream:/data
+      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+    environment:
+      - JETSTREAM_WS_URL=wss://${bgsFQDN}/xrpc/com.atproto.sync.subscribeRepos
+      - JETSTREAM_DATA_DIR=/data
+      - JETSTREAM_LISTEN_ADDR=:6008
+      - JETSTREAM_METRICS_LISTEN_ADDR=:6009
+      - JETSTREAM_LIVENESS_TTL=96h
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  ozone:
+    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
+    command: node --enable-source-maps api.js
+    ports:
+      - target: 3006
+        published: 3006
+        mode: host
+    volumes: *certificate-volumes
+    environment:
+      - DEBUG_MODE=1
+      - ENABLE_MIGRATIONS=true
+      - GOINSECURE=${GOINSECURE}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - OZONE_ADMIN_DIDS=
+      - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
+      - OZONE_APPVIEW_PUSH_EVENTS=true
+      - OZONE_APPVIEW_URL=https://${bskyFQDN}
+      - OZONE_DB_POSTGRES_SCHEMA=ozone
+      - OZONE_DEV_MODE=true
+      - OZONE_DID_PLC_URL=https://${plcFQDN}
+      - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
+      - OZONE_PDS_DID=did:web:${pdsFQDN}
+      - OZONE_PDS_URL=https://${pdsFQDN}
+      - OZONE_PORT=3006
+      - OZONE_PUBLIC_URL=https://${ozoneFQDN}
+      - OZONE_SERVER_DID=did:web:${ozoneFQDN}
+      - OZONE_TRIAGE_DIDS=
+    secrets:
+      - ozone_secrets
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  ozone-daemon:
+    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
+    command: node --enable-source-maps daemon.js
+    volumes: *certificate-volumes
+    environment:
+      - DEBUG_MODE=1
+      - ENABLE_MIGRATIONS=true
+      - GOINSECURE=${GOINSECURE}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - OZONE_ADMIN_DIDS=
+      - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
+      - OZONE_APPVIEW_PUSH_EVENTS=true
+      - OZONE_APPVIEW_URL=https://${bskyFQDN}
+      - OZONE_DB_POSTGRES_SCHEMA=ozone
+      - OZONE_DEV_MODE=true
+      - OZONE_DID_PLC_URL=https://${plcFQDN}
+      - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
+      - OZONE_PDS_DID=did:web:${pdsFQDN}
+      - OZONE_PDS_URL=https://${pdsFQDN}
+      - OZONE_PORT=3007
+      - OZONE_PUBLIC_URL=https://${ozoneFQDN}
+      - OZONE_SERVER_DID=did:web:${ozoneFQDN}
+      - OZONE_TRIAGE_DIDS=
+    secrets:
+      - ozone_secrets
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  feed-generator:
+    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-feed-generator:latest
+    ports:
+      - target: 3008
+        published: 2586
+        mode: host
+    environment:
+      - FEEDGEN_HOSTNAME=${feedgenFQDN}
+      - FEEDGEN_LISTENHOST=0.0.0.0
+      - FEEDGEN_PORT=3008
+      - FEEDGEN_PUBLISHER_DID=${FEEDGEN_PUBLISHER_DID-}
+      - FEEDGEN_SERVICE_DID=did:web:${feedgenFQDN}
+      - FEEDGEN_SQLITE_LOCATION=/data/db.sqlite
+      - FEEDGEN_PLC_URL=https://${plcFQDN}
+      - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${bgsFQDN}
+      - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
+      - GOINSECURE=${GOINSECURE}
+      - NODE_ENV=development
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    volumes:
+      - feed-generator:/data/
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:3008/xrpc/_health"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  ipcc:
+    image: davidfinconceivableza/ip-location-service-bsky
+    volumes:
+      - ipcc:/app/downloads
+    environment:
+      - DB_TYPE=mmdb
+      - COUNTRY=geo-whois-asn-country
+      - ASN=
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080 | grep 'message' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  backup:
+    image: creativeprojects/resticprofile:0.32.0
+    hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
+    volumes:
+      - ./selfhost_scripts/backup-scripts:/scripts:ro
+      - ./config/backup/:/etc/resticprofile/:ro
+      - ./data/accounts/backup-credentials:/resticprofile/credentials/remote:ro
+      - pds:/data/pds:rw
+      - feed-generator:/data/feed-generator:rw
+      - opensearch:/data/opensearch:rw
+      - bgs:/data/bgs:rw
+      - bsky:/data/bsky:rw
+      - backup-staging:/staging
+      - backup-repo:/restic-repo
+    environment:
+      - TZ=Etc/UTC
+      - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
+      - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite
+      - PGHOST=database
+      - PGPORT=5432
+      - PGUSER=${POSTGRES_USER}
+      - RESTIC_REPOSITORY=/restic-repo
+      - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
+      - RESTIC_AUTO_REMOTE=${RESTIC_AUTO_REMOTE}
+      - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1-}
+      - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2-}
+      - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3-}
+      - RESTIC_LOGDIR=/var/log
+      - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
+      - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
+    secrets:
+      - backup_secrets
+    entrypoint: ["/bin/sh"]
+    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+    healthcheck:
+      test: ["CMD-SHELL", "which psql && resticprofile all.status"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - target: 9090
+        published: 127.0.0.1:9090
+        mode: host
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=200h"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  otel-collector:
+    image: ${BRANDED_NAMESPACE:-bluesky}/otel-collector:latest
+    volumes:
+      - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
+    command:
+      - "--config=/etc/otelcol/otel-collector.yml"
+      - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
+    ports:
+      - target: 4317
+        published: 127.0.0.1:4317
+        mode: host
+      - target: 4318
+        published: 127.0.0.1:4318
+        mode: host
+      - target: 55679
+        published: 127.0.0.1:55679
+        mode: host
+      - target: 8126
+        published: 127.0.0.1:8126
+        mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 50
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    volumes:
+      - ./config/telemetry/jaeger.yaml:/etc/jaeger/jaeger.yml:ro
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    ports:
+      - target: 14269
+        published: 127.0.0.1:14269
+        mode: host
+      - target: 16686
+        published: 127.0.0.1:16686
+        mode: host
+      - target: 55679
+        published: 127.0.0.1:55680
+        mode: host
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - bluesky-net
+
+# Define secrets (these must be created before deploying)
+secrets:
+  db_secrets:
+    external: true
+  bgs_secrets:
+    external: true
+  pds_secrets:
+    external: true
+  bsky_secrets:
+    external: true
+  plc_secrets:
+    external: true
+  ozone_secrets:
+    external: true
+  opensearch_secrets:
+    external: true
+  palomar_secrets:
+    external: true
+  social_link_secrets:
+    external: true
+  backup_secrets:
+    external: true
