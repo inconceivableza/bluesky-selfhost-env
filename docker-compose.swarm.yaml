@@ -215,7 +215,7 @@ services:
   plc:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof:-latest}
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
+    entrypoint: ['sh', '-c', '$${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
     ports:
       - target: 2582
@@ -250,7 +250,7 @@ services:
 
   pds:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof:-latest}
-    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
+    command: sh -c '$${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     ports:
       - target: 2583
         published: 2583
@@ -322,7 +322,7 @@ services:
       - target: 2471
         published: 2471
         mode: host
-    command: "sh -c '${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
+    command: "sh -c '$${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -367,7 +367,7 @@ services:
       - target: 3002
         published: 3002
         mode: host
-    command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
+    command: sh -c '$${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -432,7 +432,7 @@ services:
       - target: 8100
         published: 8100
         mode: host
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
+    command: /bin/sh -c "$${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
     volumes: *certificate-volumes
     environment:
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
@@ -484,7 +484,7 @@ services:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof:-latest}
     platform: linux/amd64
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    entrypoint: ['sh', '-c', '$${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     volumes: *certificate-volumes
     environment:
       - CARD_PORT=3003
@@ -509,7 +509,7 @@ services:
   social-embed:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof:-latest}
     platform: linux/amd64
-    entrypoint: ['sh', '-c', 'apt-get install -y wget ; ${UPDATE_CERTS_CMD:-true} ; dumb-init -- /usr/bin/embedr serve']
+    entrypoint: ['sh', '-c', 'apt-get install -y wget ; $${UPDATE_CERTS_CMD:-true} ; dumb-init -- /usr/bin/embedr serve']
     command: ''
     volumes: *certificate-volumes
     environment:
@@ -541,7 +541,7 @@ services:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof:-latest}
     platform: linux/amd64
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    entrypoint: ['sh', '-c', '$${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     volumes: *certificate-volumes
     environment:
       - LINK_PORT=3004
@@ -571,7 +571,7 @@ services:
 
   palomar:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
+    entrypoint: ['sh', '-c', '$${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
     command: ['/palomar', 'run']
     ports:
       - target: 3999
