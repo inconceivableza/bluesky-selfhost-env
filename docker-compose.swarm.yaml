@@ -798,7 +798,7 @@ services:
       - ./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - target: 9090
-        published: 127.0.0.1:9090
+        published: 9090
         mode: host
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -822,16 +822,16 @@ services:
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
       - target: 4317
-        published: 127.0.0.1:4317
+        published: 4317
         mode: host
       - target: 4318
-        published: 127.0.0.1:4318
+        published: 4318
         mode: host
       - target: 55679
-        published: 127.0.0.1:55679
+        published: 55679
         mode: host
       - target: 8126
-        published: 127.0.0.1:8126
+        published: 8126
         mode: host
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
@@ -853,13 +853,13 @@ services:
       - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
       - target: 14269
-        published: 127.0.0.1:14269
+        published: 14269
         mode: host
       - target: 16686
-        published: 127.0.0.1:16686
+        published: 16686
         mode: host
       - target: 55679
-        published: 127.0.0.1:55680
+        published: 55680
         mode: host
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
