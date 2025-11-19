@@ -84,7 +84,7 @@ jobs:
           POSTGRES_USER=${{ vars.POSTGRES_USER }}
 
           # Network Configuration
-          docker_network=bluesky-net
+          docker_network=foodios-net
           CUSTOM_CERTS_DIR=/usr/local/share/ca-certificates
 
           # TLS Configuration
@@ -234,43 +234,23 @@ jobs:
         run: |
           # Copy compose file
           scp docker-compose.swarm.yaml \
-            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
 
           # Copy .env file
           scp .env \
-            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
 
           # Copy config directory
           scp -r config/ \
-            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
-
-          # Copy certs directory if exists (public certs only)
-          if [ -d "certs" ]; then
-            scp -r certs/ \
-              ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
-          fi
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
 
           # Copy other directories if they exist
           for dir in staticweb selfhost_scripts; do
             if [ -d "$dir" ]; then
               scp -r $dir/ \
-                ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/bluesky-deploy/${{ inputs.environment }}/
+                ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
             fi
           done
-
-      - name: Create certificate files on server
-        run: |
-          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/bluesky-deploy/${{ inputs.environment }}
-            mkdir -p certs
-
-            # Create certs from secrets
-            echo "${{ secrets.TLS_ROOT_CRT }}" > certs/root.crt
-            echo "${{ secrets.TLS_INTERMEDIATE_CRT }}" > certs/intermediate.crt
-            echo "${{ secrets.TLS_CA_CERTIFICATES }}" > certs/ca-certificates.crt
-            echo "${{ secrets.TLS_ROOT_KEY }}" > certs/root.key
-            chmod 600 certs/root.key
-          ENDSSH
 
       - name: Initialize Docker Swarm
         run: |
@@ -286,7 +266,7 @@ jobs:
       - name: Manage Docker secrets
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/bluesky-deploy/${{ inputs.environment }}
+            cd ~/deploy/${{ inputs.environment }}
 
             FORCE_RECREATE="${{ inputs.force_recreate_secrets }}"
 
@@ -304,7 +284,7 @@ jobs:
                   echo "🔄 Recreating secret: $secret_name"
                   if ! docker secret rm "$secret_name" 2>/dev/null; then
                     echo "❌ Cannot remove $secret_name (in use by services)"
-                    echo "   Run 'docker stack rm bluesky-${{ inputs.environment }}' first to recreate secrets"
+                    echo "   Run 'docker stack rm foodios-${{ inputs.environment }}' first to recreate secrets"
                     return 1
                   fi
                   docker secret create "$secret_name" "$secret_file"
@@ -337,14 +317,14 @@ jobs:
       - name: Deploy stack to Swarm
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/bluesky-deploy/${{ inputs.environment }}
+            cd ~/deploy/${{ inputs.environment }}
 
             # Load environment variables
             set -a
             source .env
             set +a
 
-            STACK_NAME="bluesky-${{ inputs.environment }}"
+            STACK_NAME="foodios-${{ inputs.environment }}"
 
             echo "🚀 Deploying stack: $STACK_NAME"
             docker stack deploy \
@@ -364,7 +344,7 @@ jobs:
       - name: Wait for services
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            STACK_NAME="bluesky-${{ inputs.environment }}"
+            STACK_NAME="foodios-${{ inputs.environment }}"
             echo "⏳ Waiting for services to start..."
 
             TIMEOUT=600
@@ -399,7 +379,7 @@ jobs:
         if: always()
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            STACK_NAME="bluesky-${{ inputs.environment }}"
+            STACK_NAME="foodios-${{ inputs.environment }}"
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "📊 Final Deployment Status"
@@ -429,7 +409,7 @@ jobs:
         if: failure()
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            STACK_NAME="bluesky-${{ inputs.environment }}"
+            STACK_NAME="foodios-${{ inputs.environment }}"
             echo "❌ Deployment failed. Collecting diagnostics..."
 
             for service in $(docker stack services "$STACK_NAME" -q | head -10); do
