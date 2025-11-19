@@ -571,7 +571,7 @@ services:
 
   palomar:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
-    entrypoint: ['sh', '-c', ' dumb-init -- "$0" "$@"']
+    entrypoint: ['sh', '-c', ' dumb-init -- "$$0" "$$@"']
     command: ['/palomar', 'run']
     ports:
       - target: 3999
