@@ -400,7 +400,7 @@ jobs:
         if: always()
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/bluesky-deploy/${{ inputs.environment }}
+            cd ~/deploy/${{ inputs.environment }}
             rm -f config/*-secrets.env
             echo "🧹 Cleaned up sensitive files"
           ENDSSH
