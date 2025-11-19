@@ -1,0 +1,232 @@
+name: Deploy to Docker Swarm
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to main branch
+      - nvh-dev-compose  # Add your development branches
+    paths:
+      - 'docker-compose.swarm.yaml'
+      - 'config/**'
+      - '.github/workflows/deploy-swarm.yml'
+
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      services:
+        description: 'Specific services to update (comma-separated, leave empty for all)'
+        required: false
+        default: ''
+
+env:
+  STACK_NAME: bluesky
+  COMPOSE_FILE: docker-compose.swarm.yaml
+
+jobs:
+  deploy:
+    name: Deploy to Swarm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SWARM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment directory on server
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} "mkdir -p ~/bluesky-deploy"
+
+      - name: Copy files to server
+        run: |
+          # Copy the swarm compose file
+          scp docker-compose.swarm.yaml \
+            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+
+          # Copy .env file if it exists
+          if [ -f .env ]; then
+            scp .env ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+          fi
+
+          # Copy config directory
+          scp -r config/ \
+            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+
+          # Copy certs directory
+          scp -r certs/ \
+            ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+
+          # Copy any other necessary directories
+          if [ -d "staticweb" ]; then
+            scp -r staticweb/ \
+              ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }}:~/bluesky-deploy/
+          fi
+
+      - name: Initialize Docker Swarm if needed
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            if ! docker info 2>/dev/null | grep -q "Swarm: active"; then
+              echo "Initializing Docker Swarm..."
+              docker swarm init || docker swarm init --advertise-addr $(hostname -I | awk '{print $1}')
+            else
+              echo "Docker Swarm already initialized"
+            fi
+          EOF
+
+      - name: Create or update Docker secrets
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            cd ~/bluesky-deploy
+
+            # Function to create or skip secrets
+            create_secret_if_not_exists() {
+              local secret_name=$1
+              local secret_file=$2
+
+              if [ ! -f "$secret_file" ]; then
+                echo "Skipping $secret_name (file not found)"
+                return
+              fi
+
+              if docker secret inspect "$secret_name" &> /dev/null; then
+                echo "Secret $secret_name already exists (skipping)"
+              else
+                echo "Creating secret: $secret_name"
+                docker secret create "$secret_name" "$secret_file"
+              fi
+            }
+
+            # Create secrets from config files
+            create_secret_if_not_exists "db_secrets" "config/db-secrets.env"
+            create_secret_if_not_exists "bgs_secrets" "config/bgs-secrets.env"
+            create_secret_if_not_exists "pds_secrets" "config/pds-secrets.env"
+            create_secret_if_not_exists "bsky_secrets" "config/bsky-secrets.env"
+            create_secret_if_not_exists "plc_secrets" "config/plc-secrets.env"
+            create_secret_if_not_exists "ozone_secrets" "config/ozone-secrets.env"
+            create_secret_if_not_exists "opensearch_secrets" "config/opensearch-secrets.env"
+            create_secret_if_not_exists "palomar_secrets" "config/palomar-secrets.env"
+            create_secret_if_not_exists "social_link_secrets" "config/social-link-secrets.env"
+            create_secret_if_not_exists "backup_secrets" "config/backup-secrets.env"
+          EOF
+
+      - name: Deploy stack to Swarm
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            cd ~/bluesky-deploy
+
+            # Source environment variables if .env exists
+            if [ -f .env ]; then
+              set -a
+              source .env
+              set +a
+            fi
+
+            echo "Deploying stack: ${{ env.STACK_NAME }}"
+            docker stack deploy -c ${{ env.COMPOSE_FILE }} ${{ env.STACK_NAME }} --with-registry-auth
+
+            echo "Deployment initiated. Checking services..."
+            sleep 5
+            docker stack services ${{ env.STACK_NAME }}
+          EOF
+
+      - name: Wait for services to be ready
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            echo "Waiting for services to start..."
+
+            # Wait up to 5 minutes for services to be running
+            TIMEOUT=300
+            ELAPSED=0
+            INTERVAL=10
+
+            while [ $ELAPSED -lt $TIMEOUT ]; do
+              # Count services that are not running
+              NOT_READY=$(docker stack ps ${{ env.STACK_NAME }} --format "{{.CurrentState}}" | grep -v "Running" | wc -l)
+
+              if [ "$NOT_READY" -eq 0 ]; then
+                echo "All services are running!"
+                docker stack services ${{ env.STACK_NAME }}
+                exit 0
+              fi
+
+              echo "Waiting for $NOT_READY services to start... ($ELAPSED/$TIMEOUT seconds)"
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            done
+
+            echo "Timeout waiting for services to start"
+            echo "Current service status:"
+            docker stack services ${{ env.STACK_NAME }}
+            echo "Service tasks:"
+            docker stack ps ${{ env.STACK_NAME }} --no-trunc
+            exit 1
+          EOF
+
+      - name: Show deployment status
+        if: always()
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            echo "==================================="
+            echo "Stack Services Status"
+            echo "==================================="
+            docker stack services ${{ env.STACK_NAME }}
+
+            echo ""
+            echo "==================================="
+            echo "Service Tasks (with errors if any)"
+            echo "==================================="
+            docker stack ps ${{ env.STACK_NAME }} --filter "desired-state=running"
+          EOF
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << 'EOF'
+            echo "Deployment failed. Here are the last logs:"
+
+            # Get logs from services that failed
+            for service in $(docker stack services ${{ env.STACK_NAME }} -q); do
+              service_name=$(docker service inspect $service --format '{{.Spec.Name}}')
+              echo "==================================="
+              echo "Logs for: $service_name"
+              echo "==================================="
+              docker service logs --tail 50 $service 2>&1 || true
+            done
+          EOF
+
+  # Optional: Add a job to build and push custom images if needed
+  build-images:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    # Only run this if you have custom images to build
+    if: false  # Set to true if you need to build images
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push images
+        run: |
+          # Example: Build custom images
+          # docker buildx build --platform linux/amd64,linux/arm64 \
+          #   -t ${{ secrets.REGISTRY_URL }}/my-custom-image:latest \
+          #   --push \
+          #   ./path/to/dockerfile
+          echo "Add your image build commands here"
