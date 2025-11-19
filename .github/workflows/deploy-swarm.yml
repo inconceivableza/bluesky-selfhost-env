@@ -327,17 +327,32 @@ jobs:
             STACK_NAME="foodios-${{ inputs.environment }}"
 
             echo "🚀 Deploying stack: $STACK_NAME"
-            docker stack deploy \
+            if docker stack deploy \
               -c docker-compose.swarm.yaml \
               "$STACK_NAME" \
               --with-registry-auth \
-              --prune
+              --prune; then
+              echo ""
+              echo "✅ Stack deployment command succeeded"
+            else
+              DEPLOY_EXIT_CODE=$?
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "❌ ERROR: Stack deployment failed with exit code $DEPLOY_EXIT_CODE"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              echo "Checking docker-compose.swarm.yaml syntax..."
+              docker-compose -f docker-compose.swarm.yaml config > /dev/null 2>&1 || echo "⚠️  Compose file may have syntax errors"
+              echo ""
+              echo "Current stack services (if any):"
+              docker stack services "$STACK_NAME" 2>&1 || echo "No services found"
+              exit 1
+            fi
 
-            echo "✅ Deployment command executed"
             sleep 5
 
             echo ""
-            echo "📊 Service Status:"
+            echo "📊 Initial Service Status:"
             docker stack services "$STACK_NAME"
           ENDSSH
 
