@@ -28,10 +28,6 @@ networks:
     driver: overlay
     attachable: true
 
-x-certificate-volumes: &certificate-volumes
-  - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-  - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-
 x-deploy-defaults: &deploy-defaults
   replicas: 1
   update_config:
@@ -91,11 +87,6 @@ services:
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
-      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
-      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
       - caddy-data:/data
       - caddy-config:/config
       - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
@@ -114,7 +105,7 @@ services:
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    volumes: *certificate-volumes
+    
     deploy:
       <<: *deploy-defaults
     networks:
@@ -224,7 +215,7 @@ services:
       - target: 2582
         published: 2582
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -300,9 +291,6 @@ services:
       - pds_secrets
     volumes:
       - pds:/pds
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -342,9 +330,6 @@ services:
       - bgs_secrets
     volumes:
       - bgs:/data/bigsky
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
@@ -412,9 +397,6 @@ services:
       - bsky_secrets
     volumes:
       - bsky:/cache/
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
       timeout: 10s
@@ -435,7 +417,7 @@ services:
         published: 8100
         mode: host
     command: /bin/sh -c "/usr/bin/bskyweb serve"
-    volumes: *certificate-volumes
+    
     environment:
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
@@ -486,7 +468,7 @@ services:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${branded_asof:-latest}
     user: root
     entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    volumes: *certificate-volumes
+    
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
@@ -511,7 +493,7 @@ services:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${branded_asof:-latest}
     entrypoint: ['sh', '-c', 'apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     command: ''
-    volumes: *certificate-volumes
+    
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - GOINSECURE=${GOINSECURE}
@@ -541,7 +523,7 @@ services:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${branded_asof:-latest}
     user: root
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/social_link_secrets ] && . /run/secrets/social_link_secrets && set +a && exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    volumes: *certificate-volumes
+    
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
@@ -576,7 +558,7 @@ services:
       - target: 3999
         published: 3999
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
@@ -626,7 +608,7 @@ services:
       - target: 3006
         published: 3006
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -661,7 +643,7 @@ services:
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
-    volumes: *certificate-volumes
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -715,8 +697,6 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
       - feed-generator:/data/
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:3008/xrpc/_health"]
       timeout: 10s
