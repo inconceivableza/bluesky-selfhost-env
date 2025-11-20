@@ -350,7 +350,7 @@ services:
           memory: 2G
     networks:
       - foodios-net
-    epends_on:
+    depends_on:
       - database
       - caddy
 
