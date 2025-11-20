@@ -44,19 +44,26 @@ jobs:
         run: |
           echo "Fetching latest image tags from Docker Hub..."
 
-          NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+          # Export environment variables needed for docker compose config
+          export BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+          export REBRANDING_NAME="${{ vars.REBRANDING_NAME }}"
 
-          # Extract services that use BRANDED_NAMESPACE from docker-compose.swarm.yaml
-          SERVICES=$(grep -E "image: \\\$\{BRANDED_NAMESPACE\}" docker-compose.swarm.yaml | \
-                     sed -E 's/.*image: \$\{BRANDED_NAMESPACE[^}]*\}\/([^:]+).*/\1/' | \
-                     sort -u)
+          # Use docker compose config to resolve variables and extract images
+          IMAGES=$(docker compose -f docker-compose.swarm.yaml config 2>/dev/null | \
+                   grep -E "^\s+image:" | \
+                   awk '{print $2}' | \
+                   grep "^${BRANDED_NAMESPACE}/" | \
+                   sort -u)
 
-          echo "Found services using ${NAMESPACE}:"
-          echo "$SERVICES"
+          echo "Found images using ${BRANDED_NAMESPACE}:"
+          echo "$IMAGES"
           echo ""
 
-          # For each service, fetch the latest tag from Docker Hub
-          for REPO in $SERVICES; do
+          # For each image, extract repository name and fetch latest tag
+          for IMAGE in $IMAGES; do
+            # Extract repository name (remove namespace/ prefix and :tag suffix)
+            REPO=$(echo "$IMAGE" | sed -E "s|^${BRANDED_NAMESPACE}/||" | sed -E 's|:.*$||')
+
             echo "Fetching tags for ${NAMESPACE}/${REPO}..."
 
             # Call Docker Hub API
@@ -70,7 +77,7 @@ jobs:
               echo "${ENV_VAR_NAME}=${LATEST_TAG}" >> $GITHUB_ENV
               echo "  ✓ ${ENV_VAR_NAME}=${LATEST_TAG}"
             else
-              echo "  ⚠ No tags found for ${NAMESPACE}/${REPO}"
+              echo "  ⚠ No tags found for ${BRANDED_NAMESPACE}/${REPO}"
             fi
 
             # Rate limit: wait a bit between API calls
