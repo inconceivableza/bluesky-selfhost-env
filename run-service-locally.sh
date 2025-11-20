@@ -84,7 +84,6 @@ function adopt_environment() {
 
 working_dir="$(jq_service .working_dir)"
 cd $script_dir
-cd "$working_dir"
 
 running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
 build_commands="$(jq_service '.build[]')"
@@ -92,6 +91,7 @@ run_commands="$(jq_service '.run[]')"
 
 # build commands are run in the normal environment
 
+cd "$working_dir"
 if [ "$skip_build" == 1 ]
   then
     show_info --oneline "Skipping build commands"
