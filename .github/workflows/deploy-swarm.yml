@@ -60,10 +60,8 @@ jobs:
             echo "Fetching tags for ${NAMESPACE}/${REPO}..."
 
             # Call Docker Hub API
-            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/?page_size=100")
-
-            # Extract the latest tag (first result, filtering out 'latest')
-            LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[] | select(.name != "latest") | .name' | head -n 1)
+            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/?page_size=1")
+            LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[0].name')
 
             if [ -n "$LATEST_TAG" ]; then
               # Convert repo name to uppercase and replace hyphens with underscores for env var name
