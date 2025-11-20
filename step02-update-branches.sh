@@ -11,11 +11,19 @@ source_env
 
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
-show_heading "Cloning source code" "from the different repositories"
-make cloneAll
+
+function show_usage() {
+  echo "Syntax $0 [-?|-h|--help] [--no-fetch] [repos...]"
+}
 
 do_fetch=1
-[[ "$1" == "--no-fetch" ]] && { do_fetch=0 ; shift 1 ; }
+dry_run=
+while [ "$#" -gt 0 ]
+  do
+    [[ "$1" == "--no-fetch" ]] && { do_fetch=0 ; shift 1 ; }
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_usage >&2 ; exit ; }
+    [[ "${1#-}" != "$1" ]] && break
+  done
 
 if [ $# -gt 0 ]
   then
@@ -61,6 +69,9 @@ function git_is_ancestor() {
   local check_ancestor_ref="$1"
   git merge-base --is-ancestor $check_ancestor_ref HEAD
 }
+
+show_heading "Cloning source code" "from the different repositories"
+make cloneAll
 
 # 1. Check which branch we're on. If not listed in branch-rules, and non of the branches listed there is an ancestor commit:
 #    - create the latest branch in branch-rules / the one specified in the environment
