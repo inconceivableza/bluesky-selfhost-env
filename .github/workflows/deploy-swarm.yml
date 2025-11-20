@@ -40,6 +40,48 @@ jobs:
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} "mkdir -p ~/deploy/${{ inputs.environment }}"
 
+      - name: Fetch latest image tags from Docker Hub
+        run: |
+          echo "Fetching latest image tags from Docker Hub..."
+
+          NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+
+          # Extract services that use BRANDED_NAMESPACE from docker-compose.swarm.yaml
+          SERVICES=$(grep -E "image: \\\$\{BRANDED_NAMESPACE\}" docker-compose.swarm.yaml | \
+                     sed -E 's/.*image: \$\{BRANDED_NAMESPACE[^}]*\}\/([^:]+).*/\1/' | \
+                     sort -u)
+
+          echo "Found services using ${NAMESPACE}:"
+          echo "$SERVICES"
+          echo ""
+
+          # For each service, fetch the latest tag from Docker Hub
+          for REPO in $SERVICES; do
+            echo "Fetching tags for ${NAMESPACE}/${REPO}..."
+
+            # Call Docker Hub API
+            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/?page_size=100")
+
+            # Extract the latest tag (first result, filtering out 'latest')
+            LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[] | select(.name != "latest") | .name' | head -n 1)
+
+            if [ -n "$LATEST_TAG" ]; then
+              # Convert repo name to uppercase and replace hyphens with underscores for env var name
+              ENV_VAR_NAME=$(echo "${REPO}" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_IMAGE_TAG
+
+              echo "${ENV_VAR_NAME}=${LATEST_TAG}" >> $GITHUB_ENV
+              echo "  ✓ ${ENV_VAR_NAME}=${LATEST_TAG}"
+            else
+              echo "  ⚠ No tags found for ${NAMESPACE}/${REPO}"
+            fi
+
+            # Rate limit: wait a bit between API calls
+            sleep 0.5
+          done
+
+          echo ""
+          echo "Image tag discovery complete"
+
       - name: Create .env file from environment variables
         run: |
           cat > .env << 'EOF'
@@ -337,7 +379,7 @@ jobs:
               -c docker-compose.swarm.yaml \
               "$STACK_NAME" \
               --with-registry-auth \
-              --prune; then
+              --prune --detach=false; then
               echo ""
               echo "✅ Stack deployment command succeeded"
             else
