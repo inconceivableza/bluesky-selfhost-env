@@ -48,7 +48,7 @@ x-deploy-defaults: &deploy-defaults
 
 services:
   caddy:
-    image: ${BRANDED_NAMESPACE:-bluesky}/caddy:2
+    image: ${BRANDED_NAMESPACE}/caddy:2
     ports:
       - target: 80
         published: ${CADDY_HTTP_PORT:-80}
@@ -179,7 +179,7 @@ services:
       - foodios-net
 
   opensearch:
-    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-indigo-opensearch:${asof:-latest}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
@@ -216,7 +216,7 @@ services:
       - foodios-net
 
   plc:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${branded_asof:-latest}
     user: root
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/plc_secrets ] && . /run/secrets/plc_secrets && set +a && exec su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
@@ -252,7 +252,7 @@ services:
       - foodios-net
 
   pds:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${branded_asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/pds_secrets ] && . /run/secrets/pds_secrets && set +a && exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     ports:
       - target: 2583
@@ -317,7 +317,7 @@ services:
       - foodios-net
 
   bgs:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-bgs:${branded_asof:-latest}
     ports:
       - target: 2470
         published: 2470
@@ -359,7 +359,7 @@ services:
       - foodios-net
 
   bsky:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-bsky:${branded_asof:-latest}
     ports:
       - target: 2584
         published: 2584
@@ -429,7 +429,7 @@ services:
       - foodios-net
 
   social-app:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-app:${branded_asof:-latest}
     ports:
       - target: 8100
         published: 8100
@@ -483,7 +483,7 @@ services:
       - foodios-net
 
   social-card:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:2025-08-05-foodios.vabl.dev
     user: root
     entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     volumes: *certificate-volumes
@@ -508,7 +508,7 @@ services:
       - foodios-net
 
   social-embed:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${branded_asof:-latest}
     entrypoint: ['sh', '-c', 'apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     command: ''
     volumes: *certificate-volumes
@@ -538,7 +538,7 @@ services:
       - foodios-net
 
   social-link:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${branded_asof:-latest}
     user: root
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/social_link_secrets ] && . /run/secrets/social_link_secrets && set +a && exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     volumes: *certificate-volumes
@@ -569,7 +569,7 @@ services:
       - foodios-net
 
   palomar:
-    image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${branded_asof:-latest}
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/palomar_secrets ] && . /run/secrets/palomar_secrets && set +a && exec /palomar run']
     command: []
     ports:
@@ -601,7 +601,7 @@ services:
       - foodios-net
 
   jetstream:
-    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-jetstream:latest
+    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     ports:
       - target: 6008
         published: 6008
@@ -621,7 +621,7 @@ services:
       - foodios-net
 
   ozone:
-    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps api.js'
     ports:
       - target: 3006
@@ -660,7 +660,7 @@ services:
       - foodios-net
 
   ozone-daemon:
-    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
     volumes: *certificate-volumes
     environment:
@@ -695,7 +695,7 @@ services:
       - foodios-net
 
   feed-generator:
-    image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-feed-generator:latest
+    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     ports:
       - target: 3008
         published: 2586
@@ -813,7 +813,7 @@ services:
       - foodios-net
 
   otel-collector:
-    image: ${BRANDED_NAMESPACE:-bluesky}/otel-collector:latest
+    image: ${BRANDED_NAMESPACE}/otel-collector:latest
     volumes:
       - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
     command:
