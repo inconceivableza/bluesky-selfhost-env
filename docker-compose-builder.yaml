@@ -416,6 +416,8 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - RELAY_NEWPDS_PERDAY_LIMIT=10000
+      - RELAY_DEFAULT_REPO_LIMIT=500000
+      - RELAY_PERSISTER_DIR=/data/bigsky/events
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     volumes:
