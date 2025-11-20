@@ -77,14 +77,15 @@ jobs:
           BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
           UNBRANDED_NAMESPACE="${{ vars.UNBRANDED_NAMESPACE }}"
           REBRANDING_NAME="${{ vars.REBRANDING_NAME }}"
-          asof="${{ vars.IMAGE_TAG_ASOF }}"
-          branded_asof="${{ vars.IMAGE_TAG_BRANDED_ASOF }}"
+          asof="${{ vars.ASOF }}"
+          branded_asof="${{ vars.BRANDED_ASOF }}"
 
           # Database Configuration
           POSTGRES_USER="${{ vars.POSTGRES_USER }}"
 
           # Network Configuration
           docker_network="foodios-net"
+          # TODO: remove
           CUSTOM_CERTS_DIR="/usr/local/share/ca-certificates"
 
           # TLS Configuration
