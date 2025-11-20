@@ -1,4 +1,7 @@
+atproto
 json-five
-rich
-PyYAML
+libipld
 pystache
+PyYAML
+rich
+truststore
