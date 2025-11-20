@@ -89,7 +89,7 @@ services:
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
       - caddy-data:/data
       - caddy-config:/config
-      - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
+    # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro TODO: uncomment when there's something in here to copy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/metrics"]
       interval: 5s
