@@ -47,7 +47,7 @@ jobs:
           # Export environment variables needed for docker compose config
           export BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
           export REBRANDING_NAME="${{ vars.REBRANDING_NAME }}"
-
+          # TODO: rather just provide a set list of services
           # Use docker compose config to resolve variables and extract images
           IMAGES=$(docker compose -f docker-compose.swarm.yaml config 2>/dev/null | \
                    grep -E "^\s+image:" | \
@@ -93,6 +93,16 @@ jobs:
           cat > .env << 'EOF'
           # Generated from GitHub Environment: ${{ inputs.environment }}
           # Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          BSKY_IMAGE_TAG=${{FOODIOS_ATPROTO_BSKY_IMAGE_TAG}}
+          PDS_IMAGE_TAG=${{FOODIOS_ATPROTO_PDS_IMAGE_TAG}}
+          PLC_IMAGE_TAG=${{FOODIOS_DID_METHOD_PLC_IMAGE_TAG}}
+          BGS_IMAGE_TAG=${{FOODIOS_INDIGO_BGS_IMAGE_TAG}}
+          PALOMAR_IMAGE_TAG=${{FOODIOS_INDIGO_PALOMAR_IMAGE_TAG}}
+          SOCIAL_APP_IMAGE_TAG=${{FOODIOS_SOCIAL_APP_IMAGE_TAG}}
+          SOCIAL_CARD_IMAGE_TAG=${{FOODIOS_SOCIAL_CARD_IMAGE_TAG}}
+          SOCIAL_EMBED_IMAGE_TAG=${{FOODIOS_SOCIAL_EMBED_IMAGE_TAG}}
+          SOCIAL_LINK_IMAGE_TAG=${{FOODIOS_SOCIAL_LINK_IMAGE_TAG}}
 
           # Domain Configuration
           DOMAIN="${{ vars.DOMAIN }}"
