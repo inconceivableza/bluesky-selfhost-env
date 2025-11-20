@@ -146,6 +146,8 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
+    depends_on:
+      - database
     ports:
       - target: 80
         published: 54321
@@ -241,6 +243,9 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   pds:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${branded_asof:-latest}
@@ -303,6 +308,9 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   bgs:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-bgs:${branded_asof:-latest}
@@ -342,6 +350,9 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    epends_on:
+      - database
+      - caddy
 
   bsky:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-bsky:${branded_asof:-latest}
@@ -409,6 +420,10 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - redis
+      - caddy
 
   social-app:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-app:${branded_asof:-latest}
@@ -581,6 +596,10 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - opensearch
+      - database
+      - caddy
 
   jetstream:
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
@@ -600,6 +619,8 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - caddy
 
   ozone:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
@@ -639,6 +660,9 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
@@ -674,6 +698,10 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - ozone
+      - database
+      - caddy
 
   feed-generator:
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
@@ -769,6 +797,8 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
 
   prometheus:
     image: prom/prometheus:latest
@@ -820,6 +850,9 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      # - jaeger
+      - prometheus
 
   jaeger:
     image: jaegertracing/jaeger:latest
@@ -848,6 +881,8 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - prometheus
 
 # Define secrets (these must be created before deploying)
 secrets:
