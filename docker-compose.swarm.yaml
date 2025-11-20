@@ -608,7 +608,6 @@ services:
         mode: host
     volumes:
       - jetstream:/data
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     environment:
       - JETSTREAM_WS_URL=wss://${bgsFQDN}/xrpc/com.atproto.sync.subscribeRepos
       - JETSTREAM_DATA_DIR=/data
