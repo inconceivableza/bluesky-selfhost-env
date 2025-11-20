@@ -71,7 +71,7 @@ jobs:
           EMAIL4CERTS="${{ vars.EMAIL_FOR_CERTS }}"
           PDS_EMAIL_FROM_ADDRESS="${{ vars.PDS_EMAIL_FROM_ADDRESS }}"
           PDS_EMAIL_IMAGES_BASE_URL="${{ vars.PDS_EMAIL_IMAGES_BASE_URL }}"
-          PDS_EMAIL_SMTP_URL="${{ secrets.PDS_EMAIL_SMTP_URL }}"
+          PDS_EMAIL_SMTP_URL="${{ vars.PDS_EMAIL_SMTP_URL }}"
 
           # Image Configuration
           BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
@@ -181,6 +181,7 @@ jobs:
           cat > config/bsky-secrets.env << 'EOF'
           DATABASE_URL=${{ secrets.BSKY_DATABASE_URL }}
           BSKY_APPVIEW_DB_POSTGRES_URL=${{ secrets.BSKY_APPVIEW_DB_URL }}
+          BSKY_SERVICE_SIGNING_KEY=${{ secrets.BSKY_SERVICE_SIGNING_KEY }}
           EOF
 
       - name: Create PLC secrets file
@@ -203,14 +204,13 @@ jobs:
       - name: Create OpenSearch secrets file
         run: |
           cat > config/opensearch-secrets.env << 'EOF'
-          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
-          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_ADMIN_PASSWORD }}
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
           EOF
 
       - name: Create Palomar secrets file
         run: |
           cat > config/palomar-secrets.env << 'EOF'
-          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
+          ES_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
           EOF
 
       - name: Create Social Link secrets file
