@@ -122,6 +122,7 @@ services:
 
   database:
     image: postgres:16-trixie
+    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/db_secrets ] && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
     ports:
       - target: 5432
         published: 5432
@@ -159,6 +160,7 @@ services:
         published: 54321
         mode: host
     environment:
+    # TODO store in secret
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
     deploy:
@@ -178,6 +180,7 @@ services:
 
   opensearch:
     image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-indigo-opensearch:${asof:-latest}
+    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
         published: 9200
@@ -215,7 +218,7 @@ services:
   plc:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof:-latest}
     user: root
-    entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --enable-source-maps index.js"']
+    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/plc_secrets ] && . /run/secrets/plc_secrets && set +a && exec su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
     ports:
       - target: 2582
@@ -250,7 +253,7 @@ services:
 
   pds:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof:-latest}
-    command: sh -c ' node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
+    command: sh -c 'set -a && [ -f /run/secrets/pds_secrets ] && . /run/secrets/pds_secrets && set +a && exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     ports:
       - target: 2583
         published: 2583
@@ -322,7 +325,7 @@ services:
       - target: 2471
         published: 2471
         mode: host
-    command: "sh -c ' /bigsky --db-tracing'"
+    command: "sh -c 'set -a && [ -f /run/secrets/bgs_secrets ] && . /run/secrets/bgs_secrets && set +a && exec /bigsky --db-tracing'"
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -367,7 +370,7 @@ services:
       - target: 3002
         published: 3002
         mode: host
-    command: sh -c 'node --enable-source-maps api.js'
+    command: sh -c 'set -a && [ -f /run/secrets/bsky_secrets ] && . /run/secrets/bsky_secrets && set +a && exec node --enable-source-maps api.js'
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -537,7 +540,7 @@ services:
   social-link:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof:-latest}
     user: root
-    entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/social_link_secrets ] && . /run/secrets/social_link_secrets && set +a && exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     volumes: *certificate-volumes
     environment:
       - LINK_PORT=3004
@@ -567,8 +570,8 @@ services:
 
   palomar:
     image: ${BRANDED_NAMESPACE:-bluesky}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
-    entrypoint: ['sh', '-c', ' dumb-init -- "$$0" "$$@"']
-    command: ['/palomar', 'run']
+    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/palomar_secrets ] && . /run/secrets/palomar_secrets && set +a && exec /palomar run']
+    command: []
     ports:
       - target: 3999
         published: 3999
@@ -619,7 +622,7 @@ services:
 
   ozone:
     image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
-    command: node --enable-source-maps api.js
+    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps api.js'
     ports:
       - target: 3006
         published: 3006
@@ -658,7 +661,7 @@ services:
 
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE:-bluesky}/bluesky-atproto-ozone:${asof:-latest}
-    command: node --enable-source-maps daemon.js
+    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
     volumes: *certificate-volumes
     environment:
       - DEBUG_MODE=1
@@ -777,7 +780,7 @@ services:
     secrets:
       - backup_secrets
     entrypoint: ["/bin/sh"]
-    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+    command: ['-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
       timeout: 10s
