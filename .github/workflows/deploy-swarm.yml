@@ -52,6 +52,7 @@ jobs:
           IMAGES=$(docker compose -f docker-compose.swarm.yaml config 2>/dev/null | \
                    grep -E "^\s+image:" | \
                    awk '{print $2}' | \
+                   sed "s/'//g" | \
                    grep "^${BRANDED_NAMESPACE}/" | \
                    sort -u)
 
@@ -64,10 +65,10 @@ jobs:
             # Extract repository name (remove namespace/ prefix and :tag suffix)
             REPO=$(echo "$IMAGE" | sed -E "s|^${BRANDED_NAMESPACE}/||" | sed -E 's|:.*$||')
 
-            echo "Fetching tags for ${NAMESPACE}/${REPO}..."
+            echo "Fetching tags for ${BRANDED_NAMESPACE}/${REPO}..."
 
             # Call Docker Hub API
-            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${NAMESPACE}/${REPO}/tags/?page_size=1")
+            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${BRANDED_NAMESPACE}/${REPO}/tags/?page_size=1")
             LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[0].name')
 
             if [ -n "$LATEST_TAG" ]; then
