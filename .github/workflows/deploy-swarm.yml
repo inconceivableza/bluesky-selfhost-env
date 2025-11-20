@@ -170,7 +170,7 @@ jobs:
           cat > config/pds-secrets.env << 'EOF'
           PDS_JWT_SECRET=${{ secrets.PDS_JWT_SECRET }}
           PDS_ADMIN_PASSWORD=${{ secrets.PDS_ADMIN_PASSWORD }}
-          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY }}
+          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX }}
           EOF
 
       - name: Create Bsky secrets file
@@ -348,7 +348,7 @@ jobs:
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               echo ""
               echo "Checking docker-compose.swarm.yaml syntax..."
-              docker-compose -f docker-compose.swarm.yaml config > /dev/null 2>&1 || echo "⚠️  Compose file may have syntax errors"
+              docker compose -f docker-compose.swarm.yaml config > /dev/null 2>&1 || echo "⚠️  Compose file may have syntax errors"
               echo ""
               echo "Current stack services (if any):"
               docker stack services "$STACK_NAME" 2>&1 || echo "No services found"
