@@ -11,7 +11,7 @@ on:
           - staging
           - production
       force_recreate_secrets:
-        description: 'Force recreate all Docker secrets'
+        description: 'Force recreate all Docker secrets (results in downtime)'
         required: false
         type: boolean
         default: false
@@ -48,27 +48,25 @@ jobs:
 
           # Domain Configuration
           DOMAIN="${{ vars.DOMAIN }}"
-          HOST_HOSTNAME="${{ vars.HOST_HOSTNAME }}"
-
           # FQDNs
-          apiFQDN="${{ vars.API_FQDN }}"
-          bgsFQDN="${{ vars.BGS_FQDN }}"
-          bskyFQDN="${{ vars.BSKY_FQDN }}"
-          cardFQDN="${{ vars.CARD_FQDN }}"
-          embedFQDN="${{ vars.EMBED_FQDN }}"
-          feedgenFQDN="${{ vars.FEEDGEN_FQDN }}"
-          ipFQDN="${{ vars.IP_FQDN }}"
-          jetstreamFQDN="${{ vars.JETSTREAM_FQDN }}"
-          linkFQDN="${{ vars.LINK_FQDN }}"
-          ozoneFQDN="${{ vars.OZONE_FQDN }}"
-          palomarFQDN="${{ vars.PALOMAR_FQDN }}"
-          pdsFQDN="${{ vars.PDS_FQDN }}"
-          plcFQDN="${{ vars.PLC_FQDN }}"
-          publicApiFQDN="${{ vars.PUBLIC_API_FQDN }}"
-          socialappFQDN="${{ vars.SOCIAL_APP_FQDN }}"
+          apiFQDN="${{ vars.APIFQDN }}"
+          bgsFQDN="${{ vars.BGSFQDN }}"
+          bskyFQDN="${{ vars.BSKYFQDN }}"
+          cardFQDN="${{ vars.CARDFQDN }}"
+          embedFQDN="${{ vars.EMBEDFQDN }}"
+          feedgenFQDN="${{ vars.FEEDGENFQDN }}"
+          ipFQDN="${{ vars.IPFQDN }}"
+          jetstreamFQDN="${{ vars.JETSTREAMFQDN }}"
+          linkFQDN="${{ vars.LINKFQDN }}"
+          ozoneFQDN="${{ vars.OZONEFQDN }}"
+          palomarFQDN="${{ vars.PALOMARFQDN }}"
+          pdsFQDN="${{ vars.PDSFQDN }}"
+          plcFQDN="${{ vars.PLCFQDN }}"
+          publicApiFQDN="${{ vars.PUBLICAPIFQDN }}"
+          socialappFQDN="${{ vars.SOCIALAPPFQDN }}"
 
           # Email Configuration
-          EMAIL4CERTS="${{ vars.EMAIL_FOR_CERTS }}"
+          EMAIL4CERTS="${{ vars.EMAIL4CERTS }}"
           PDS_EMAIL_FROM_ADDRESS="${{ vars.PDS_EMAIL_FROM_ADDRESS }}"
           PDS_EMAIL_IMAGES_BASE_URL="${{ vars.PDS_EMAIL_IMAGES_BASE_URL }}"
           PDS_EMAIL_SMTP_URL="${{ vars.PDS_EMAIL_SMTP_URL }}"
@@ -111,8 +109,8 @@ jobs:
           BSKY_LABELS_FROM_ISSUER_DIDS="${{ vars.BSKY_LABELS_FROM_ISSUER_DIDS }}"
           BSKY_STATSIG_ENV="${{ vars.BSKY_STATSIG_ENV }}"
           FEEDGEN_PUBLISHER_DID="${{ vars.FEEDGEN_PUBLISHER_DID }}"
-          dmServiceDID="${{ vars.DM_SERVICE_DID }}"
-          gifFQDN="${{ vars.GIF_FQDN }}"
+          dmServiceDID="${{ vars.DMSERVICEDID }}"
+          gifFQDN="${{ vars.GIFFQDN }}"
           OZONE_SERVER_DID="${{ vars.OZONE_SERVER_DID }}"
           OZONE_ADMIN_HANDLE="${{ vars.OZONE_ADMIN_HANDLE }}"
           OZONE_ADMIN_DIDS="${{ vars.OZONE_ADMIN_DIDS }}"
@@ -173,30 +171,27 @@ jobs:
           PDS_JWT_SECRET=${{ secrets.PDS_JWT_SECRET }}
           PDS_ADMIN_PASSWORD=${{ secrets.PDS_ADMIN_PASSWORD }}
           PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY }}
-          DATABASE_URL=${{ secrets.PDS_DATABASE_URL }}
           EOF
 
       - name: Create Bsky secrets file
         run: |
           cat > config/bsky-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.BSKY_DATABASE_URL }}
-          BSKY_APPVIEW_DB_POSTGRES_URL=${{ secrets.BSKY_APPVIEW_DB_URL }}
+          BSKY_DB_POSTGRES_URL=${{ secrets.BSKY_DB_POSTGRES_URL }}
           BSKY_SERVICE_SIGNING_KEY=${{ secrets.BSKY_SERVICE_SIGNING_KEY }}
           EOF
 
       - name: Create PLC secrets file
         run: |
           cat > config/plc-secrets.env << 'EOF'
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
-          DB_CREDS_JSON=${{ secrets.PLC_DB_CREDS_JSON }}
-          DB_MIGRATE_CREDS_JSON=${{ secrets.PLC_DB_MIGRATE_CREDS_JSON }}
+          DB_CREDS_JSON=${{ secrets.DB_CREDS_JSON }}
+          DB_MIGRATE_CREDS_JSON=${{ secrets.DB_MIGRATE_CREDS_JSON }}
           EOF
 
       - name: Create Ozone secrets file
         run: |
           cat > config/ozone-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.OZONE_DATABASE_URL }}
+          DATABASE_URL=${{ secrets.OZONE_DB_POSTGRES_URL }}
           OZONE_ADMIN_PASSWORD=${{ secrets.OZONE_ADMIN_PASSWORD }}
           OZONE_SIGNING_KEY_HEX=${{ secrets.OZONE_SIGNING_KEY_HEX }}
           EOF
@@ -210,14 +205,16 @@ jobs:
       - name: Create Palomar secrets file
         run: |
           cat > config/palomar-secrets.env << 'EOF'
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
           ES_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
+          DATABASE_URL=${{ secrets.PALOMAR_DATABASE_URL }}
           EOF
 
       - name: Create Social Link secrets file
         run: |
           cat > config/social-link-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
-          LINK_DB_POSTGRES_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
+          DATABASE_URL=${{ secrets.LINK_DB_POSTGRES_URL }}
+          LINK_DB_POSTGRES_URL=${{ secrets.LINK_DB_POSTGRES_MIGRATION_URL }}
           EOF
 
       - name: Create Backup secrets file
@@ -303,6 +300,12 @@ jobs:
             }
 
             echo "Managing Docker secrets..."
+            STACK_NAME="foodios-${{ inputs.environment }}"
+            if [ "$FORCE_RECREATE" = "true" ]; then
+              echo "⚠️ Taking down services in order to recreate secrets"
+              docker stack rm "$STACK_NAME"
+            fi
+            docker stack rm foodios-staging
             create_or_update_secret "db_secrets" "config/db-secrets.env"
             create_or_update_secret "bgs_secrets" "config/bgs-secrets.env"
             create_or_update_secret "pds_secrets" "config/pds-secrets.env"
