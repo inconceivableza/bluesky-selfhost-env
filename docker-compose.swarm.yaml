@@ -223,7 +223,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
@@ -256,7 +256,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
@@ -386,7 +386,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REDIS_HOST=redis
@@ -435,7 +435,7 @@ services:
       - IPCC_HOST=http://ipcc:8080
       - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
@@ -476,7 +476,7 @@ services:
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     healthcheck:
@@ -500,7 +500,7 @@ services:
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - HTTP_ADDRESS=:8101
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OGCARD_URL=https://${cardFQDN}
@@ -535,7 +535,7 @@ services:
       - LINK_SAFELINK_AGENT_PASS=
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     secrets:
@@ -616,7 +616,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
@@ -651,7 +651,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
@@ -692,7 +692,7 @@ services:
       - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${bgsFQDN}
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:

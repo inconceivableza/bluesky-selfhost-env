@@ -146,6 +146,8 @@ jobs:
 
           # Static Web Directory
           PDS_WEB_DIR="${{ vars.PDS_WEB_DIR || 'staticweb' }}"
+
+          NODE_ENV="${{ inputs.environment }}"
           EOF
 
       - name: Create config directory structure
@@ -363,7 +365,7 @@ jobs:
             STACK_NAME="foodios-${{ inputs.environment }}"
             echo "⏳ Waiting for services to start..."
 
-            TIMEOUT=600
+            TIMEOUT=60
             ELAPSED=0
             INTERVAL=10
 
