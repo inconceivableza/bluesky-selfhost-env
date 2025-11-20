@@ -30,6 +30,12 @@ make $BGS_SECRETS_FILE
 [ "$BGS_PDS_PER_DAY_LIMIT" == "" ] && BGS_PDS_PER_DAY_LIMIT=1000000
 
 error=
+pds_exists="$(wget -qO- --header="Authorization: Bearer ${BGS_ADMIN_KEY}" "https://$bgsFQDN/admin/pds/list"| jq --arg host "$pdsFQDN" '.[] | select(.Host == $host)')"
+if [ "$pds_exists" == "" ]
+  then
+    show_warning --oneline "PDS not registered" "so will request crawl"
+    wget -qO- --method=POST --body-data="{\"hostname\": \"$pdsFQDN\"}" --header="Content-Type: application/json" --header="Authorization: Bearer ${BGS_ADMIN_KEY}" "https://$bgsFQDN/admin/pds/requestCrawl"
+  fi
 
 previous_limit="$(wget -qO- --header="Authorization: Bearer ${BGS_ADMIN_KEY}" "https://$bgsFQDN/admin/subs/perDayLimit"| jq -r .limit)"
 if [ "$previous_limit" == "$BGS_SUBS_PER_DAY" ]
