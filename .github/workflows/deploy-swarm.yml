@@ -103,6 +103,9 @@ jobs:
           SOCIAL_CARD_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_CARD_IMAGE_TAG }}"
           SOCIAL_EMBED_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_EMBED_IMAGE_TAG }}"
           SOCIAL_LINK_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_LINK_IMAGE_TAG }}"
+          OTEL_IMAGE_TAG="${{ env.OTEL_COLLECTOR_IMAGE_TAG }}"
+          CADDY_IMAGE_TAG="${{ env.CADDY_IMAGE_TAG }}"
+          IPCC_IMAGE_TAG="${{ env.IP_LOCATION_SERVICE_BSKY_IMAGE_TAG }}"
 
           # Domain Configuration
           DOMAIN="${{ vars.DOMAIN }}"

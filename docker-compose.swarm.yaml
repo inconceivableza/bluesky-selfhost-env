@@ -44,7 +44,7 @@ x-deploy-defaults: &deploy-defaults
 
 services:
   caddy:
-    image: ${BRANDED_NAMESPACE}/caddy:2
+    image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG}
     ports:
       - target: 80
         published: ${CADDY_HTTP_PORT:-80}
@@ -736,7 +736,7 @@ services:
       - foodios-net
 
   ipcc:
-    image: davidfinconceivableza/ip-location-service-bsky
+    image: ${BRANDED_NAMESPACE}/ip-location-service-bsky:${IPCC_IMAGE_TAG}
     volumes:
       - ipcc:/app/downloads
     environment:
@@ -822,7 +822,7 @@ services:
       - foodios-net
 
   otel-collector:
-    image: ${BRANDED_NAMESPACE}/otel-collector:latest
+    image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG}
     volumes:
       - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
     command:
