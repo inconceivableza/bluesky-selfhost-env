@@ -1,16 +1,13 @@
-# Docker Swarm Compatible Compose File for Bluesky Self-Hosting
-# Deploy with: docker stack deploy -c docker-compose.swarm.yaml bluesky
-#
-# Prerequisites:
-# 1. Run the setup script first: ./deploy-swarm-setup.sh
-# 2. Ensure all config files and certs are in place
-# 3. Docker Swarm must be initialized: docker swarm init
-
 version: '3.8'
+
+configs:
+    caddy-caddyfile:
+      file: ./config/caddy/Caddyfile
+    caddy-dynamicenv:
+      file: 
 
 volumes:
   caddy-data:
-  caddy-config:
   database:
   opensearch:
   bgs:
@@ -44,6 +41,15 @@ x-deploy-defaults: &deploy-defaults
 
 services:
   caddy:
+    build:
+      context: .
+      dockerfile: ops/caddy-Dockerfile
+      args:
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
+    configs:
+      - source: caddy-config
+        target: /etc/caddy/Caddyfile
+
     image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG}
     ports:
       - target: 80
@@ -85,8 +91,7 @@ services:
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     volumes:
-      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
+      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro # todo movie into env
       - caddy-data:/data
       - caddy-config:/config
     # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro TODO: uncomment when there's something in here to copy
@@ -172,6 +177,16 @@ services:
       - foodios-net
 
   opensearch:
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile.opensearch
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+         # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
+       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
@@ -209,6 +224,17 @@ services:
       - foodios-net
 
   plc:
+    build:
+      context: ./repos/did-method-plc/
+      dockerfile: packages/server/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/did-method-plc"
+        org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${PLC_IMAGE_TAG}
     user: root
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/plc_secrets ] && . /run/secrets/plc_secrets && set +a && exec su node -c "dumb-init -- node --enable-source-maps index.js"']
@@ -246,8 +272,18 @@ services:
     depends_on:
       - database
       - caddy
-
   pds:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/pds/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${PDS_IMAGE_TAG}
     command: sh -c 'set -a && [ -f /run/secrets/pds_secrets ] && . /run/secrets/pds_secrets && set +a && exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     ports:
@@ -313,6 +349,17 @@ services:
       - caddy
 
   bgs:
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/bigsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-bgs:${BGS_IMAGE_TAG}
     ports:
       - target: 2470
@@ -355,6 +402,17 @@ services:
       - caddy
 
   bsky:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/bsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} App View"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-bsky:${BSKY_IMAGE_TAG}
     ports:
       - target: 2584
@@ -426,6 +484,23 @@ services:
       - caddy
 
   social-app:
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+       - SENTRY_ORG=${SENTRY_ORG-}
+       - SENTRY_PROJECT=${SENTRY_PROJECT-}
+       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT-}
+       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN-}
+       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY-}
+       - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-app:${SOCIAL_APP_IMAGE_TAG}
     ports:
       - target: 8100
@@ -480,6 +555,17 @@ services:
       - foodios-net
 
   social-card:
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskyogcard
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${SOCIAL_CARD_IMAGE_TAG}
     user: root
     entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
@@ -505,10 +591,19 @@ services:
       - foodios-net
 
   social-embed:
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.embedr
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${SOCIAL_EMBED_IMAGE_TAG}
     entrypoint: ['sh', '-c', 'apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     command: ''
-    
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - GOINSECURE=${GOINSECURE}
@@ -535,10 +630,19 @@ services:
       - foodios-net
 
   social-link:
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskylink
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
     user: root
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/social_link_secrets ] && . /run/secrets/social_link_secrets && set +a && exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
@@ -566,6 +670,17 @@ services:
       - foodios-net
 
   palomar:
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${PALOMAR_IMAGE_TAG}
     entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/palomar_secrets ] && . /run/secrets/palomar_secrets && set +a && exec /palomar run']
     command: []
@@ -602,6 +717,14 @@ services:
       - caddy
 
   jetstream:
+    build:
+      context: ./repos/jetstream/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     ports:
       - target: 6008
@@ -623,6 +746,14 @@ services:
       - caddy
 
   ozone:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps api.js'
     ports:
@@ -665,6 +796,14 @@ services:
       - caddy
 
   ozone-daemon:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
     
@@ -704,6 +843,14 @@ services:
       - caddy
 
   feed-generator:
+    build:
+      context: ./repos/feed-generator/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     ports:
       - target: 3008
@@ -822,6 +969,9 @@ services:
       - foodios-net
 
   otel-collector:
+    build:
+      context: .
+      dockerfile: ops/otel-collector-Dockerfile
     image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG}
     volumes:
       - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
