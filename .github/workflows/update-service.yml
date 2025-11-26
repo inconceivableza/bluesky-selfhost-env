@@ -1,0 +1,121 @@
+name: Update Specific Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: 'Service name to update (e.g., pds, bgs, bsky)'
+        required: true
+        type: string
+      image_tag:
+        description: 'New image tag (leave empty to use latest)'
+        required: false
+        type: string
+        default: 'latest'
+      force_update:
+        description: 'Force update even if image tag is the same'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  STACK_NAME: bluesky
+
+jobs:
+  update-service:
+    name: Update ${{ github.event.inputs.service_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SWARM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Update service
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << EOF
+            SERVICE_NAME="${{ env.STACK_NAME }}_${{ github.event.inputs.service_name }}"
+
+            echo "Checking if service \$SERVICE_NAME exists..."
+            if ! docker service inspect \$SERVICE_NAME &> /dev/null; then
+              echo "Error: Service \$SERVICE_NAME not found"
+              echo "Available services:"
+              docker stack services ${{ env.STACK_NAME }}
+              exit 1
+            fi
+
+            echo "Current service info:"
+            docker service inspect \$SERVICE_NAME --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'
+
+            # Get current image
+            CURRENT_IMAGE=\$(docker service inspect \$SERVICE_NAME --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')
+            IMAGE_NAME=\${CURRENT_IMAGE%:*}
+
+            # Use provided tag or latest
+            NEW_TAG="${{ github.event.inputs.image_tag }}"
+            NEW_IMAGE="\${IMAGE_NAME}:\${NEW_TAG}"
+
+            echo "Updating service to: \$NEW_IMAGE"
+
+            if [ "${{ github.event.inputs.force_update }}" = "true" ]; then
+              echo "Force updating..."
+              docker service update --force --image \$NEW_IMAGE \$SERVICE_NAME
+            else
+              docker service update --image \$NEW_IMAGE \$SERVICE_NAME
+            fi
+
+            echo "Update initiated. Monitoring progress..."
+            sleep 5
+
+            # Wait for update to complete
+            TIMEOUT=300
+            ELAPSED=0
+            INTERVAL=5
+
+            while [ \$ELAPSED -lt \$TIMEOUT ]; do
+              UPDATE_STATUS=\$(docker service inspect \$SERVICE_NAME --format '{{.UpdateStatus.State}}')
+
+              if [ "\$UPDATE_STATUS" = "completed" ]; then
+                echo "Update completed successfully!"
+                docker service ps \$SERVICE_NAME --filter "desired-state=running"
+                exit 0
+              elif [ "\$UPDATE_STATUS" = "rollback_completed" ] || [ "\$UPDATE_STATUS" = "paused" ]; then
+                echo "Update failed with status: \$UPDATE_STATUS"
+                echo "Service logs:"
+                docker service logs --tail 100 \$SERVICE_NAME
+                exit 1
+              fi
+
+              echo "Update status: \$UPDATE_STATUS (elapsed: \$ELAPSED/\$TIMEOUT seconds)"
+              sleep \$INTERVAL
+              ELAPSED=\$((ELAPSED + INTERVAL))
+            done
+
+            echo "Timeout waiting for update to complete"
+            docker service ps \$SERVICE_NAME
+            exit 1
+          EOF
+
+      - name: Show final status
+        if: always()
+        run: |
+          ssh ${{ secrets.SWARM_USER }}@${{ secrets.SWARM_HOST }} << EOF
+            SERVICE_NAME="${{ env.STACK_NAME }}_${{ github.event.inputs.service_name }}"
+
+            echo "==================================="
+            echo "Final Service Status"
+            echo "==================================="
+            docker service ps \$SERVICE_NAME
+
+            echo ""
+            echo "==================================="
+            echo "Recent Logs"
+            echo "==================================="
+            docker service logs --tail 50 \$SERVICE_NAME
+          EOF

@@ -1,0 +1,48 @@
+name: Build and push otel-collector
+on:
+  workflow_dispatch
+
+env:
+  DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
+  IMAGE_NAME: otel-collector
+
+jobs:
+  build-and-push-otel-collector:
+    if: github.repository == 'inconceivableza/brightsun-selfhost-env'
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log into dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.DOCKERHUB_REPO }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,enable=true,priority=100,prefix=,suffix=,format=long
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: ./ops/otel-collector-Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            CADDY_DNS_PACKAGE_SRC=${{ vars.CADDY_DNS_PACKAGE_SRC }}
