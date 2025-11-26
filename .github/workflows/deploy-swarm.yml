@@ -279,7 +279,7 @@ jobs:
       - name: Create Backup secrets file
         run: |
           cat > secrets/backup-secrets.env << 'EOF'
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD} }
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
           RESTIC_PASSWORD=${{ secrets.RESTIC_PASSWORD }}
