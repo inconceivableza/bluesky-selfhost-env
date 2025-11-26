@@ -309,13 +309,9 @@ jobs:
           scp -r config/ \
             ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
 
-          # Copy other directories if they exist
-          for dir in staticweb selfhost_scripts; do
-            if [ -d "$dir" ]; then
-              scp -r $dir/ \
-                ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
-            fi
-          done
+          scp -r selfhost_scripts/backup-scripts \
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/selfhost_scripts/
+        
 
       - name: Initialize Docker Swarm
         run: |
