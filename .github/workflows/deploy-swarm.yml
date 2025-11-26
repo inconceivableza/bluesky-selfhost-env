@@ -42,6 +42,14 @@ jobs:
 
       - name: Fetch latest image tags from Docker Hub
         run: |
+          if docker compose -f docker-compose.swarm.yaml config > /dev/null 2>&1; then
+            echo "Docker Compose file is valid."
+          else
+            echo "Error: Docker Compose file contains errors."
+            docker compose -f docker-compose.swarm.yaml config # This will print the error messages
+            exit 1
+          fi
+
           echo "Fetching latest image tags from Docker Hub..."
 
           # Export environment variables needed for docker compose config
