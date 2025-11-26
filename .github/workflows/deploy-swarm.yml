@@ -487,14 +487,14 @@ jobs:
               | head -30
           ENDSSH
 
-      - name: Cleanup sensitive files
-        if: always()
-        run: |
-          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/deploy/${{ inputs.environment }}
-            rm -f config/*-secrets.env
-            echo "🧹 Cleaned up sensitive files"
-          ENDSSH
+      # - name: Cleanup sensitive files
+      #   if: always()
+      #   run: |
+      #     ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+      #       cd ~/deploy/${{ inputs.environment }}
+      #       rm -f config/*-secrets.env
+      #       echo "🧹 Cleaned up sensitive files"
+      #     ENDSSH
 
       - name: Collect failure diagnostics
         if: failure()
