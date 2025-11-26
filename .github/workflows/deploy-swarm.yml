@@ -407,7 +407,7 @@ jobs:
             if docker stack deploy \
               -c docker-compose.swarm.yaml \
               "$STACK_NAME" \
-              --prune --detach=false; then
+              --prune --detach=true; then
               echo ""
               echo "✅ Stack deployment command succeeded"
             else
