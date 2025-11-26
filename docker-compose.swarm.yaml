@@ -950,7 +950,6 @@ services:
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
-      - ./data/accounts/backup-credentials:/resticprofile/credentials/remote:ro
       - pds:/data/pds:rw
       - feed-generator:/data/feed-generator:rw
       - opensearch:/data/opensearch:rw
