@@ -10,11 +10,11 @@ configs:
   
 x-certs-config: &certs-config
   - source: certs-ca
-    target: ${CUSTOM_CERTS_DIR}/ca-certificates.crt
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/ca-certificates.crt
   - source: certs-intermediate
-    target: ${CUSTOM_CERTS_DIR}/intermediate.crt
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/intermediate.crt
   - source: certs-root
-    target: ${CUSTOM_CERTS_DIR}/root.crt
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/root.crt
 
 volumes:
   caddy-data:
@@ -103,8 +103,8 @@ services:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
       # CA certificates for serving self-signed. >>>
-      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
-      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
+      - ./certs/root.crt:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.crt:ro
+      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/local/root.key:ro
       # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
