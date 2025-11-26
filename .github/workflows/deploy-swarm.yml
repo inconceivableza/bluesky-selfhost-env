@@ -245,7 +245,7 @@ jobs:
       - name: Create PLC secrets file
         env:
           DB_CREDS_JSON: ${{ secrets.DB_CREDS_JSON }}
-          DB_MIGRATE_CREDS_JSON: secrets.DB_MIGRATE_CREDS_JSON
+          DB_MIGRATE_CREDS_JSON: ${{ secrets.DB_MIGRATE_CREDS_JSON }}
         run: |
           cat > config/plc-secrets.env << 'EOF'
           DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
