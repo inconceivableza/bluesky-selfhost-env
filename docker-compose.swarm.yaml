@@ -1,13 +1,24 @@
 version: '3.8'
 
 configs:
-    caddy-caddyfile:
-      file: ./config/caddy/Caddyfile
-    caddy-dynamicenv:
-      file: 
+    certs-ca:
+      file: ./certs/ca-certificates.crt
+    certs-intermediate:
+      file: ./certs/intermediate.crt
+    certs-root:
+      file: ./certs/root.crt
+  
+x-certs-config: &certs-config
+  - source: certs-ca
+    target: ${CUSTOM_CERTS_DIR}/ca-certificates.crt
+  - source: certs-intermediate
+    target: ${CUSTOM_CERTS_DIR}/intermediate.crt
+  - source: certs-root
+    target: ${CUSTOM_CERTS_DIR}/root.crt
 
 volumes:
   caddy-data:
+  caddy-config:
   database:
   opensearch:
   bgs:
@@ -31,10 +42,12 @@ x-deploy-defaults: &deploy-defaults
     parallelism: 1
     delay: 10s
     order: stop-first
+    monitor: 60s
   restart_policy:
     condition: on-failure
     delay: 5s
     max_attempts: 3
+    window: 60s
   placement:
     constraints:
       - node.role == manager
@@ -46,10 +59,6 @@ services:
       dockerfile: ops/caddy-Dockerfile
       args:
         CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
-    configs:
-      - source: caddy-config
-        target: /etc/caddy/Caddyfile
-
     image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG}
     ports:
       - target: 80
@@ -91,7 +100,12 @@ services:
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     volumes:
-      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro # todo movie into env
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
+      # CA certificates for serving self-signed. >>>
+      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
+      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
+      # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
     # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro TODO: uncomment when there's something in here to copy
@@ -110,7 +124,7 @@ services:
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    
+    configs: *certs-config
     deploy:
       <<: *deploy-defaults
     networks:
@@ -118,7 +132,7 @@ services:
 
   database:
     image: postgres:16-trixie
-    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/db_secrets ] && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
+    command: ['sh', '-c', 'set -a && [ -f /run/secrets/db_secrets ] && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
     ports:
       - target: 5432
         published: 5432
@@ -163,7 +177,7 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=password
     deploy:
       <<: *deploy-defaults
-      replicas: 0  # Set to 1 to enable pgadmin
+      replicas: 1  # Set to 1 to enable pgadmin
     networks:
       - foodios-net
 
@@ -188,7 +202,7 @@ services:
          # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
-    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
+    command: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
         published: 9200
@@ -224,6 +238,7 @@ services:
       - foodios-net
 
   plc:
+    configs: *certs-config
     build:
       context: ./repos/did-method-plc/
       dockerfile: packages/server/Dockerfile
@@ -237,8 +252,7 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${PLC_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/plc_secrets ] && . /run/secrets/plc_secrets && set +a && exec su node -c "dumb-init -- node --enable-source-maps index.js"']
-    command: ''
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/plc_secrets ]; . /run/secrets/plc_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']      
     ports:
       - target: 2582
         published: 2582
@@ -273,6 +287,7 @@ services:
       - database
       - caddy
   pds:
+    configs: *certs-config
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/pds/Dockerfile
@@ -285,7 +300,7 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${PDS_IMAGE_TAG}
-    command: sh -c 'set -a && [ -f /run/secrets/pds_secrets ] && . /run/secrets/pds_secrets && set +a && exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/pds_secrets ]; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
     ports:
       - target: 2583
         published: 2583
@@ -349,6 +364,7 @@ services:
       - caddy
 
   bgs:
+    configs: *certs-config
     build:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
@@ -368,7 +384,7 @@ services:
       - target: 2471
         published: 2471
         mode: host
-    command: "sh -c 'set -a && [ -f /run/secrets/bgs_secrets ] && . /run/secrets/bgs_secrets && set +a && exec /bigsky --db-tracing'"
+    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bgs_secrets ]; . /run/secrets/bgs_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /bigsky --db-tracing']
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -402,6 +418,7 @@ services:
       - caddy
 
   bsky:
+    configs: *certs-config
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/bsky/Dockerfile
@@ -424,7 +441,7 @@ services:
       - target: 3002
         published: 3002
         mode: host
-    command: sh -c 'set -a && [ -f /run/secrets/bsky_secrets ] && . /run/secrets/bsky_secrets && set +a && exec node --enable-source-maps api.js'
+    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bsky_secrets ]; . /run/secrets/bsky_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --enable-source-maps api.js']
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -484,6 +501,7 @@ services:
       - caddy
 
   social-app:
+    configs: *certs-config
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile
@@ -506,8 +524,7 @@ services:
       - target: 8100
         published: 8100
         mode: host
-    command: /bin/sh -c "/usr/bin/bskyweb serve"
-    
+    command: ["/bin/sh", "-c", "${UPDATE_CERTS_CMD:-true}; /usr/bin/bskyweb serve"]
     environment:
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
@@ -555,6 +572,7 @@ services:
       - foodios-net
 
   social-card:
+    configs: *certs-config
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.bskyogcard
@@ -568,8 +586,7 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${SOCIAL_CARD_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', ' su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    
+    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
@@ -591,6 +608,7 @@ services:
       - foodios-net
 
   social-embed:
+    configs: *certs-config
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.embedr
@@ -602,8 +620,7 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${SOCIAL_EMBED_IMAGE_TAG}
-    entrypoint: ['sh', '-c', 'apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
-    command: ''
+    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - GOINSECURE=${GOINSECURE}
@@ -630,6 +647,7 @@ services:
       - foodios-net
 
   social-link:
+    configs: *certs-config
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.bskylink
@@ -642,7 +660,7 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/social_link_secrets ] && . /run/secrets/social_link_secrets && set +a && exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/social_link_secrets ]; . /run/secrets/social_link_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
@@ -670,6 +688,7 @@ services:
       - foodios-net
 
   palomar:
+    configs: *certs-config
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile
@@ -682,8 +701,7 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${PALOMAR_IMAGE_TAG}
-    entrypoint: ['sh', '-c', 'set -a && [ -f /run/secrets/palomar_secrets ] && . /run/secrets/palomar_secrets && set +a && exec /palomar run']
-    command: []
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/palomar_secrets ]; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /palomar run']
     ports:
       - target: 3999
         published: 3999
@@ -933,8 +951,7 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
     secrets:
       - backup_secrets
-    entrypoint: ["/bin/sh"]
-    command: ['-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
+    command: ["/bin/sh",'-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
       timeout: 10s

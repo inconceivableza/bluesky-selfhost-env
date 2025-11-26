@@ -386,6 +386,14 @@ jobs:
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
             cd ~/deploy/${{ inputs.environment }}
 
+            # Create dummy files
+            mkdir -p certs
+            touch ./certs/root.crt 
+            touch ./certs/root.key
+            touch ./certs/intermediate.crt
+            touch ./certs/ca-certificates.crt
+            touch ./config/caddy-dynamic.env
+
             # Load environment variables
             set -a
             source .env
