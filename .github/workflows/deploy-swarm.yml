@@ -388,10 +388,12 @@ jobs:
 
             # Create dummy files
             mkdir -p certs
-            touch ./certs/root.crt 
-            touch ./certs/root.key
-            touch ./certs/intermediate.crt
-            touch ./certs/ca-certificates.crt
+            # Docker complains if config files are empty
+            echo "( ͡° ͜ʖ ͡°)" > ./certs/root.crt 
+            echo "¯\_(ツ)_/¯" > ./certs/root.key
+            echo "(˶ˆᗜˆ˵)" > ./certs/intermediate.crt
+            echo "₍^. .^₎⟆" > ./certs/ca-certificates.crt
+            
             touch ./config/caddy-dynamic.env
 
             # Load environment variables
