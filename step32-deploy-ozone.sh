@@ -37,8 +37,8 @@ make docker-start-bsky-ozone OZONE_SERVER_DID=$OZONE_SERVER_DID OZONE_ADMIN_DIDS
 # FIXME: wait for ozone startup?
 
 show_heading "Index Label Assignments" "into appview DB via subscribeLabels"
-export PATH=$PATH:`pwd`/selfhost_scripts/apiImpl/node_modules/.bin
-./selfhost_scripts/apiImpl/subscribeLabels2BskyDB.ts || { show_error "Error indexing label assignments:" "Please correct" ; exit 1 ; }
+export PATH=$PATH:$script_dir/selfhost_scripts/apiImpl/node_modules/.bin
+$script_dir/selfhost_scripts/apiImpl/subscribeLabels2BskyDB.ts || { show_error "Error indexing label assignments:" "Please correct" ; exit 1 ; }
 
 show_heading "Sign Ozone DidDoc" for ozone admin account
 #    first, request and get PLC sign by email

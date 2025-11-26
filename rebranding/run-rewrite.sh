@@ -4,7 +4,7 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 
 function usage() {
-    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] brand_config_dir" >&2
+    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] [-I|--no-export-images] brand_config_dir" >&2
     echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
     echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
     [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
@@ -34,6 +34,7 @@ function show_subdirs_with_brand_images() {
 commit_parts=0
 check_only=0
 keep_going=0
+export_images=1
 
 while [ "$#" -gt 0 ]
   do
@@ -47,6 +48,10 @@ while [ "$#" -gt 0 ]
     }
     [[ "$1" == "--keep-going" || "$1" == "-k" ]] && {
       keep_going=1
+      shift
+    }
+    [[ "$1" == "--no-export-images" || "$1" == "-I" ]] && {
+      export_images=0
       shift
     }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && {
@@ -129,7 +134,7 @@ function needs_images() {
   return 1
 }
 
-if needs_images
+if [[ "$export_images" == 1 && needs_images ]]
   then
     python $script_dir/export-brand-images.py $BRAND_CONFIG_DIR/$BRAND_IMAGES_FILE || { show_error "Error exporting images" "from $BRAND_CONFIG_DIR" ; exit 1 ; }
   fi

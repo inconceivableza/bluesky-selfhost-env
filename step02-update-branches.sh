@@ -11,11 +11,23 @@ source_env
 
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"
-show_heading "Cloning source code" "from the different repositories"
-make cloneAll
+
+function show_usage() {
+  echo "Syntax $0 [-?|-h|--help] [--no-fetch] [-n|--dry-run] [repos...]"
+}
 
 do_fetch=1
-[[ "$1" == "--no-fetch" ]] && { do_fetch=0 ; shift 1 ; }
+dry_run=
+n=0
+while [ "$#" -gt "$n" ]
+  do
+    [[ "$1" == "--no-fetch" ]] && { do_fetch=0 ; shift 1 ; continue ; }
+    [[ "$1" == "-n" || "$1" == "--dry-run" ]] && { dry_run=1 ; shift 1 ; continue ; }
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_usage >&2 ; exit ; }
+    [[ "${1#-}" != "$1" ]] && { show_warning "Unknown parameter" "$1" ; show_usage >&2 ; exit 1 ; }
+    # a non-option param
+    n=$((n+1))
+  done
 
 if [ $# -gt 0 ]
   then
@@ -61,6 +73,9 @@ function git_is_ancestor() {
   local check_ancestor_ref="$1"
   git merge-base --is-ancestor $check_ancestor_ref HEAD
 }
+
+show_heading "Cloning source code" "from the different repositories"
+make cloneAll
 
 # 1. Check which branch we're on. If not listed in branch-rules, and non of the branches listed there is an ancestor commit:
 #    - create the latest branch in branch-rules / the one specified in the environment
@@ -118,8 +133,12 @@ function analyse_branch() {
               if [[ "$intended_base_ref" != "" && "$intended_base_ref" != "null" ]]; then
                 show_warning --oneline "Could not find $required_branch" "which is the expected base for $repo_key; presume it is being constructed for first time from $intended_base_ref"
                 if git_ref_present $intended_base_ref; then
-                  show_info --oneline "Creating new branch $required_branch_name" "based on $intended_base_ref"
-                  git checkout -b $required_branch_name $intended_base_ref
+                  if [ "$dry_run" == 1 ]; then
+                    show_info --oneline "Would create new branch $required_branch_name" "based on $intended_base_ref"
+                  else
+                    show_info --oneline "Creating new branch $required_branch_name" "based on $intended_base_ref"
+                    git checkout -b $required_branch_name $intended_base_ref
+                  fi
                   base_branch=$required_branch_name
                 else
                   show_error --oneline "Could not find $required_branch" "which is the expected base for $repo_key, and could not find intended base ref $intended_base_ref; cannot continue"
@@ -139,13 +158,21 @@ function analyse_branch() {
           show_warning --oneline "$repo_key: branch $current_branch" "does not include $required_branch changes"
           if git_branch_present $required_branch_name
             then # we know $required_branch exists because we checked $required_missing above
-              show_info --oneline "switching to $required_branch_name" "as it is present in repo"
-              git checkout $required_branch_name
+              if [ "$dry_run" == 1 ]; then
+                show_info --oneline "Would switch to $required_branch_name" "as it is present in repo"
+              else
+                show_info --oneline "Switching to $required_branch_name" "as it is present in repo"
+                git checkout $required_branch_name
+              fi
               base_branch=$required_branch
           else
-              show_info --oneline "checking out $required_branch_name" "from $required_branch"
+            if [ "$dry_run" == 1 ]; then
+              show_info --oneline "Would check out $required_branch_name" "from $required_branch"
+            else
+              show_info --oneline "Checking out $required_branch_name" "from $required_branch"
               git checkout -b $required_branch_name $required_branch
-              base_branch=$required_branch
+            fi
+            base_branch=$required_branch
           fi
         fi
       base_branch_names["$repo_key"]="$base_branch"
@@ -153,21 +180,21 @@ function analyse_branch() {
     else
       local potential_branches="$(yq -r ".${repo_key} // {} | keys | .[]" "$script_dir/$FEATURE_BRANCH_RULES")" present_base_branch
       [ "$potential_branches" == "" ] && {
-        show_info --oneline "will not branch $repo_key" "as branch-rules are not configured for it"
+        show_info --oneline "Will not branch $repo_key" "as branch-rules are not configured for it"
         return 0
       }
-      show_info --oneline "searching other potential base branches" $potential_branches
+      show_info --oneline "Searching other potential base branches" $potential_branches
       for potential_base_branch in $potential_branches
         do
           if git_branch_present $potential_base_branch
             then
               # $potential_base_branch exists in local git repo
-              show_info --oneline "found $potential_base_branch" "in current repo; will check if using"
+              show_info --oneline "Found $potential_base_branch" "in current repo; will check if using"
               present_base_branch=$potential_base_branch
           elif git_branch_present ${fork_repo_name:-fork}/$potential_base_branch
             then
               potential_base_branch=${fork_repo_name:-fork}/$potential_base_branch
-              show_info --oneline "found $potential_base_branch" "in fork; will check if using"
+              show_info --oneline "Found $potential_base_branch" "in fork; will check if using"
               present_base_branch=$potential_base_branch
           else
             continue # doesn't exist, not worth checking
@@ -179,9 +206,13 @@ function analyse_branch() {
         done
       if [ "$base_branch" == "" ]
         then
-          show_warning --oneline "$repo_key branch $current_branch" "doesn't match any potential base branch; will switch branch to latest $potential_base_branch"
           base_branch_names["$repo_key"]="${potential_base_branch##*/}"
-          git checkout $potential_base_branch
+          if [ "$dry_run" == 1 ]; then
+            show_warning --oneline "$repo_key branch $current_branch" "doesn't match any potential base branch; would switch branch to latest $potential_base_branch"
+          else
+            show_warning --oneline "$repo_key branch $current_branch" "doesn't match any potential base branch; will switch branch to latest $potential_base_branch"
+            git checkout $potential_base_branch
+          fi
           return 0
         else
           show_info --oneline "$repo_key branch $current_branch" "includes $base_branch changes; will use its branch configuration"
@@ -230,8 +261,13 @@ function apply_selfhost_patching_changes() {
   export rDir=${repoDir}
   export pDir=${script_dir}/patching
   for ops in `ls ${wDir}/patching/1*.sh | grep ${repo_key}`; do
-    ${ops}
+    if [ "$dry_run" == 1 ]; then
+      show_info "Would have run" "${ops}"
+    else
+      ${ops}
+    fi
   done
+  [ "$dry_run" == 1 ] && return 0
   # only add already tracked files
   git add -u .
   git commit -m "update: self-host patches" || {
@@ -261,7 +297,9 @@ function apply_rebranding() {
   show_info "Rebranding for $REBRANDING_NAME" "by scripted changes"
   [ "$REBRANDING_DIR" == "" ] && REBRANDING_DIR=repos/social-app/conf
   REBRANDING_DIR_ABS="$(cd $script_dir ; cd $REBRANDING_DIR ; pwd)"
-  "$REBRANDING_SCRIPT_ABS" --commit-parts "$REBRANDING_DIR_ABS" || {
+  rebranding_args="--commit-parts"
+  [ "$dry_run" == 1 ] && rebranding_args="--check-only --keep-going"
+  "$REBRANDING_SCRIPT_ABS" $rebranding_args "$REBRANDING_DIR_ABS" || {
     show_error "Rebranding script error:" "Please examine and correct before continuing; ran $REBRANDING_SCRIPT_ABS \"$REBRANDING_DIR_ABS\""
     return 1
   }
@@ -294,12 +332,20 @@ function autocreate_branch {
     else
       current_branch=$(git_current_branch)
       if [ "$local_branch_missing" == 1 ]; then
-        show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
-        git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; return 1; }
+        if [ "$dry_run" == 1 ]; then
+          show_info "Would create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base"
+        else
+          show_info "Will create branch" "$merge_branch_local on $repo_key, based on $merge_branch_base; pushing to remote should be done manually once checked"
+          git checkout -b "$merge_branch_local" "$merge_branch_base" || { show_error "Could not checkout branch" ; return 1; }
+        fi
       else
-        show_info "Branch exists but is out of date" "$merge_branch_local on $repo_key; will repoint to where we are"
-        git checkout "$merge_branch_local" || { show_error "Could not checkout branch" ; return 1; }
-        git merge "$merge_branch_base" || { show_error "Could not merge base branch" ; return 1; }
+        if [ "$dry_run" == 1 ]; then
+          show_info "Branch exists but is out of date" "$merge_branch_local on $repo_key; would repoint to where we are"
+        else
+          show_info "Branch exists but is out of date" "$merge_branch_local on $repo_key; will repoint to where we are"
+          git checkout "$merge_branch_local" || { show_error "Could not checkout branch" ; return 1; }
+          git merge "$merge_branch_base" || { show_error "Could not merge base branch" ; return 1; }
+        fi
       fi
       application_result=0
       if [ $branch_type -eq 1 ]; then
@@ -314,14 +360,18 @@ function autocreate_branch {
         fi
       fi
       [ "$application_result" == 1 ] && { show_warning "Error applying self-host patching changes" "please inspect $repo_key and correct before continuing" ; return 1 ; }
-      show_info --oneline "Restoring original checked-out branch $current_branch" "for $repo_key"
-      git checkout $current_branch || { 
-        show_warning "Error switching back to current branch" "possibly because of untracked files; retrying with --force"
-        git checkout --force $current_branch || {
-          show_error "Could not checkout current branch" "please revert to correct branch manually"
-          return 1
+      if [ "$dry_run" == 1 ]; then
+        show_info --oneline "Would restore original checked-out branch $current_branch" "for $repo_key"
+      else
+        show_info --oneline "Restoring original checked-out branch $current_branch" "for $repo_key"
+        git checkout $current_branch || { 
+          show_warning "Error switching back to current branch" "possibly because of untracked files; retrying with --force"
+          git checkout --force $current_branch || {
+            show_error "Could not checkout current branch" "please revert to correct branch manually"
+            return 1
+          }
         }
-      }
+      fi
       return 2 # this indicates to use merge_branch_local rather than the remote
     fi
   fi
@@ -366,13 +416,17 @@ for repoDir in $repoDirs
               [ $autocreate_result -eq 1 ] && { show_error "error autocreating $merge_branch" "please correct in $repo_key and and resume" ; exit 1 ; }
               [ $autocreate_result -eq 2 ] && selected_merge_branch="$merge_branch_local"
             }
-            show_info "merging $selected_merge_branch into $actual_target:" "in $repoName"
-            git merge $selected_merge_branch || { show_error "error merging $selected_merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
-            [ $autocreate_result -eq 2 ] && {
-              local_commit="$(git log -1 --format=%H $merge_branch_local 2>/dev/null)"
-              remote_commit="$(git log -1 --format=%H $merge_branch 2>/dev/null)"
-              [[ "$local_commit" == "$remote_commit" ]] || show_info "Local changes made" "consider pushing $merge_branch_local to $merge_branch"
-            }
+            if [ "$dry_run" == 1 ]; then
+              show_info "merging $selected_merge_branch into $actual_target:" "in $repoName"
+            else
+              show_info "merging $selected_merge_branch into $actual_target:" "in $repoName"
+              git merge $selected_merge_branch || { show_error "error merging $selected_merge_branch:" please correct and then re-run to apply all merge branches $merge_branches ; exit 1 ; }
+              [ $autocreate_result -eq 2 ] && {
+                local_commit="$(git log -1 --format=%H $merge_branch_local 2>/dev/null)"
+                remote_commit="$(git log -1 --format=%H $merge_branch 2>/dev/null)"
+                [[ "$local_commit" == "$remote_commit" ]] || show_info "Local changes made" "consider pushing $merge_branch_local to $merge_branch"
+              }
+            fi
           done
       ) || { show_error "Error applying feature branches:" "inspect $repo_key and adjust as necessary" ; error_repos="$error_repos $repo_key"; }
       cd "$script_dir"
