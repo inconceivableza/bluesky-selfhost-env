@@ -174,7 +174,7 @@ http://test-ws.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://bgs:2470
+	reverse_proxy {$bgsPROXY:http://bgs:2470}
 }
 
 {$apiFQDN}, {$publicApiFQDN}, {$bskyFQDN} {
@@ -193,6 +193,15 @@ http://test-ws.{$DOMAIN} {
 		on_demand
 	}
 	reverse_proxy {$socialappPROXY:http://social-app:8100}
+}
+
+yarnstart.{$DOMAIN} {
+	import cors
+	import tracing social-app
+	tls {$EMAIL4CERTS} {
+		on_demand
+	}
+	reverse_proxy {$socialappyarnPROXY:http://host.docker.internal:8081}
 }
 
 {$cardFQDN} {

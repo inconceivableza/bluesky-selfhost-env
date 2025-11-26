@@ -1,4 +1,26 @@
 services:
+  bgs:
+    working_dir: './repos/indigo/'
+    build:
+      - 'echo "replace github.com/gocql/gocql => github.com/scylladb/gocql v1.14.4" >> go.mod'
+      - go mod tidy
+      - go mod vendor
+    run:
+      - 'docker compose cp bgs:/data/bigsky $local_service_tmp_dir/bigsky'
+      - 'go run ./cmd/bigsky --api-listen localhost:24700 --data-dir $local_service_tmp_dir/bigsky'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+    env_subst:
+      - 's/@database/@localhost/'
+    env_override:
+      BGS_PORT: 24700 # this doesn't actually set the port; that's done by the commandline above and they should match
+      BGS_METRICS_LISTEN: 'localhost:24710'
+      # NB: hardcoded paths are stored in the carstore database
+      DATA_DIR: '$local_service_tmp_dir/bigsky'
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318'
   bsky:
     working_dir: './repos/social-app/submodules/atproto/services/bsky/'
     build:
