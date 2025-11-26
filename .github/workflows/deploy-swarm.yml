@@ -192,7 +192,7 @@ jobs:
           RESTIC_REMOTE_REPO1="${{ vars.RESTIC_REMOTE_REPO1 }}"
           RESTIC_REMOTE_REPO2="${{ vars.RESTIC_REMOTE_REPO2 }}"
           RESTIC_REMOTE_REPO3="${{ vars.RESTIC_REMOTE_REPO3 }}"
-          RESTIC_AWS_ACCESS_KEY_ID="${{ secrets.RESTIC_AWS_ACCESS_KEY_ID }}"
+          RESTIC_AWS_ACCESS_KEY_ID="${{ vars.RESTIC_AWS_ACCESS_KEY_ID }}"
           RESTIC_GOOGLE_PROJECT_ID="${{ vars.RESTIC_GOOGLE_PROJECT_ID }}"
 
           # Caddy Configuration
