@@ -76,6 +76,9 @@ services:
     env_override:
       HTTP_ADDRESS: :8101
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
+      OTEL_PROPAGATORS: 'datadog,tracecontext,baggage'
+      OTEL_EXPORTER_OTLP_INSECURE: true
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318'
   social-link:
     working_dir: './repos/social-app/bskylink'
     build:
