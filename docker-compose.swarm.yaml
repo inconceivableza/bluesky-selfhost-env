@@ -949,9 +949,12 @@ services:
       - RESTIC_LOGDIR=/var/log
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/restic_google_creds.json
     secrets:
       - backup_secrets
+      - source: google_backup_credentials
+        target: /resticprofile/credentials/remote/restic_google_creds.json
+
     command: ["/bin/sh",'-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
