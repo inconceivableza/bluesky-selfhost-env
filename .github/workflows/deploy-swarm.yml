@@ -368,7 +368,7 @@ jobs:
             STACK_NAME="foodios-${{ inputs.environment }}"
             if [ "$FORCE_RECREATE" = "true" ]; then
               echo "⚠️ Taking down services in order to recreate secrets"
-              docker stack rm "$STACK_NAME"
+              docker stack rm "$STACK_NAME" --detach=false
             fi
             docker stack rm foodios-staging
             create_or_update_secret "db_secrets" "config/db-secrets.env"
