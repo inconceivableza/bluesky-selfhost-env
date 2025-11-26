@@ -7,7 +7,7 @@ configs:
       file: ./certs/intermediate.crt
     certs-root:
       file: ./certs/root.crt
-  
+
 x-certs-config: &certs-config
   - source: certs-ca
     target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/ca-certificates.crt
@@ -16,6 +16,31 @@ x-certs-config: &certs-config
   - source: certs-root
     target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/root.crt
 
+# These must be created before deploying
+secrets:
+  db_secrets:
+    external: true
+  bgs_secrets:
+    external: true
+  pds_secrets:
+    external: true
+  bsky_secrets:
+    external: true
+  plc_secrets:
+    external: true
+  ozone_secrets:
+    external: true
+  opensearch_secrets:
+    external: true
+  palomar_secrets:
+    external: true
+  social_link_secrets:
+    external: true
+  backup_secrets:
+    external: true
+  google_backup_credentials:
+    external: true
+  
 volumes:
   caddy-data:
   caddy-config:
@@ -1054,26 +1079,3 @@ services:
       - foodios-net
     depends_on:
       - prometheus
-
-# Define secrets (these must be created before deploying)
-secrets:
-  db_secrets:
-    external: true
-  bgs_secrets:
-    external: true
-  pds_secrets:
-    external: true
-  bsky_secrets:
-    external: true
-  plc_secrets:
-    external: true
-  ozone_secrets:
-    external: true
-  opensearch_secrets:
-    external: true
-  palomar_secrets:
-    external: true
-  social_link_secrets:
-    external: true
-  backup_secrets:
-    external: true
