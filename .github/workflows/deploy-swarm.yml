@@ -246,8 +246,8 @@ jobs:
         run: |
           cat > config/plc-secrets.env << 'EOF'
           DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
-          DB_CREDS_JSON="${{ secrets.DB_CREDS_JSON }}"
-          DB_MIGRATE_CREDS_JSON="${{ secrets.DB_MIGRATE_CREDS_JSON }}"
+          DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}'
+          DB_MIGRATE_CREDS_JSON='${{ secrets.DB_MIGRATE_CREDS_JSON }}'
           EOF
 
       - name: Create Ozone secrets file
