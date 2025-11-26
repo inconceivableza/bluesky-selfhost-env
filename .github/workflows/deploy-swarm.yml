@@ -1,4 +1,4 @@
-name: Deploy to Docker Swarm
+name: Deploy all services
 
 on:
   workflow_dispatch:
@@ -208,6 +208,7 @@ jobs:
 
           NODE_ENV="${{ inputs.environment }}"
           EOF
+      
 
       - name: Create config directory structure
         run: |
@@ -242,11 +243,14 @@ jobs:
           EOF
 
       - name: Create PLC secrets file
+        env:
+          DB_CREDS_JSON: ${{ secrets.DB_CREDS_JSON }}
+          DB_MIGRATE_CREDS_JSON: secrets.DB_MIGRATE_CREDS_JSON
         run: |
           cat > config/plc-secrets.env << 'EOF'
           DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
-          DB_CREDS_JSON=${{ secrets.DB_CREDS_JSON }}
-          DB_MIGRATE_CREDS_JSON=${{ secrets.DB_MIGRATE_CREDS_JSON }}
+          DB_CREDS_JSON="$DB_CREDS_JSON"
+          DB_MIGRATE_CREDS_JSON="$DB_MIGRATE_CREDS_JSON"
           EOF
 
       - name: Create Ozone secrets file
@@ -397,7 +401,6 @@ jobs:
             if docker stack deploy \
               -c docker-compose.swarm.yaml \
               "$STACK_NAME" \
-              --with-registry-auth \
               --prune --detach=false; then
               echo ""
               echo "✅ Stack deployment command succeeded"
