@@ -1,4 +1,4 @@
-name: Update Specific Service
+name: Update service
 
 on:
   workflow_dispatch:
