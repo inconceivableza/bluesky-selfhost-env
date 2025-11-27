@@ -55,6 +55,11 @@ services:
     #   reverse proxy
     #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
     image: ${BRANDED_NAMESPACE}/caddy:2
+    build:
+      context: .
+      dockerfile: ops/caddy-Dockerfile
+      args:
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
     ports:
       # these ports can be overridden in .env if using haproxy to forward requests to caddy
       - "${CADDY_HTTP_PORT-80}:80"
@@ -142,6 +147,14 @@ services:
   test-indigo:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-tools:${asof}
     profiles: ['', 'indigo']
+    build:
+       context: ./repos/indigo/
+       dockerfile: Dockerfile
+       args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: tail -f /dev/null
     env_file: config/bgs-secrets.env
     environment:
@@ -202,6 +215,16 @@ services:
   opensearch:
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof}
     profiles: ['', 'indigo']
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile.opensearch
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+# cf. https://github.com/opensearch-project/OpenSearch/issues/8215
+       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     ports:
       - 9200:9200
     env_file: config/opensearch-secrets.env
@@ -233,6 +256,17 @@ services:
 #   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof}
     profiles: ['', 'did-method-plc']
+    build:
+      context: ./repos/did-method-plc/
+      dockerfile: packages/server/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/did-method-plc"
+        org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
     user: root
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
@@ -272,6 +306,17 @@ services:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof}
     command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     profiles: ['', 'atproto']
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/pds/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     ports:
       - 2583:2583
     expose:
@@ -344,6 +389,17 @@ services:
   bgs:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof}
     profiles: ['', 'indigo']
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/bigsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
     ports:
       - 2470:2470
       - 2471:2471
@@ -384,6 +440,17 @@ services:
     # appview(api)
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof}
     profiles: ['', 'atproto']
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/bsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} App View"
     ports:
       - 2584:2584
       - 3001:3001 # dataplane port # temporarily exposing for debugging
@@ -455,6 +522,23 @@ services:
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+       - SENTRY_ORG=${SENTRY_ORG-}
+       - SENTRY_PROJECT=${SENTRY_PROJECT-}
+       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT-}
+       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN-}
+       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY-}
+       - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
     ports:
       - 8100:8100
     command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
@@ -520,6 +604,17 @@ services:
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskyogcard
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3003:3003 # this is what we're configuring it to listen on
@@ -549,6 +644,16 @@ services:
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.embedr
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
     ports: []
       # - 8100:8100 # this is the default port it listens on, same as social-app
       # - 8101:8101 # this is the default port we're telling it to listen on
@@ -590,6 +695,16 @@ services:
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskylink
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     ports: []
       # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
       # - 3004:3004 # this is what we're configuring it to listen on
@@ -629,6 +744,17 @@ services:
   palomar:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof}
     profiles: ['', 'indigo']
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
     command: ['/palomar', 'run']
     ports:
@@ -664,6 +790,14 @@ services:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     profiles: ['', 'jetstream']
+    build:
+      context: ./repos/jetstream/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 6008:6008
       # - 6009:6009 metrics address
@@ -687,6 +821,14 @@ services:
     image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
     #   image: itaru2622/bluesky-ozone:latest
     profiles: ['', 'ozone']
+    build:
+      context: ./repos/ozone/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 3005:3005
     <<: *certificate-volumes
@@ -733,6 +875,14 @@ services:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
     profiles: ['', 'atproto']
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: node --enable-source-maps api.js
     ports:
       - 3006:3006
@@ -772,6 +922,14 @@ services:
   ozone-daemon:
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
     profiles: ['', 'atproto']
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: node --enable-source-maps daemon.js
     <<: *certificate-volumes
     env_file: config/ozone-secrets.env
@@ -809,6 +967,14 @@ services:
     # image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     profiles: ['', 'feed-generator']
+    build:
+      context: ./repos/feed-generator/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
       - 2586:3008
     environment:
@@ -932,6 +1098,9 @@ services:
   # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
   otel-collector:
     image: ${BRANDED_NAMESPACE}/otel-collector:latest
+    build:
+      context: .
+      dockerfile: ops/otel-collector-Dockerfile
     volumes:
       - "./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml"
     command:

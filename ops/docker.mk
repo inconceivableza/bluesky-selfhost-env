@@ -88,8 +88,9 @@ docker-compose-exec:
 	${dockerCompose} --env-file=${params_file} ${cmd}
 
 
+# this strips the service build sections out of the docker compose file, in case you don't want them - output to your choice
 _gen_compose_for_binary:
-	cat docker-compose-builder.yaml | yq -yY 'del(.services[].build)' > docker-compose.yaml
+	cat docker-compose.yaml | yq -yY 'del(.services[].build)'
 
 # target to configure variable
 _applySdep:

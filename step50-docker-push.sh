@@ -25,7 +25,7 @@ docker_images_json="$(docker image ls --format json)" || { echo Error listing do
 failures=""
 for built_service in $BUILT_SERVICES
   do
-    image_name="$(yq ".services.$built_service.image" docker-compose-builder.yaml | sed 's#^[^/]*/##' | sed 's#:[^:]*$##' | sed 's#[$]{REBRANDING_NAME[^}]*}#'"${REBRANDING_NAME}#")"
+    image_name="$(yq ".services.$built_service.image" docker-compose.yaml | sed 's#^[^/]*/##' | sed 's#:[^:]*$##' | sed 's#[$]{REBRANDING_NAME[^}]*}#'"${REBRANDING_NAME}#")"
     if [ "${REBRANDED_SERVICES/${built_service}/}" != "${REBRANDED_SERVICES}" ]
       then
         show_error "Domain-specific build" "of service $built_service for $REBRANDING_NAME and domain $DOMAIN - should not be tagged with domain"
@@ -54,6 +54,6 @@ if [ "$failures" != "" ]
 
 # show_heading "Building other images" "without domain customization"
 # 2) build images with original
-# make build DOMAIN= f=./docker-compose-builder.yaml 
+# make build DOMAIN= f=./docker-compose.yaml 
 
 

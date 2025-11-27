@@ -32,10 +32,10 @@ for service in $BUILD_SERVICES
     if [ "${REBRANDED_SERVICES/${service}/}" == "${REBRANDED_SERVICES}" ]
       then
         show_heading "Building $service" "without domain customizations"
-        make build DOMAIN= f=./docker-compose-builder.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
+        make build DOMAIN= f=./docker-compose.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
       else
         show_heading "Building $service" "customized for domains in env files"
-        make build DOMAIN= f=./docker-compose-builder.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
+        make build DOMAIN= f=./docker-compose.yaml services=$service build_args="$BUILD_ARGS" || failures="$failures $service"
       fi
     # 1) build image, customized for domain
   done

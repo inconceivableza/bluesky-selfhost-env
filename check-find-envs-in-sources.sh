@@ -14,6 +14,6 @@ make exec under=./repos/* cmd='git ls-files | grep -v -e /tests/ -e /__ -e Makef
 
 show_heading "Creating table" "mapping environment and container to value from source and docker compose"
 # create table showing { env x container => value } with selfhost_scripts script.
-cat ./docker-compose-builder.yaml | ./selfhost_scripts/compose2envtable/venv/bin/python ./selfhost_scripts/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
+cat ./docker-compose.yaml | ./selfhost_scripts/compose2envtable/venv/bin/python ./selfhost_scripts/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
 show_info "Table created" "in ./docs/env-container-val.xslx"
 

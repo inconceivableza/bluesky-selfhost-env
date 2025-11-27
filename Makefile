@@ -141,7 +141,6 @@ envs: derived-envs secret-envs
 
 # docker-compose file
 f ?=${wDir}/docker-compose.yaml
-#f ?=${wDir}/docker-compose-builder.yaml
 
 # folders of repos
 #_nrepo  ?=social-app/submodules/atproto indigo social-app feed-generator did-method-plc pds ozone jetstream

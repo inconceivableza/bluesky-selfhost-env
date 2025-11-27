@@ -356,7 +356,7 @@ Then, build the docker images as follows:
 make patch-dockerbuild
 
 # 1) Build the images
-make build DOMAIN= f=./docker-compose-builder.yaml
+make build DOMAIN= f=./docker-compose.yaml
 ```
 
 [back to top](#top)
@@ -394,18 +394,18 @@ _yqpath='.services[].environment, .services[].build.args'
 _yqpath='.services[].environment'
 
 # List of var=val
-cat ./docker-compose-builder.yaml | yq -y "${_yqpath}" \
+cat ./docker-compose.yaml | yq -y "${_yqpath}" \
   | grep -v '^---' | sed 's/^- //' | sort -u -f
 
 # Output in yaml
-cat ./docker-compose-builder.yaml | yq -y "${_yqpath}" \
+cat ./docker-compose.yaml | yq -y "${_yqpath}" \
   | grep -v '^---' | sed 's/^- //' | sort -u -f  \
   | awk -F= -v col=":" -v q="'" -v sp="  " -v list="-" '{print   sp list sp q $1 q col sp q $2 q}' \
   | sed '1i defs:' | yq -y
 
 
 # List of names
-cat ./docker-compose-builder.yaml | yq -y "${_yqpath}" \
+cat ./docker-compose.yaml | yq -y "${_yqpath}" \
   | grep -v '^---' | sed 's/^- //' | sort -u -f \
   | awk -F= '{print $1}' | sort -u -f
 ```
@@ -414,12 +414,12 @@ cat ./docker-compose-builder.yaml | yq -y "${_yqpath}" \
 
 ```bash
 # get {name=value} of env vars regarding { URL | DID | DOMAIN }
-cat ./docker-compose-builder.yaml | yq -y .services[].environment \
+cat ./docker-compose.yaml | yq -y .services[].environment \
  | grep -v '^---' | sed 's/^- //' | sort -u -f \
  | grep -e :// -e did: -e {DOMAIN}
 
 # get names of env vars regarding { URL | DID | DOMAIN }
-cat ./docker-compose-builder.yaml | yq -y .services[].environment \
+cat ./docker-compose.yaml | yq -y .services[].environment \
  | grep -v '^---' | sed 's/^- //' | sort -u -f \
  | grep -e :// -e did: -e {DOMAIN} \
  | awk -F= '{print $1}' | sort -u -f \
@@ -517,7 +517,7 @@ This task uses the result(/tmp/envs.txt) of [the above](#hack-EnvVars-Sources) a
 
 ```bash
 # Create table showing { env x container => value } with the selfhost_scripts script.
-cat ./docker-compose-builder.yaml | ./selfhost_scripts/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
+cat ./docker-compose.yaml | ./selfhost_scripts/compose2envtable/main.py -l /tmp/envs.txt -o ./docs/env-container-vals.xlsx
 ```
 
 [back to top](#top)
