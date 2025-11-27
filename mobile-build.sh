@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-script_path="`realpath "$0"`"
-script_dir="`dirname "$script_path"`"
+script_path="$(realpath "$0")"
+script_dir="$(dirname "$script_path")"
 script_name="${0##*/}"
 . "$script_dir/utils-logging.sh"
 
@@ -17,19 +17,19 @@ intl_target=build
 build_number_increment=1
 
 function show_usage() {
-  echo "Syntax $0 [-?|-h|--help] $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
+  echo "Syntax $0 [-?|-h|--help] ${target_args_usage}[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
 }
 
 function get_build_profiles() {
-  jq -r '.build | keys[]' $script_dir/repos/social-app/eas.json | grep -v base
+  jq -r '.build | keys[]' "$script_dir/repos/social-app/eas.json" | grep -v base
 }
 
 function query_eas_profile() {
-  jq -r '.build."'${build_profile}'"'"$1" $script_dir/repos/social-app/eas.json
+  jq -r '.build."'${build_profile}'"'"$1" "$script_dir/repos/social-app/eas.json"
 }
 
 function show_help() {
-  echo "Usage: $0 $target_args_usage[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
+  echo "Usage: $0 ${target_args_usage}[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
   echo
   if [ "$named_target" != "" ]; then
     echo "Build the social-app for $named_target"
@@ -142,16 +142,16 @@ nvm use 20
 
 function get_expected_extension() {
   [ "$target_os" == "ios" ] && {
-    forSimulator="`query_eas_profile ".ios.simulator"`"
+    forSimulator="$(query_eas_profile ".ios.simulator")"
     [ "$forSimulator" == "true" ] && { echo tgz ; return 0 ; }
     echo ipa ; return 0
   }
   # based on https://docs.expo.dev/build-reference/apk/
-  devClient="`jq -r .build.${build_profile}.developmentClient eas.json`"
-  dist="`jq -r .build.${build_profile}.distribution eas.json`"
-  buildType="`jq -r .build.${build_profile}.android.buildType eas.json`"
-  gradCmd="`jq -r .build.${build_profile}.android.gradleCommand eas.json`"
-  [ "$buildType" != "" ] && [ "$buildType" != null ] && { echo $buildType ; return 0; }
+  devClient="$(jq -r .build.${build_profile}.developmentClient eas.json)"
+  dist="$(jq -r .build.${build_profile}.distribution eas.json)"
+  buildType="$(jq -r .build.${build_profile}.android.buildType eas.json)"
+  gradCmd="$(jq -r .build.${build_profile}.android.gradleCommand eas.json)"
+  [ "$buildType" != "" ] && [ "$buildType" != null ] && { echo "$buildType" ; return 0; }
   [ "$gradCmd" != "" ] && [ "$gradCmd" != null ] && { show_warning "Cannot determine extension" "profile $build_profile has gradle command configured" ; return 1 ; }
   if [ "$dist" == "internal" ] || [ "$devClient" == "true" ]
     then
@@ -162,15 +162,15 @@ function get_expected_extension() {
 }
 
 show_heading "Determining build info" "to set filename etc"
-build_flavour=${build_profile}
-build_name="`jq -r .name package.json`"
-build_version="`jq -r .version package.json`"
-current_build_number=$(npx eas-cli build:version:get -p $target_os -e $build_profile --non-interactive --json | jq -r '.[]')
-build_date="`date +%Y%m%d`"
-build_timestamp="`date +%H%M%S`"
+build_flavour="${build_profile}"
+build_name="$(jq -r .name package.json)"
+build_version="$(jq -r .version package.json)"
+current_build_number=$(npx eas-cli build:version:get -p "$target_os" -e "$build_profile" --non-interactive --json | jq -r '.[]')
+build_date="$(date +%Y%m%d)"
+build_timestamp="$(date +%H%M%S)"
 output_dir="$script_dir/tmp-builds/${target_os}-${build_name}-${build_version}-${build_date}-${build_timestamp}"
 build_id="${build_name}-${build_version}-${build_flavour}-${build_date}-${build_timestamp}"
-target_ext=`get_expected_extension`
+target_ext=$(get_expected_extension)
 [ "$target_ext" == "" ] && exit 1
 target_dir="$script_dir/${target_os}-builds/"
 build_file="$build_id.$target_ext"
@@ -183,12 +183,13 @@ show_info --oneline "Creating temporary build output directory" "at ${output_dir
 mkdir -p "$output_dir"
 mkdir -p "$target_dir"
 
-$script_dir/generate-env-files.sh
+"$script_dir"/generate-env-files.sh
 
 function get_eas_build_base {
+  [ -d "$TMPDIR"/eas-build-local-nodejs ] || mkdir "$TMPDIR"/eas-build-local-nodejs
   tmpfile="$(mktemp -t eas-build-local-nodejs/)"
   rm "$tmpfile"
-  echo "$(dirname "$tmpfile")"
+  dirname "$tmpfile"
 }
 
 export EAS_LOCAL_BUILD_WORKINGDIR="$(get_eas_build_base)/$(uuidgen | tr A-F a-f)"
@@ -197,10 +198,10 @@ export build_dir="$EAS_LOCAL_BUILD_WORKINGDIR"
 
 if [ "$keep_tmp" == 1 ]
   then
-    show_info --oneline "Keeping temporary files" "for inspection after build - remove once finished:" $build_dir
+    show_info --oneline "Keeping temporary files" "for inspection after build - remove once finished:" "$build_dir"
     export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
   else
-    show_info --oneline "Temporary build output directory" $build_dir
+    show_info --oneline "Temporary build output directory" "$build_dir"
   fi
 
 function pre_exit {
@@ -245,7 +246,7 @@ fi
 show_heading "Running prebuild" "for profile $build_profile"
 
 export EXPO_PUBLIC_ENV=${build_profile}
-if yarn prebuild -p $target_os
+if yarn prebuild -p "$target_os"
   then
     show_info --oneline "Prebuild completed" "for profile $build_profile"
   else
@@ -255,9 +256,13 @@ if yarn prebuild -p $target_os
 
 show_heading "Running build" "for profile $build_profile to generate $build_file"
 
-rm -r $TMPDIR/metro-cache/
+[ -d "$TMPDIR"/metro-cache/ ] && {
+  # to avoid https://github.com/expo/expo/issues/40145 and the like
+  show_info --oneline "Clearing metro cache" "to prevent obscure build errors"
+  rm -r "$TMPDIR"/metro-cache/
+}
 
-if npx eas-cli build -p ${target_os} --local -e ${build_profile} --output="$output_dir/$build_file"
+if npx eas-cli build -p "${target_os}" --local -e "${build_profile}" --output="$output_dir/$build_file"
   then
     cd "$output_dir"
     if [ -f "$build_file" ]
@@ -271,31 +276,31 @@ if npx eas-cli build -p ${target_os} --local -e ${build_profile} --output="$outp
     if [ "$target_ext" == "aab" ]
       then
         app_name="${REBRANDING_NAME:=bluesky}"
-        [ -f ${app_name}.apks ] && {
-          backup_file=${app_name}-"$(stat -t --format="%y" ${app_name}.apks | cut -c 1-16 | sed 's/[- :]//g')".apks
+        [ -f "${app_name}.apks" ] && {
+          backup_file="${app_name}-$(stat -t --format="%y" "${app_name}.apks" | cut -c 1-16 | sed 's/[- :]//g')".apks
           show_warning "Renaming intermediate file" "${app_name}.apks -> ${backup_file}"
-          mv ${app_name}.apks ${backup_file}
-          ls -l ${backup_file}
+          mv "${app_name}.apks" "${backup_file}"
+          ls -l "${backup_file}"
         }
         show_info "Extracting apk" "and renaming to ${app_name}"
         # FIXME: this requires credentials to have been downloaded
-        echo bundletool build-apks --bundle $build_file --output=${app_name}.apks --mode=universal
-        bundletool build-apks --bundle $build_file --output=${app_name}.apks --mode=universal || { show_error "bundletool failing" "dumping env" ; export ; }
-        ls -l ${app_name}.apks
-        unzip ${app_name}.apks universal.apk
-        rm ${app_name}.apks
-        mv universal.apk ${target_dir}/${build_id}.apk
-        touch -r $build_file ${target_dir}/${build_id}.apk
-        mv ${build_file} ${target_dir}/${build_id}.aab
+        echo bundletool build-apks --bundle "$build_file" --output="${app_name}.apks" --mode=universal
+        bundletool build-apks --bundle "$build_file" --output="${app_name}.apks" --mode=universal || { show_error "bundletool failing" "dumping env" ; export ; }
+        ls -l "${app_name}.apks"
+        unzip "${app_name}.apks" universal.apk
+        rm "${app_name}.apks"
+        mv universal.apk "${target_dir}/${build_id}.apk"
+        touch -r "$build_file" "${target_dir}/${build_id}.apk"
+        mv "${build_file}" "${target_dir}/${build_id}.aab"
       else
         show_info "Moving build file" "${build_file} to ${output_dir}"
-        mv ${build_file} ${target_dir}/${build_file}
+        mv "${build_file}" "${target_dir}/${build_file}"
       fi
     show_info "Cleaning up tmp build output dir" "${output_dir}"
     cd "${target_dir}"
     rmdir "${output_dir}"
     show_info "${target_os_name} app build complete" "and available in ${target_dir}"
-    ls -l ${build_id}.*
+    ls -l "${build_id}".*
   else
     pre_exit "Error building ${target_os_name} app:" "see above for details"
     exit 1
