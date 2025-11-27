@@ -1,4 +1,4 @@
-name: Deploy to Docker Swarm
+name: Deploy all services
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
           - staging
           - production
       force_recreate_secrets:
-        description: 'Force recreate all Docker secrets'
+        description: 'Force recreate all Docker secrets (results in downtime)'
         required: false
         type: boolean
         default: false
@@ -38,7 +38,63 @@ jobs:
 
       - name: Create deployment directory on server
         run: |
-          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} "mkdir -p ~/bluesky-deploy/${{ inputs.environment }}"
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} "mkdir -p ~/deploy/${{ inputs.environment }}"
+
+      - name: Fetch latest image tags from Docker Hub
+        run: |
+          if docker compose -f docker-compose.swarm.yaml config > /dev/null 2>&1; then
+            echo "Docker Compose file is valid."
+          else
+            echo "Error: Docker Compose file contains errors."
+            docker compose -f docker-compose.swarm.yaml config # This will print the error messages
+            exit 1
+          fi
+
+          echo "Fetching latest image tags from Docker Hub..."
+
+          # Export environment variables needed for docker compose config
+          export BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+          export REBRANDING_NAME="${{ vars.REBRANDING_NAME }}"
+          # TODO: rather just provide a set list of services
+          # Use docker compose config to resolve variables and extract images
+          IMAGES=$(docker compose -f docker-compose.swarm.yaml config 2>/dev/null | \
+                   grep -E "^\s+image:" | \
+                   awk '{print $2}' | \
+                   sed "s/'//g" | \
+                   grep "^${BRANDED_NAMESPACE}/" | \
+                   sort -u)
+
+          echo "Found images using ${BRANDED_NAMESPACE}:"
+          echo "$IMAGES"
+          echo ""
+
+          # For each image, extract repository name and fetch latest tag
+          for IMAGE in $IMAGES; do
+            # Extract repository name (remove namespace/ prefix and :tag suffix)
+            REPO=$(echo "$IMAGE" | sed -E "s|^${BRANDED_NAMESPACE}/||" | sed -E 's|:.*$||')
+
+            echo "Fetching tags for ${BRANDED_NAMESPACE}/${REPO}..."
+
+            # Call Docker Hub API
+            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${BRANDED_NAMESPACE}/${REPO}/tags/?page_size=1")
+            LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[0].name')
+
+            if [ -n "$LATEST_TAG" ]; then
+              # Convert repo name to uppercase and replace hyphens with underscores for env var name
+              ENV_VAR_NAME=$(echo "${REPO}" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_IMAGE_TAG
+
+              echo "${ENV_VAR_NAME}=${LATEST_TAG}" >> $GITHUB_ENV
+              echo "  ✓ ${ENV_VAR_NAME}=${LATEST_TAG}"
+            else
+              echo "  ⚠ No tags found for ${BRANDED_NAMESPACE}/${REPO}"
+            fi
+
+            # Rate limit: wait a bit between API calls
+            sleep 0.5
+          done
+
+          echo ""
+          echo "Image tag discovery complete"
 
       - name: Create .env file from environment variables
         run: |
@@ -46,189 +102,205 @@ jobs:
           # Generated from GitHub Environment: ${{ inputs.environment }}
           # Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-          # Domain Configuration
-          DOMAIN=${{ vars.DOMAIN }}
-          HOST_HOSTNAME=${{ vars.HOST_HOSTNAME }}
+          BSKY_IMAGE_TAG="${{ env.FOODIOS_ATPROTO_BSKY_IMAGE_TAG }}"
+          PDS_IMAGE_TAG="${{ env.FOODIOS_ATPROTO_PDS_IMAGE_TAG }}"
+          PLC_IMAGE_TAG="${{ env.FOODIOS_DID_METHOD_PLC_IMAGE_TAG }}"
+          BGS_IMAGE_TAG="${{ env.FOODIOS_INDIGO_BGS_IMAGE_TAG }}"
+          PALOMAR_IMAGE_TAG="${{ env.FOODIOS_INDIGO_PALOMAR_IMAGE_TAG }}"
+          SOCIAL_APP_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_APP_IMAGE_TAG }}"
+          SOCIAL_CARD_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_CARD_IMAGE_TAG }}"
+          SOCIAL_EMBED_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_EMBED_IMAGE_TAG }}"
+          SOCIAL_LINK_IMAGE_TAG="${{ env.FOODIOS_SOCIAL_LINK_IMAGE_TAG }}"
+          OTEL_IMAGE_TAG="${{ env.OTEL_COLLECTOR_IMAGE_TAG }}"
+          CADDY_IMAGE_TAG="${{ env.CADDY_IMAGE_TAG }}"
+          IPCC_IMAGE_TAG="${{ env.IP_LOCATION_SERVICE_BSKY_IMAGE_TAG }}"
 
+          # Domain Configuration
+          DOMAIN="${{ vars.DOMAIN }}"
           # FQDNs
-          apiFQDN=${{ vars.API_FQDN }}
-          bgsFQDN=${{ vars.BGS_FQDN }}
-          bskyFQDN=${{ vars.BSKY_FQDN }}
-          cardFQDN=${{ vars.CARD_FQDN }}
-          embedFQDN=${{ vars.EMBED_FQDN }}
-          feedgenFQDN=${{ vars.FEEDGEN_FQDN }}
-          ipFQDN=${{ vars.IP_FQDN }}
-          jetstreamFQDN=${{ vars.JETSTREAM_FQDN }}
-          linkFQDN=${{ vars.LINK_FQDN }}
-          ozoneFQDN=${{ vars.OZONE_FQDN }}
-          palomarFQDN=${{ vars.PALOMAR_FQDN }}
-          pdsFQDN=${{ vars.PDS_FQDN }}
-          plcFQDN=${{ vars.PLC_FQDN }}
-          publicApiFQDN=${{ vars.PUBLIC_API_FQDN }}
-          socialappFQDN=${{ vars.SOCIAL_APP_FQDN }}
+          apiFQDN="${{ vars.APIFQDN }}"
+          bgsFQDN="${{ vars.BGSFQDN }}"
+          bskyFQDN="${{ vars.BSKYFQDN }}"
+          cardFQDN="${{ vars.CARDFQDN }}"
+          embedFQDN="${{ vars.EMBEDFQDN }}"
+          feedgenFQDN="${{ vars.FEEDGENFQDN }}"
+          ipFQDN="${{ vars.IPFQDN }}"
+          jetstreamFQDN="${{ vars.JETSTREAMFQDN }}"
+          linkFQDN="${{ vars.LINKFQDN }}"
+          ozoneFQDN="${{ vars.OZONEFQDN }}"
+          palomarFQDN="${{ vars.PALOMARFQDN }}"
+          pdsFQDN="${{ vars.PDSFQDN }}"
+          plcFQDN="${{ vars.PLCFQDN }}"
+          publicApiFQDN="${{ vars.PUBLICAPIFQDN }}"
+          socialappFQDN="${{ vars.SOCIALAPPFQDN }}"
 
           # Email Configuration
-          EMAIL4CERTS=${{ vars.EMAIL_FOR_CERTS }}
-          PDS_EMAIL_FROM_ADDRESS=${{ vars.PDS_EMAIL_FROM_ADDRESS }}
-          PDS_EMAIL_IMAGES_BASE_URL=${{ vars.PDS_EMAIL_IMAGES_BASE_URL }}
-          PDS_EMAIL_SMTP_URL=${{ secrets.PDS_EMAIL_SMTP_URL }}
+          EMAIL4CERTS="${{ vars.EMAIL4CERTS }}"
+          PDS_EMAIL_FROM_ADDRESS="${{ vars.PDS_EMAIL_FROM_ADDRESS }}"
+          PDS_EMAIL_IMAGES_BASE_URL="${{ vars.PDS_EMAIL_IMAGES_BASE_URL }}"
+          PDS_EMAIL_SMTP_URL="${{ vars.PDS_EMAIL_SMTP_URL }}"
 
           # Image Configuration
-          BRANDED_NAMESPACE=${{ vars.BRANDED_NAMESPACE }}
-          UNBRANDED_NAMESPACE=${{ vars.UNBRANDED_NAMESPACE }}
-          REBRANDING_NAME=${{ vars.REBRANDING_NAME }}
-          asof=${{ vars.IMAGE_TAG_ASOF }}
-          branded_asof=${{ vars.IMAGE_TAG_BRANDED_ASOF }}
+          BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+          UNBRANDED_NAMESPACE="${{ vars.UNBRANDED_NAMESPACE }}"
+          REBRANDING_NAME="${{ vars.REBRANDING_NAME }}"
+          asof="${{ vars.ASOF }}"
+          branded_asof="${{ vars.BRANDED_ASOF }}"
 
           # Database Configuration
-          POSTGRES_USER=${{ vars.POSTGRES_USER }}
+          POSTGRES_USER="${{ vars.POSTGRES_USER }}"
 
           # Network Configuration
-          docker_network=foodios-net
-          CUSTOM_CERTS_DIR=/usr/local/share/ca-certificates
+          docker_network="foodios-net"
 
           # TLS Configuration
-          GOINSECURE=${{ vars.GOINSECURE }}
-          NODE_TLS_REJECT_UNAUTHORIZED=${{ vars.NODE_TLS_REJECT_UNAUTHORIZED }}
+          GOINSECURE="${{ vars.GOINSECURE }}"
+          NODE_TLS_REJECT_UNAUTHORIZED="${{ vars.NODE_TLS_REJECT_UNAUTHORIZED }}"
 
           # Logging
-          LOG_LEVEL_DEFAULT=${{ vars.LOG_LEVEL_DEFAULT || 'info' }}
+          LOG_LEVEL_DEFAULT="${{ vars.LOG_LEVEL_DEFAULT || 'info' }}"
 
           # PDS Configuration
-          PDS_INVITE_REQUIRED=${{ vars.PDS_INVITE_REQUIRED || 'false' }}
-          PDS_INVITE_INTERVAL=${{ vars.PDS_INVITE_INTERVAL }}
+          PDS_INVITE_REQUIRED="${{ vars.PDS_INVITE_REQUIRED || 'false' }}"
+          PDS_INVITE_INTERVAL="${{ vars.PDS_INVITE_INTERVAL }}"
 
           # Social App Configuration
-          SOCIAL_APP_NAME=${{ vars.SOCIAL_APP_NAME }}
-          SOCIAL_APP_DESCRIPTION=${{ vars.SOCIAL_APP_DESCRIPTION }}
-          SOCIAL_APP_EMOJI=${{ vars.SOCIAL_APP_EMOJI }}
-          SOCIAL_APP_URL=${{ vars.SOCIAL_APP_URL }}
-          SOCIAL_HELP_DESK_URL=${{ vars.SOCIAL_HELP_DESK_URL }}
-          SOCIAL_POLICY_BASE_URL=${{ vars.SOCIAL_POLICY_BASE_URL }}
+          SOCIAL_APP_NAME="${{ vars.SOCIAL_APP_NAME }}"
+          SOCIAL_APP_DESCRIPTION="${{ vars.SOCIAL_APP_DESCRIPTION }}"
+          SOCIAL_APP_EMOJI="${{ vars.SOCIAL_APP_EMOJI }}"
+          SOCIAL_APP_URL="${{ vars.SOCIAL_APP_URL }}"
+          SOCIAL_HELP_DESK_URL="${{ vars.SOCIAL_HELP_DESK_URL }}"
+          SOCIAL_POLICY_BASE_URL="${{ vars.SOCIAL_POLICY_BASE_URL }}"
 
           # Optional Configuration
-          BSKY_LABELS_FROM_ISSUER_DIDS=${{ vars.BSKY_LABELS_FROM_ISSUER_DIDS }}
-          BSKY_STATSIG_ENV=${{ vars.BSKY_STATSIG_ENV }}
-          FEEDGEN_PUBLISHER_DID=${{ vars.FEEDGEN_PUBLISHER_DID }}
-          dmServiceDID=${{ vars.DM_SERVICE_DID }}
-          gifFQDN=${{ vars.GIF_FQDN }}
-          OZONE_SERVER_DID=${{ vars.OZONE_SERVER_DID }}
-          OZONE_ADMIN_HANDLE=${{ vars.OZONE_ADMIN_HANDLE }}
-          OZONE_ADMIN_DIDS=${{ vars.OZONE_ADMIN_DIDS }}
+          BSKY_LABELS_FROM_ISSUER_DIDS="${{ vars.BSKY_LABELS_FROM_ISSUER_DIDS }}"
+          BSKY_STATSIG_ENV="${{ vars.BSKY_STATSIG_ENV }}"
+          FEEDGEN_PUBLISHER_DID="${{ vars.FEEDGEN_PUBLISHER_DID }}"
+          dmServiceDID="${{ vars.DMSERVICEDID }}"
+          gifFQDN="${{ vars.GIFFQDN }}"
+          OZONE_SERVER_DID="${{ vars.OZONE_SERVER_DID }}"
+          OZONE_ADMIN_HANDLE="${{ vars.OZONE_ADMIN_HANDLE }}"
+          OZONE_ADMIN_DIDS="${{ vars.OZONE_ADMIN_DIDS }}"
 
           # Statsig
-          STATSIG_CLIENT_KEY=${{ vars.STATSIG_CLIENT_KEY }}
-          STATSIG_API_URL=${{ vars.STATSIG_API_URL }}
-          STATUS_PAGE_URL=${{ vars.STATUS_PAGE_URL }}
+          STATSIG_CLIENT_KEY="${{ vars.STATSIG_CLIENT_KEY }}"
+          STATSIG_API_URL="${{ vars.STATSIG_API_URL }}"
+          STATUS_PAGE_URL="${{ vars.STATUS_PAGE_URL }}"
 
           # Backup Configuration
-          RESTIC_AUTO_REMOTE=${{ vars.RESTIC_AUTO_REMOTE }}
-          RESTIC_REMOTE_REPO1=${{ vars.RESTIC_REMOTE_REPO1 }}
-          RESTIC_REMOTE_REPO2=${{ vars.RESTIC_REMOTE_REPO2 }}
-          RESTIC_REMOTE_REPO3=${{ vars.RESTIC_REMOTE_REPO3 }}
-          RESTIC_AWS_ACCESS_KEY_ID=${{ secrets.RESTIC_AWS_ACCESS_KEY_ID }}
-          RESTIC_GOOGLE_PROJECT_ID=${{ vars.RESTIC_GOOGLE_PROJECT_ID }}
-          RESTIC_GOOGLE_APPLICATION_CREDENTIALS=${{ vars.RESTIC_GOOGLE_APPLICATION_CREDENTIALS }}
+          RESTIC_AUTO_REMOTE="${{ vars.RESTIC_AUTO_REMOTE }}"
+          RESTIC_REMOTE_REPO1="${{ vars.RESTIC_REMOTE_REPO1 }}"
+          RESTIC_REMOTE_REPO2="${{ vars.RESTIC_REMOTE_REPO2 }}"
+          RESTIC_REMOTE_REPO3="${{ vars.RESTIC_REMOTE_REPO3 }}"
+          RESTIC_AWS_ACCESS_KEY_ID="${{ vars.RESTIC_AWS_ACCESS_KEY_ID }}"
+          RESTIC_GOOGLE_PROJECT_ID="${{ vars.RESTIC_GOOGLE_PROJECT_ID }}"
 
           # Caddy Configuration
-          CADDY_HTTP_PORT=${{ vars.CADDY_HTTP_PORT || '80' }}
-          CADDY_HTTPS_PORT=${{ vars.CADDY_HTTPS_PORT || '443' }}
-          CADDY_DNS_PROVIDER=${{ vars.CADDY_DNS_PROVIDER }}
-          CADDY_DNS_API_TOKEN=${{ secrets.CADDY_DNS_API_TOKEN }}
-          CADDY_DNS_RESOLVER=${{ vars.CADDY_DNS_RESOLVER }}
-          CADDY_DNS_USED=${{ vars.CADDY_DNS_USED }}
-          TRUSTED_PROXIES=${{ vars.TRUSTED_PROXIES }}
-          haproxyFORWARD=${{ vars.HAPROXY_FORWARD }}
+          CADDY_HTTP_PORT="${{ vars.CADDY_HTTP_PORT || '80' }}"
+          CADDY_HTTPS_PORT="${{ vars.CADDY_HTTPS_PORT || '443' }}"
+          CADDY_DNS_PROVIDER="${{ vars.CADDY_DNS_PROVIDER }}"
+          CADDY_DNS_API_TOKEN="${{ secrets.CADDY_DNS_API_TOKEN }}"
+          CADDY_DNS_RESOLVER="${{ vars.CADDY_DNS_RESOLVER }}"
+          CADDY_DNS_USED="${{ vars.CADDY_DNS_USED }}"
+          TRUSTED_PROXIES="${{ vars.TRUSTED_PROXIES }}"
+          haproxyFORWARD="${{ vars.HAPROXY_FORWARD }}"
 
           # Update Certs Command
-          UPDATE_CERTS_CMD=${{ vars.UPDATE_CERTS_CMD || 'true' }}
+          UPDATE_CERTS_CMD="${{ vars.UPDATE_CERTS_CMD || 'true' }}"
 
           # Static Web Directory
-          PDS_WEB_DIR=${{ vars.PDS_WEB_DIR || 'staticweb' }}
+          PDS_WEB_DIR="${{ vars.PDS_WEB_DIR || 'staticweb' }}"
+
+          NODE_ENV="${{ inputs.environment }}"
           EOF
+      
 
       - name: Create config directory structure
         run: |
-          mkdir -p config/init-postgres config/backup config/caddy config/telemetry
+          mkdir -p config/init-postgres config/backup config/caddy config/telemetry secrets
 
       - name: Create database secrets file
         run: |
-          cat > config/db-secrets.env << 'EOF'
+          cat > secrets/db-secrets.env << 'EOF'
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           EOF
 
       - name: Create BGS secrets file
         run: |
-          cat > config/bgs-secrets.env << 'EOF'
+          cat > secrets/bgs-secrets.env << 'EOF'
           BGS_ADMIN_KEY=${{ secrets.BGS_ADMIN_KEY }}
           DATABASE_URL=${{ secrets.BGS_DATABASE_URL }}
           EOF
 
       - name: Create PDS secrets file
         run: |
-          cat > config/pds-secrets.env << 'EOF'
+          cat > secrets/pds-secrets.env << 'EOF'
           PDS_JWT_SECRET=${{ secrets.PDS_JWT_SECRET }}
           PDS_ADMIN_PASSWORD=${{ secrets.PDS_ADMIN_PASSWORD }}
-          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY }}
-          DATABASE_URL=${{ secrets.PDS_DATABASE_URL }}
+          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=${{ secrets.PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX }}
           EOF
 
       - name: Create Bsky secrets file
         run: |
-          cat > config/bsky-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.BSKY_DATABASE_URL }}
-          BSKY_APPVIEW_DB_POSTGRES_URL=${{ secrets.BSKY_APPVIEW_DB_URL }}
+          cat > secrets/bsky-secrets.env << 'EOF'
+          BSKY_DB_POSTGRES_URL=${{ secrets.BSKY_DB_POSTGRES_URL }}
+          BSKY_SERVICE_SIGNING_KEY=${{ secrets.BSKY_SERVICE_SIGNING_KEY }}
           EOF
 
       - name: Create PLC secrets file
         run: |
-          cat > config/plc-secrets.env << 'EOF'
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          cat > secrets/plc-secrets.env << 'EOF'
           DATABASE_URL=${{ secrets.PLC_DATABASE_URL }}
-          DB_CREDS_JSON=${{ secrets.PLC_DB_CREDS_JSON }}
-          DB_MIGRATE_CREDS_JSON=${{ secrets.PLC_DB_MIGRATE_CREDS_JSON }}
+          DB_CREDS_JSON=${{ secrets.DB_CREDS_JSON }}
+          DB_MIGRATE_CREDS_JSON=${{ secrets.DB_MIGRATE_CREDS_JSON }}
           EOF
 
       - name: Create Ozone secrets file
         run: |
-          cat > config/ozone-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.OZONE_DATABASE_URL }}
+          cat > secrets/ozone-secrets.env << 'EOF'
+          DATABASE_URL=${{ secrets.OZONE_DB_POSTGRES_URL }}
           OZONE_ADMIN_PASSWORD=${{ secrets.OZONE_ADMIN_PASSWORD }}
           OZONE_SIGNING_KEY_HEX=${{ secrets.OZONE_SIGNING_KEY_HEX }}
           EOF
 
       - name: Create OpenSearch secrets file
         run: |
-          cat > config/opensearch-secrets.env << 'EOF'
-          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
-          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_ADMIN_PASSWORD }}
+          cat > secrets/opensearch-secrets.env << 'EOF'
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
           EOF
 
       - name: Create Palomar secrets file
         run: |
-          cat > config/palomar-secrets.env << 'EOF'
-          ES_PASSWORD=${{ secrets.OPENSEARCH_PASSWORD }}
+          cat > secrets/palomar-secrets.env << 'EOF'
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
+          ES_PASSWORD=${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}
+          DATABASE_URL=${{ secrets.PALOMAR_DATABASE_URL }}
           EOF
 
       - name: Create Social Link secrets file
         run: |
-          cat > config/social-link-secrets.env << 'EOF'
-          DATABASE_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
-          LINK_DB_POSTGRES_URL=${{ secrets.SOCIAL_LINK_DATABASE_URL }}
+          cat > secrets/social-link-secrets.env << 'EOF'
+          DATABASE_URL=${{ secrets.LINK_DB_POSTGRES_URL }}
+          LINK_DB_POSTGRES_URL=${{ secrets.LINK_DB_POSTGRES_MIGRATION_URL }}
           EOF
 
       - name: Create Backup secrets file
         run: |
-          cat > config/backup-secrets.env << 'EOF'
+          cat > secrets/backup-secrets.env << 'EOF'
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          PGPASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          RESTIC_PASSWORD=${{ secrets.RESTIC_PASSWORD }}
           RESTIC_REMOTE_PASSWORD1=${{ secrets.RESTIC_REMOTE_PASSWORD1 }}
           RESTIC_REMOTE_PASSWORD2=${{ secrets.RESTIC_REMOTE_PASSWORD2 }}
           RESTIC_REMOTE_PASSWORD3=${{ secrets.RESTIC_REMOTE_PASSWORD3 }}
+          RESTIC_AWS_SECRET_ACCESS_KEY=${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}
           EOF
 
-      - name: Create Caddy dynamic config
+      - name: Create backup google credential secrets file
         run: |
-          touch config/caddy-dynamic.env
+          echo '${{ secrets.GOOGLE_BACKUP_CREDS }}' > secrets/google_creds.json
 
       - name: Copy files to server
         run: |
@@ -244,13 +316,11 @@ jobs:
           scp -r config/ \
             ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
 
-          # Copy other directories if they exist
-          for dir in staticweb selfhost_scripts; do
-            if [ -d "$dir" ]; then
-              scp -r $dir/ \
-                ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
-            fi
-          done
+          scp -r secrets/ ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/
+
+          scp -r selfhost_scripts/backup-scripts \
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/selfhost_scripts/
+        
 
       - name: Initialize Docker Swarm
         run: |
@@ -300,17 +370,24 @@ jobs:
             }
 
             echo "Managing Docker secrets..."
-            create_or_update_secret "db_secrets" "config/db-secrets.env"
-            create_or_update_secret "bgs_secrets" "config/bgs-secrets.env"
-            create_or_update_secret "pds_secrets" "config/pds-secrets.env"
-            create_or_update_secret "bsky_secrets" "config/bsky-secrets.env"
-            create_or_update_secret "plc_secrets" "config/plc-secrets.env"
-            create_or_update_secret "ozone_secrets" "config/ozone-secrets.env"
-            create_or_update_secret "opensearch_secrets" "config/opensearch-secrets.env"
-            create_or_update_secret "palomar_secrets" "config/palomar-secrets.env"
-            create_or_update_secret "social_link_secrets" "config/social-link-secrets.env"
-            create_or_update_secret "backup_secrets" "config/backup-secrets.env"
-
+            STACK_NAME="foodios-${{ inputs.environment }}"
+            if [ "$FORCE_RECREATE" = "true" ]; then
+              echo "⚠️ Taking down services in order to recreate secrets"
+              docker stack rm "$STACK_NAME" --detach=false
+            fi
+            docker stack rm foodios-staging
+            create_or_update_secret "db_secrets" "secrets/db-secrets.env"
+            create_or_update_secret "bgs_secrets" "secrets/bgs-secrets.env"
+            create_or_update_secret "pds_secrets" "secrets/pds-secrets.env"
+            create_or_update_secret "bsky_secrets" "secrets/bsky-secrets.env"
+            create_or_update_secret "plc_secrets" "secrets/plc-secrets.env"
+            create_or_update_secret "ozone_secrets" "secrets/ozone-secrets.env"
+            create_or_update_secret "opensearch_secrets" "secrets/opensearch-secrets.env"
+            create_or_update_secret "palomar_secrets" "secrets/palomar-secrets.env"
+            create_or_update_secret "social_link_secrets" "secrets/social-link-secrets.env"
+            create_or_update_secret "backup_secrets" "secrets/backup-secrets.env"
+            create_or_update_secret "google_backup_credentials" "secrets/google_creds.json"
+           
             echo "✅ Secrets management complete"
           ENDSSH
 
@@ -318,6 +395,16 @@ jobs:
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
             cd ~/deploy/${{ inputs.environment }}
+
+            # Create dummy files
+            mkdir -p certs
+            # Docker complains if config files are empty
+            echo "( ͡° ͜ʖ ͡°)" > ./certs/root.crt 
+            echo "¯\_(ツ)_/¯" > ./certs/root.key
+            echo "(˶ˆᗜˆ˵)" > ./certs/intermediate.crt
+            echo "₍^. .^₎⟆" > ./certs/ca-certificates.crt
+            
+            touch ./config/caddy-dynamic.env
 
             # Load environment variables
             set -a
@@ -327,17 +414,31 @@ jobs:
             STACK_NAME="foodios-${{ inputs.environment }}"
 
             echo "🚀 Deploying stack: $STACK_NAME"
-            docker stack deploy \
+            if docker stack deploy \
               -c docker-compose.swarm.yaml \
               "$STACK_NAME" \
-              --with-registry-auth \
-              --prune
+              --prune --detach=true; then
+              echo ""
+              echo "✅ Stack deployment command succeeded"
+            else
+              DEPLOY_EXIT_CODE=$?
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "❌ ERROR: Stack deployment failed with exit code $DEPLOY_EXIT_CODE"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              echo "Checking docker-compose.swarm.yaml syntax..."
+              docker compose -f docker-compose.swarm.yaml config > /dev/null 2>&1 || echo "⚠️  Compose file may have syntax errors"
+              echo ""
+              echo "Current stack services (if any):"
+              docker stack services "$STACK_NAME" 2>&1 || echo "No services found"
+              exit 1
+            fi
 
-            echo "✅ Deployment command executed"
             sleep 5
 
             echo ""
-            echo "📊 Service Status:"
+            echo "📊 Initial Service Status:"
             docker stack services "$STACK_NAME"
           ENDSSH
 
@@ -347,7 +448,7 @@ jobs:
             STACK_NAME="foodios-${{ inputs.environment }}"
             echo "⏳ Waiting for services to start..."
 
-            TIMEOUT=600
+            TIMEOUT=60
             ELAPSED=0
             INTERVAL=10
 
@@ -400,8 +501,8 @@ jobs:
         if: always()
         run: |
           ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
-            cd ~/bluesky-deploy/${{ inputs.environment }}
-            rm -f config/*-secrets.env
+            cd ~/deploy/${{ inputs.environment }}
+            rm -R secrets
             echo "🧹 Cleaned up sensitive files"
           ENDSSH
 
