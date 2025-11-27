@@ -419,10 +419,11 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - RELAY_NEWPDS_PERDAY_LIMIT=500
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - RELAY_DEFAULT_REPO_LIMIT=100000
+      - RELAY_NEWPDS_PERDAY_LIMIT=500
+      - RELAY_PERSISTER_DIR=/data/bigsky/events
     secrets:
       - bgs_secrets
     volumes:
@@ -554,12 +555,14 @@ services:
     environment:
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
+      - ATP_APPVIEW_URL=https://${apiFQDN}
       - EXPO_PUBLIC_ATP_PDS_DID=did:web:${pdsFQDN}
       - EXPO_PUBLIC_ATP_PDS_URL=https://${pdsFQDN}
       - EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - EXPO_PUBLIC_BLUESKY_PROXY_DID=did:web:${bskyFQDN}
       - EXPO_PUBLIC_CHAT_PROXY_DID=${dmServiceDID}
       - EXPO_PUBLIC_CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
+      - CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
       - EXPO_PUBLIC_GIF_HOST=${gifFQDN}
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
@@ -567,11 +570,13 @@ services:
       - EXPO_PUBLIC_GEOLOCATION_CONFIG_URL=https://${ipFQDN}/config
       - IPCC_HOST=http://ipcc:8080
       - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
+      - LINK_HOST=${linkFQDN}
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
+      - OGCARD_URL=https://${cardFQDN}
       - PRECONNECT_DOMAINS=https://${pdsFQDN},https://${linkFQDN}
       - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY=
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
@@ -587,6 +592,9 @@ services:
       - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
       - EXPO_PUBLIC_VIDEO_SERVICE=
       - EXPO_PUBLIC_VIDEO_SERVICE_DID=
+      - SOCIAL_APP_SECURITY_EMAIL=${SOCIAL_APP_SECURITY_EMAIL}
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
