@@ -59,7 +59,7 @@ services:
       context: .
       dockerfile: ops/caddy-Dockerfile
       args:
-        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-github.com/caddy-dns/cloudflare}
     ports:
       # these ports can be overridden in .env if using haproxy to forward requests to caddy
       - "${CADDY_HTTP_PORT-80}:80"

@@ -1,8 +1,9 @@
 FROM caddy:2-builder AS builder
 ARG CADDY_DNS_PACKAGE_SRC
 
+# if CADDY_DNS_PACKAGE_SRC is non-empty, use it as a parameter to xcaddy build
 RUN xcaddy build \
-    --with $CADDY_DNS_PACKAGE_SRC
+    ${CADDY_DNS_PACKAGE_SRC+--with} $CADDY_DNS_PACKAGE_SRC
 
 FROM caddy:2
 
