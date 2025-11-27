@@ -1,13 +1,46 @@
-# Docker Swarm Compatible Compose File for Bluesky Self-Hosting
-# Deploy with: docker stack deploy -c docker-compose.swarm.yaml bluesky
-#
-# Prerequisites:
-# 1. Run the setup script first: ./deploy-swarm-setup.sh
-# 2. Ensure all config files and certs are in place
-# 3. Docker Swarm must be initialized: docker swarm init
-
 version: '3.8'
 
+configs:
+    certs-ca:
+      file: ./certs/ca-certificates.crt
+    certs-intermediate:
+      file: ./certs/intermediate.crt
+    certs-root:
+      file: ./certs/root.crt
+
+x-certs-config: &certs-config
+  - source: certs-ca
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/ca-certificates.crt
+  - source: certs-intermediate
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/intermediate.crt
+  - source: certs-root
+    target: ${CUSTOM_CERTS_DIR-/tmp/dummy-certs}/root.crt
+
+# These must be created before deploying
+secrets:
+  db_secrets:
+    external: true
+  bgs_secrets:
+    external: true
+  pds_secrets:
+    external: true
+  bsky_secrets:
+    external: true
+  plc_secrets:
+    external: true
+  ozone_secrets:
+    external: true
+  opensearch_secrets:
+    external: true
+  palomar_secrets:
+    external: true
+  social_link_secrets:
+    external: true
+  backup_secrets:
+    external: true
+  google_backup_credentials:
+    external: true
+  
 volumes:
   caddy-data:
   caddy-config:
@@ -28,27 +61,30 @@ networks:
     driver: overlay
     attachable: true
 
-x-certificate-volumes: &certificate-volumes
-  - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-  - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-
 x-deploy-defaults: &deploy-defaults
   replicas: 1
   update_config:
     parallelism: 1
     delay: 10s
     order: stop-first
+    monitor: 60s
   restart_policy:
     condition: on-failure
     delay: 5s
     max_attempts: 3
+    window: 60s
   placement:
     constraints:
       - node.role == manager
 
 services:
   caddy:
-    image: ${BRANDED_NAMESPACE}/caddy:2
+    build:
+      context: .
+      dockerfile: ops/caddy-Dockerfile
+      args:
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
+    image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG}
     ports:
       - target: 80
         published: ${CADDY_HTTP_PORT:-80}
@@ -91,14 +127,13 @@ services:
     volumes:
       - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
-      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
-      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
+      # CA certificates for serving self-signed. >>>
+      - ./certs/root.crt:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.crt:ro
+      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/local/root.key:ro
+      # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
-      - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
+    # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro TODO: uncomment when there's something in here to copy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/metrics"]
       interval: 5s
@@ -114,7 +149,7 @@ services:
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    volumes: *certificate-volumes
+    configs: *certs-config
     deploy:
       <<: *deploy-defaults
     networks:
@@ -122,6 +157,7 @@ services:
 
   database:
     image: postgres:16-trixie
+    command: ['sh', '-c', 'set -a && [ -f /run/secrets/db_secrets ] && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
     ports:
       - target: 5432
         published: 5432
@@ -154,16 +190,19 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
+    depends_on:
+      - database
     ports:
       - target: 80
         published: 54321
         mode: host
     environment:
+    # TODO store in secret
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
     deploy:
       <<: *deploy-defaults
-      replicas: 0  # Set to 1 to enable pgadmin
+      replicas: 1  # Set to 1 to enable pgadmin
     networks:
       - foodios-net
 
@@ -177,7 +216,18 @@ services:
       - foodios-net
 
   opensearch:
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile.opensearch
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+         # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
+       - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
+    command: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
         published: 9200
@@ -213,15 +263,26 @@ services:
       - foodios-net
 
   plc:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof:-latest}
+    configs: *certs-config
+    build:
+      context: ./repos/did-method-plc/
+      dockerfile: packages/server/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/did-method-plc"
+        org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${PLC_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
-    command: ''
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/plc_secrets ]; . /run/secrets/plc_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']      
     ports:
       - target: 2582
         published: 2582
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -229,7 +290,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
@@ -247,10 +308,24 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
-
+    depends_on:
+      - database
+      - caddy
   pds:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof:-latest}
-    command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/pds/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${PDS_IMAGE_TAG}
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/pds_secrets ]; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
     ports:
       - target: 2583
         published: 2583
@@ -262,7 +337,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
@@ -297,9 +372,6 @@ services:
       - pds_secrets
     volumes:
       - pds:/pds
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -312,9 +384,24 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   bgs:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof:-latest}
+    configs: *certs-config
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/bigsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-bgs:${BGS_IMAGE_TAG}
     ports:
       - target: 2470
         published: 2470
@@ -322,7 +409,7 @@ services:
       - target: 2471
         published: 2471
         mode: host
-    command: "sh -c '${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
+    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bgs_secrets ]; . /run/secrets/bgs_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /bigsky --db-tracing']
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -332,16 +419,14 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - RELAY_NEWPDS_PERDAY_LIMIT=10000
+      - RELAY_NEWPDS_PERDAY_LIMIT=500
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - RELAY_DEFAULT_REPO_LIMIT=100000
     secrets:
       - bgs_secrets
     volumes:
       - bgs:/data/bigsky
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
@@ -354,9 +439,24 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   bsky:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof:-latest}
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/bsky/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
+        org.opencontainers.image.description: "${REBRANDING_NAME} App View"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-bsky:${BSKY_IMAGE_TAG}
     ports:
       - target: 2584
         published: 2584
@@ -367,7 +467,7 @@ services:
       - target: 3002
         published: 3002
         mode: host
-    command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
+    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bsky_secrets ]; . /run/secrets/bsky_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --enable-source-maps api.js']
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -398,7 +498,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REDIS_HOST=redis
@@ -409,9 +509,6 @@ services:
       - bsky_secrets
     volumes:
       - bsky:/cache/
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
-      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/ca-certificates.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
       timeout: 10s
@@ -424,16 +521,36 @@ services:
           memory: 2G
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - redis
+      - caddy
 
   social-app:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof:-latest}
-    platform: linux/amd64
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+       - SENTRY_ORG=${SENTRY_ORG-}
+       - SENTRY_PROJECT=${SENTRY_PROJECT-}
+       - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT-}
+       - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN-}
+       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${EXPO_PUBLIC_STATSIG_CLIENT_KEY-}
+       - EXPO_PUBLIC_STATSIG_API_URL=${EXPO_PUBLIC_STATSIG_API_URL-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-app:${SOCIAL_APP_IMAGE_TAG}
     ports:
       - target: 8100
         published: 8100
         mode: host
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
-    volumes: *certificate-volumes
+    command: ["/bin/sh", "-c", "${UPDATE_CERTS_CMD:-true}; /usr/bin/bskyweb serve"]
     environment:
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
@@ -451,7 +568,7 @@ services:
       - IPCC_HOST=http://ipcc:8080
       - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
@@ -481,11 +598,21 @@ services:
       - foodios-net
 
   social-card:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof:-latest}
-    platform: linux/amd64
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskyogcard
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${SOCIAL_CARD_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    volumes: *certificate-volumes
+    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
@@ -493,7 +620,7 @@ services:
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     healthcheck:
@@ -507,18 +634,26 @@ services:
       - foodios-net
 
   social-embed:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof:-latest}
-    platform: linux/amd64
-    entrypoint: ['sh', '-c', 'apt-get install -y wget ; ${UPDATE_CERTS_CMD:-true} ; dumb-init -- /usr/bin/embedr serve']
-    command: ''
-    volumes: *certificate-volumes
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.embedr
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${SOCIAL_EMBED_IMAGE_TAG}
+    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - GOINSECURE=${GOINSECURE}
       - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - HTTP_ADDRESS=:8101
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OGCARD_URL=https://${cardFQDN}
@@ -538,11 +673,20 @@ services:
       - foodios-net
 
   social-link:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof:-latest}
-    platform: linux/amd64
+    configs: *certs-config
+    build:
+      context: ./repos/social-app/
+      dockerfile: Dockerfile.bskylink
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
     user: root
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    volumes: *certificate-volumes
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/social_link_secrets ]; . /run/secrets/social_link_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
@@ -554,7 +698,7 @@ services:
       - LINK_SAFELINK_AGENT_PASS=
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     secrets:
@@ -570,14 +714,25 @@ services:
       - foodios-net
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof:-latest}
-    entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
-    command: ['/palomar', 'run']
+    configs: *certs-config
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/palomar/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
+        org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${PALOMAR_IMAGE_TAG}
+    command: ['sh', '-c', 'set -a; [ -f /run/secrets/palomar_secrets ]; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /palomar run']
     ports:
       - target: 3999
         published: 3999
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
@@ -600,8 +755,20 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - opensearch
+      - database
+      - caddy
 
   jetstream:
+    build:
+      context: ./repos/jetstream/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     ports:
       - target: 6008
@@ -609,7 +776,6 @@ services:
         mode: host
     volumes:
       - jetstream:/data
-      - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     environment:
       - JETSTREAM_WS_URL=wss://${bgsFQDN}/xrpc/com.atproto.sync.subscribeRepos
       - JETSTREAM_DATA_DIR=/data
@@ -620,15 +786,25 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - caddy
 
   ozone:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
-    command: node --enable-source-maps api.js
+    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps api.js'
     ports:
       - target: 3006
         published: 3006
         mode: host
-    volumes: *certificate-volumes
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -636,7 +812,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
@@ -659,11 +835,22 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
+      - caddy
 
   ozone-daemon:
+    build:
+      context: ./repos/social-app/submodules/atproto/
+      dockerfile: services/ozone/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
-    command: node --enable-source-maps daemon.js
-    volumes: *certificate-volumes
+    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
+    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -671,7 +858,7 @@ services:
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
@@ -694,8 +881,20 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - ozone
+      - database
+      - caddy
 
   feed-generator:
+    build:
+      context: ./repos/feed-generator/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     ports:
       - target: 3008
@@ -712,13 +911,11 @@ services:
       - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${bgsFQDN}
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
       - feed-generator:/data/
-      - ./certs/root.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/root.crt:ro
-      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR:-/usr/local/share/ca-certificates}/intermediate.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:3008/xrpc/_health"]
       timeout: 10s
@@ -730,7 +927,7 @@ services:
       - foodios-net
 
   ipcc:
-    image: davidfinconceivableza/ip-location-service-bsky
+    image: ${BRANDED_NAMESPACE}/ip-location-service-bsky:${IPCC_IMAGE_TAG}
     volumes:
       - ipcc:/app/downloads
     environment:
@@ -753,7 +950,6 @@ services:
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
-      - ./data/accounts/backup-credentials:/resticprofile/credentials/remote:ro
       - pds:/data/pds:rw
       - feed-generator:/data/feed-generator:rw
       - opensearch:/data/opensearch:rw
@@ -777,11 +973,13 @@ services:
       - RESTIC_LOGDIR=/var/log
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/restic_google_creds.json
     secrets:
       - backup_secrets
-    entrypoint: ["/bin/sh"]
-    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+      - source: google_backup_credentials
+        target: /resticprofile/credentials/remote/restic_google_creds.json
+
+    command: ["/bin/sh",'-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
       timeout: 10s
@@ -791,6 +989,8 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
 
   prometheus:
     image: prom/prometheus:latest
@@ -798,7 +998,7 @@ services:
       - ./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - target: 9090
-        published: 127.0.0.1:9090
+        published: 9090
         mode: host
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -814,7 +1014,10 @@ services:
       - foodios-net
 
   otel-collector:
-    image: ${BRANDED_NAMESPACE}/otel-collector:latest
+    build:
+      context: .
+      dockerfile: ops/otel-collector-Dockerfile
+    image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG}
     volumes:
       - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
     command:
@@ -822,16 +1025,16 @@ services:
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
       - target: 4317
-        published: 127.0.0.1:4317
+        published: 4317
         mode: host
       - target: 4318
-        published: 127.0.0.1:4318
+        published: 4318
         mode: host
       - target: 55679
-        published: 127.0.0.1:55679
+        published: 55679
         mode: host
       - target: 8126
-        published: 127.0.0.1:8126
+        published: 8126
         mode: host
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
@@ -842,6 +1045,9 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      # - jaeger
+      - prometheus
 
   jaeger:
     image: jaegertracing/jaeger:latest
@@ -853,13 +1059,13 @@ services:
       - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
       - target: 14269
-        published: 127.0.0.1:14269
+        published: 14269
         mode: host
       - target: 16686
-        published: 127.0.0.1:16686
+        published: 16686
         mode: host
       - target: 55679
-        published: 127.0.0.1:55680
+        published: 55680
         mode: host
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
@@ -870,26 +1076,5 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
-
-# Define secrets (these must be created before deploying)
-secrets:
-  db_secrets:
-    external: true
-  bgs_secrets:
-    external: true
-  pds_secrets:
-    external: true
-  bsky_secrets:
-    external: true
-  plc_secrets:
-    external: true
-  ozone_secrets:
-    external: true
-  opensearch_secrets:
-    external: true
-  palomar_secrets:
-    external: true
-  social_link_secrets:
-    external: true
-  backup_secrets:
-    external: true
+    depends_on:
+      - prometheus
