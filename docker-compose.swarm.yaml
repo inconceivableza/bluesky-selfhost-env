@@ -111,6 +111,7 @@ services:
       - ipFQDN=${ipFQDN}
       - jetstreamFQDN=${jetstreamFQDN}
       - linkFQDN=${linkFQDN}
+      - logsFQDN=${logsFQDN}
       - ozoneFQDN=${ozoneFQDN}
       - palomarFQDN=${palomarFQDN}
       - pdsFQDN=${pdsFQDN}
@@ -158,7 +159,7 @@ services:
 
   database:
     image: postgres:16-trixie
-    command: ['sh', '-c', 'set -a && [ -f /run/secrets/db_secrets ] && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
+    command: ['sh', '-c', 'set -a && . /run/secrets/db_secrets && set +a && exec docker-entrypoint.sh postgres']
     ports:
       - target: 5432
         published: 5432
@@ -191,6 +192,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
+    command: ['sh', 'c', 'sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; ./entrypoint.sh']
     depends_on:
       - database
     ports:
@@ -206,6 +208,8 @@ services:
       replicas: 1  # Set to 1 to enable pgadmin
     networks:
       - foodios-net
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   redis:
     image: redis:8-bookworm
@@ -227,8 +231,8 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
          # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
-    command: ['sh', '-c', 'set -a && [ -f /run/secrets/opensearch_secrets ] && . /run/secrets/opensearch_secrets && set +a && exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
+    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:qwerty
+    command: ['sh', '-c', 'set -a; . /run/secrets/opensearch_secrets; set +a;  exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
         published: 9200
@@ -278,7 +282,7 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${PLC_IMAGE_TAG}
     user: root
-    command: ['sh', '-c', 'set -a; [ -f /run/secrets/plc_secrets ]; . /run/secrets/plc_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']      
+    command: ['sh', '-c', 'set -a; . /run/secrets/plc_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; su node -c "dumb-init -- node --enable-source-maps index.js"']      
     ports:
       - target: 2582
         published: 2582
@@ -312,6 +316,8 @@ services:
     depends_on:
       - database
       - caddy
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
   pds:
     configs: *certs-config
     build:
@@ -326,7 +332,7 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${PDS_IMAGE_TAG}
-    command: ['sh', '-c', 'set -a; [ -f /run/secrets/pds_secrets ]; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
+    command: ['sh', '-c', 'set -a; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
     ports:
       - target: 2583
         published: 2583
@@ -373,6 +379,7 @@ services:
       - pds_secrets
     volumes:
       - pds:/pds
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -410,7 +417,7 @@ services:
       - target: 2471
         published: 2471
         mode: host
-    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bgs_secrets ]; . /run/secrets/bgs_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /bigsky --db-tracing']
+    command: ["sh", "-c", 'set -a; . /run/secrets/bgs_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432;  exec /bigsky --db-tracing']
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -429,6 +436,7 @@ services:
       - bgs_secrets
     volumes:
       - bgs:/data/bigsky
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
@@ -469,7 +477,7 @@ services:
       - target: 3002
         published: 3002
         mode: host
-    command: ["sh", "-c", 'set -a; [ -f /run/secrets/bsky_secrets ]; . /run/secrets/bsky_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec node --enable-source-maps api.js']
+    command: ["sh", "-c", 'set -a; . /run/secrets/bsky_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432;  exec node --enable-source-maps api.js']
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -511,6 +519,7 @@ services:
       - bsky_secrets
     volumes:
       - bsky:/cache/
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
       timeout: 10s
@@ -621,7 +630,9 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${SOCIAL_CARD_IMAGE_TAG}
     user: root
-    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432;  su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
@@ -695,7 +706,7 @@ services:
         org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
     user: root
-    command: ['sh', '-c', 'set -a; [ -f /run/secrets/social_link_secrets ]; . /run/secrets/social_link_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
+    command: ['sh', '-c', 'set -a; . /run/secrets/social_link_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
@@ -721,6 +732,10 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
+    depends_on:
+      - database
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   palomar:
     configs: *certs-config
@@ -736,7 +751,7 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${PALOMAR_IMAGE_TAG}
-    command: ['sh', '-c', 'set -a; [ -f /run/secrets/palomar_secrets ]; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; exec /palomar run']
+    command: ['sh', '-c', 'set -a; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 opensearch:9200 database:5432; exec /palomar run']
     ports:
       - target: 3999
         published: 3999
@@ -768,6 +783,8 @@ services:
       - opensearch
       - database
       - caddy
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   jetstream:
     build:
@@ -808,12 +825,11 @@ services:
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
-    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps api.js'
+    command: ['sh', '-c', 'set -a; . /run/secrets/ozone_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --enable-source-maps api.js']
     ports:
       - target: 3006
         published: 3006
         mode: host
-    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -847,6 +863,8 @@ services:
     depends_on:
       - database
       - caddy
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   ozone-daemon:
     build:
@@ -858,7 +876,7 @@ services:
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
-    command: sh -c 'set -a && [ -f /run/secrets/ozone_secrets ] && . /run/secrets/ozone_secrets && set +a && exec node --enable-source-maps daemon.js'
+    command: ['sh', '-c', 'set -a; . /run/secrets/ozone_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --enable-source-maps daemon.js']
     
     environment:
       - DEBUG_MODE=1
@@ -894,6 +912,8 @@ services:
       - ozone
       - database
       - caddy
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.s
 
   feed-generator:
     build:
@@ -956,6 +976,7 @@ services:
   backup:
     image: creativeprojects/resticprofile:0.32.0
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
+    command: ["/bin/sh",'-c', 'set -a; . /run/secrets/backup_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
@@ -966,6 +987,7 @@ services:
       - bsky:/data/bsky:rw
       - backup-staging:/staging
       - backup-repo:/restic-repo
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     environment:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
@@ -988,7 +1010,6 @@ services:
       - source: google_backup_credentials
         target: /resticprofile/credentials/remote/restic_google_creds.json
 
-    command: ["/bin/sh",'-c', 'set -a && [ -f /run/secrets/backup_secrets ] && . /run/secrets/backup_secrets && set +a && /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
       timeout: 10s
@@ -1093,7 +1114,7 @@ services:
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
-      - SERVER_NAME=logs.${DOMAIN}
+      - SERVER_NAME=${logsFQDN}
       - SERVER_HOST=0.0.0.0
       - OPENSEARCH_REQUESTTIMEOUT=60000
     ports:
