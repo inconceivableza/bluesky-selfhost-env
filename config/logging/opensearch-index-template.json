@@ -9,29 +9,18 @@
             "index.refresh_interval": "5s"
         },
         "mappings": {
+            "dynamic": true,
             "properties": {
                 "@timestamp": {
                     "type": "date"
                 },
-                "log": {
-                    "type": "text"
+                "time": {
+                    "type": "date"
                 },
                 "stream": {
                     "type": "keyword"
                 },
-                "time": {
-                    "type": "date"
-                },
                 "level": {
-                    "type": "keyword"
-                },
-                "container_name": {
-                    "type": "keyword"
-                },
-                "container_id": {
-                    "type": "keyword"
-                },
-                "source": {
                     "type": "keyword"
                 }
             }
