@@ -170,7 +170,7 @@ create_secret "plc_secrets" "config/plc-secrets.env"
 create_secret "ozone_secrets" "config/ozone-secrets.env"
 create_secret "opensearch_secrets" "config/opensearch-secrets.env"
 create_secret "palomar_secrets" "config/palomar-secrets.env"
-create_secret "social-link_secrets" "config/social-link-secrets.env"
+create_secret "social_link_secrets" "config/social-link-secrets.env"
 create_secret "backup_secrets" "config/backup-secrets.env"
 create_secret "google_backup_credentials" "config/google_backup_credentials.json"
 
