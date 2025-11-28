@@ -376,6 +376,10 @@ jobs:
             if [ "$FORCE_RECREATE" = "true" ]; then
               echo "⚠️ Taking down services in order to recreate secrets"
               docker stack rm "$STACK_NAME" --detach=false
+              echo "Waiting for network to be removed..."
+              while docker network ls | grep -q "foodios_foodios-net"; do
+                sleep 1
+              done
             fi
             docker stack rm foodios-staging
             create_or_update_secret "db_secrets" "secrets/db-secrets.env"
