@@ -133,8 +133,7 @@ jobs:
           plcFQDN="${{ vars.PLCFQDN }}"
           publicApiFQDN="${{ vars.PUBLICAPIFQDN }}"
           socialappFQDN="${{ vars.SOCIALAPPFQDN }}"
-          # TODO error in compose file when not preset
-          logsFQDN="${{ vars.LOGSFQDN }}${{ vars.DOMAIN }}"
+          logsFQDN="${{ vars.LOGSFQDN }}""
 
           # Email Configuration
           EMAIL4CERTS="${{ vars.EMAIL4CERTS }}"
@@ -322,6 +321,9 @@ jobs:
 
           scp -r selfhost_scripts/backup-scripts \
             ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/selfhost_scripts/
+
+          scp -r selfhost_scripts/wait-for-ports.sh \
+            ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }}:~/deploy/${{ inputs.environment }}/selfhost_scripts/
         
 
       - name: Initialize Docker Swarm
@@ -381,7 +383,6 @@ jobs:
                 sleep 1
               done
             fi
-            docker stack rm foodios-staging
             create_or_update_secret "db_secrets" "secrets/db-secrets.env"
             create_or_update_secret "bgs_secrets" "secrets/bgs-secrets.env"
             create_or_update_secret "pds_secrets" "secrets/pds-secrets.env"
