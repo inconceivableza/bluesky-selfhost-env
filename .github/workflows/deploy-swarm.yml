@@ -133,6 +133,8 @@ jobs:
           plcFQDN="${{ vars.PLCFQDN }}"
           publicApiFQDN="${{ vars.PUBLICAPIFQDN }}"
           socialappFQDN="${{ vars.SOCIALAPPFQDN }}"
+          # TODO error in compose file when not preset
+          logsFQDN="${{ vars.LOGSFQDN }}${{ vars.DOMAIN }}"
 
           # Email Configuration
           EMAIL4CERTS="${{ vars.EMAIL4CERTS }}"
@@ -475,7 +477,43 @@ jobs:
             docker stack ps "$STACK_NAME" --no-trunc | head -20
             exit 1
           ENDSSH
-
+      - name: Setup log retention policies
+        run: |
+          ssh ${{ vars.SWARM_USER }}@${{ vars.SWARM_HOST }} << 'ENDSSH'
+            cd ~/deploy/${{ inputs.environment }}
+            
+            STACK_NAME="foodios-${{ inputs.environment }}"
+            
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🗄️  Setting up log retention policies"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Wait for OpenSearch to be ready
+            echo "⏳ Waiting for OpenSearch to be ready..."
+            for i in {1..30}; do
+              if curl -s http://localhost:9200/_cluster/health >/dev/null 2>&1; then
+                echo "✅ OpenSearch is ready"
+                break
+              fi
+              echo -n "."
+              sleep 2
+            done
+            
+            # Run retention policy setup
+            if [ -f config/logging/setup-retention-policies.sh ]; then
+              echo ""
+              echo "📋 Applying ISM retention policies..."
+              cd config/logging
+              chmod +x setup-retention-policies.sh
+              ./setup-retention-policies.sh
+              
+              echo ""
+              echo "✅ Log retention policies configured"
+            else
+              echo "⚠️  Retention policy script not found, skipping..."
+            fi
+          ENDSSH
       - name: Show deployment status
         if: always()
         run: |

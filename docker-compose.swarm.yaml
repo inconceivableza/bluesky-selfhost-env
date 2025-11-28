@@ -55,6 +55,7 @@ volumes:
   backup-staging:
   backup-repo:
   ipcc:
+  opensearch-dashboards:
 
 networks:
   foodios-net:
@@ -1086,3 +1087,53 @@ services:
       - foodios-net
     depends_on:
       - prometheus
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - SERVER_NAME=logs.${DOMAIN}
+      - SERVER_HOST=0.0.0.0
+      - OPENSEARCH_REQUESTTIMEOUT=60000
+    ports:
+      - target: 5601
+        published: 5601
+        mode: host
+    volumes:
+      - opensearch-dashboards:/usr/share/opensearch-dashboards/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q 'available'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      <<: *deploy-defaults
+    networks:
+      - foodios-net
+    depends_on:
+      - opensearch
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.2
+    user: root
+    volumes:
+      - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./config/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+    networks:
+      - foodios-net
+    depends_on:
+      - opensearch
