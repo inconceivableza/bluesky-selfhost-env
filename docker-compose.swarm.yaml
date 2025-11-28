@@ -231,7 +231,7 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
          # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:qwerty
+    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
     command: ['sh', '-c', 'set -a; . /run/secrets/opensearch_secrets; set +a;  exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
