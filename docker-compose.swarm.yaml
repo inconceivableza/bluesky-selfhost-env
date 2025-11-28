@@ -67,7 +67,7 @@ x-deploy-defaults: &deploy-defaults
   update_config:
     parallelism: 1
     delay: 10s
-    order: stop-first
+    order: start-first
     monitor: 60s
   restart_policy:
     condition: on-failure
