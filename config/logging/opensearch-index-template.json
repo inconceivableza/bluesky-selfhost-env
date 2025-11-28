@@ -1,0 +1,41 @@
+{
+    "index_patterns": [
+        "logs-*"
+    ],
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 1,
+            "index.refresh_interval": "5s"
+        },
+        "mappings": {
+            "properties": {
+                "@timestamp": {
+                    "type": "date"
+                },
+                "log": {
+                    "type": "text"
+                },
+                "stream": {
+                    "type": "keyword"
+                },
+                "time": {
+                    "type": "date"
+                },
+                "level": {
+                    "type": "keyword"
+                },
+                "container_name": {
+                    "type": "keyword"
+                },
+                "container_id": {
+                    "type": "keyword"
+                },
+                "source": {
+                    "type": "keyword"
+                }
+            }
+        }
+    },
+    "priority": 100
+}

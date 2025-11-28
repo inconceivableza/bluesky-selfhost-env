@@ -56,6 +56,7 @@ volumes:
   backup-repo:
   ipcc:
   opensearch-dashboards:
+  fluent-bit-storage:
 
 networks:
   foodios-net:
@@ -1144,6 +1145,7 @@ services:
       - ./config/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - fluent-bit-storage:/var/log/flb-storage
     environment:
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
