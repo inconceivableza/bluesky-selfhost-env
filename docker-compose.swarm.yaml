@@ -1143,6 +1143,7 @@ services:
     volumes:
       - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
       - ./config/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - ./config/logging/add-container-metadata.lua:/fluent-bit/etc/add-container-metadata.lua:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - fluent-bit-storage:/var/log/flb-storage
