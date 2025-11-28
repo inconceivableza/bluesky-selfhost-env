@@ -133,7 +133,7 @@ jobs:
           plcFQDN="${{ vars.PLCFQDN }}"
           publicApiFQDN="${{ vars.PUBLICAPIFQDN }}"
           socialappFQDN="${{ vars.SOCIALAPPFQDN }}"
-          logsFQDN="${{ vars.LOGSFQDN }}""
+          logsFQDN="${{ vars.LOGSFQDN }}"
 
           # Email Configuration
           EMAIL4CERTS="${{ vars.EMAIL4CERTS }}"
