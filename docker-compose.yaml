@@ -35,6 +35,8 @@ volumes:
 # plc:
 # palomar:
 # social-app:
+  opensearch-dashboards:
+  fluent-bit-storage:
 
 x-definitions:
   certificate-volumes: &certificate-volumes
@@ -54,7 +56,7 @@ services:
   caddy:
     #   reverse proxy
     #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
-    image: ${BRANDED_NAMESPACE}/caddy:2
+    image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG:-2}
     build:
       context: .
       dockerfile: ops/caddy-Dockerfile
@@ -62,12 +64,17 @@ services:
         CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-github.com/caddy-dns/cloudflare}
     ports:
       # these ports can be overridden in .env if using haproxy to forward requests to caddy
-      - "${CADDY_HTTP_PORT-80}:80"
-      - "${CADDY_HTTPS_PORT-443}:443"
-      - "${CADDY_HTTPS_PORT-443}:443/udp"
+      - target: 80
+        published: ${CADDY_HTTP_PORT:-80}
+        mode: host
+      - target: 443
+        published: ${CADDY_HTTPS_PORT:-443}
+        mode: host
+      - target: 443
+        published: ${CADDY_HTTPS_PORT:-443}
+        protocol: udp
+        mode: host
       # - 9000:9000 # internal CA server; doesn't need to be public
-    # this gets created by make and redirects caddy to local debug services if populated
-    env_file: config/caddy-dynamic.env
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -82,6 +89,7 @@ services:
       - ipFQDN=${ipFQDN}
       - jetstreamFQDN=${jetstreamFQDN}
       - linkFQDN=${linkFQDN}
+      - logsFQDN=${logsFQDN}
       - ozoneFQDN=${ozoneFQDN}
       - palomarFQDN=${palomarFQDN}
       - pdsFQDN=${pdsFQDN}
@@ -96,39 +104,41 @@ services:
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
+    # this gets created by make and redirects caddy to local debug services if populated
+    env_file:
+      - config/caddy-dynamic.env
     volumes:
-      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
       # CA certificates for serving self-signed. >>>
-      - ./certs/root.crt:/data/caddy/pki/authorities/local/root.crt:ro
-      - ./certs/root.key:/data/caddy/pki/authorities/local/root.key:ro
+      - ./certs/root.crt:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.crt:ro
+      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/local/root.key:ro
       # CA certificates for serving self-signed. <<<
       # CA certificates for connecting to self-signed, or a dummy directory if not used
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
       - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
-      # <<<
       - caddy-data:/data
       - caddy-config:/config
-      # the social app's static website
-      - ./${PDS_WEB_DIR:-staticweb}:/socialweb
+      # the social app's static website. TODO: uncomment when there's something in here to copy
+      # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
     healthcheck:
-      # https://caddy.community/t/what-is-the-best-practise-for-doing-a-health-check-for-caddy-containers/12995
-      test: "wget --no-verbose --tries=1 --spider http://127.0.0.1:2019/metrics || exit 1"
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/metrics"]
       interval: 5s
+      timeout: 3s
       retries: 20
     restart: always
 
-# to generate HTTPS certifications on-demand >>>>>
   caddy-sidecar:
+    # decides which domains caddy should generate certificates for
     image: httpd:2
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     <<: *certificate-volumes
-# to generate HTTPS certifications on-demand <<<<<
 
-# debug for caddy>>> 
   test-wss:
+    # used in test mode for checking and debugging wss secure web-socket connections
     image: itaru2622/fastapi:trixie
     environment:
       - app=main:app
@@ -136,15 +146,15 @@ services:
     working_dir: /opt/fastapi-samples/3catchall
 
   test-ws:
+    # used in test mode for checking and debugging ws web-socket connections
     image: itaru2622/fastapi:trixie
     environment:
       - app=main:app
       - opts=--host 0.0.0.0 --port 8080
     working_dir: /opt/fastapi-samples/3catchall
 
-# debug for caddy <<<
-# debug for bluesky with indigo subcmds >>>
   test-indigo:
+    # helper image for trying out indigo commands
     image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-tools:${asof}
     profiles: ['', 'indigo']
     build:
@@ -156,7 +166,8 @@ services:
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     command: tail -f /dev/null
-    env_file: config/bgs-secrets.env
+    env_file:
+      - config/bgs-secrets.env
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
@@ -170,23 +181,22 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     <<: *certificate-volumes
 
-# debug for bluesky with indigo subcmds <<<
-
   database:
     image: postgres:16-trixie
-    # image: postgres:17-trixie
     ports:
-      - 5432:5432
-    env_file:
-      - config/db-secrets.env
+      - target: 5432
+        published: 5432
+        mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - POSTGRES_INITDB_ARGS=-A scram-sha-256 --encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=healthcheck
+    env_file:
+      - config/db-secrets.env
     volumes:
-      - ./config/init-postgres:/docker-entrypoint-initdb.d/
+      - ./config/init-postgres:/docker-entrypoint-initdb.d/:ro
       - database:/var/lib/postgresql/data/
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pg -d healthcheck >/dev/null"]
@@ -198,11 +208,14 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     ports:
-      - 127.0.0.1:54321:80
+      - target: 80
+        published: 54321
+        mode: host
     environment:
+      # TODO store in secret
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
-      #   <<: *certificate-volumes
+    #   <<: *certificate-volumes
     depends_on:
       - database
 
@@ -213,7 +226,7 @@ services:
     restart: always
 
   opensearch:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -223,11 +236,12 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-# cf. https://github.com/opensearch-project/OpenSearch/issues/8215
+         # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
     ports:
-      - 9200:9200
-    env_file: config/opensearch-secrets.env
+      - target: 9200
+        published: 9200
+        mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -239,6 +253,8 @@ services:
       - node.name=os-node
       - plugins.security.disabled=true
       - transport.host=127.0.0.1
+    env_file:
+      - config/opensearch-secrets.env
     ulimits:
       memlock:
         soft: -1
@@ -253,8 +269,7 @@ services:
     restart: always
 
   plc:
-#   image: ${UNBRANDED_NAMESPACE}/bluesky-did-method-plc:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG-${branded_asof:-latest}}
     profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
@@ -271,26 +286,26 @@ services:
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --enable-source-maps index.js"']
     command: ''
     ports:
-      - 2582:2582
-    <<: *certificate-volumes
-    env_file:
-      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
-      - config/plc-secrets.env
+      - target: 2582
+        published: 2582
+        mode: host
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
       - GOINSECURE=${GOINSECURE}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PORT=2582
-      # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    env_file:
+      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
+      - config/plc-secrets.env
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2582/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -300,10 +315,10 @@ services:
     depends_on:
       - database
       - caddy
+    <<: *certificate-volumes
 
   pds:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-pds:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${PDS_IMAGE_TAG:-${branded_asof:-latest}}
     command: sh -c '${UPDATE_CERTS_CMD:-true}; node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js'
     profiles: ['', 'atproto']
     build:
@@ -318,13 +333,13 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
     ports:
-      - 2583:2583
+      - target: 2583
+        published: 2583
+        mode: host
     expose:
       - 2583
-    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. >>>>
+    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root
     user: root
-    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. <<<<
-    env_file: config/pds-secrets.env
     environment:
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
@@ -332,7 +347,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
@@ -350,7 +365,7 @@ services:
       - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
       - PDS_PORT=2583
-# starts: unset optional env for tesing ozone >>>>>>>
+# starts: unset optional env for testing ozone >>>>>>>
 #     - PDS_MOD_SERVICE_DID=did:web:${ozoneFQDN}
 #     - PDS_MOD_SERVICE_URL=https://${ozoneFQDN}
 #     - PDS_REPORT_SERVICE_DID=did:web:${ozoneFQDN}
@@ -364,12 +379,15 @@ services:
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_OTEL_ENABLED=true
-      - DD_SERVICE=pds # the package.json misconfigures this as plc-service
+      # the package.json misconfigures this service as plc-service
+      - DD_SERVICE=pds
       - DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
       - OTEL_PROPAGATORS=datadog,tracecontext,baggage
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    env_file:
+      - config/pds-secrets.env
     volumes:
       - pds:/pds
       # CA certificates for connecting to self-signed, or a dummy directory if not used
@@ -387,7 +405,7 @@ services:
       - caddy
 
   bgs:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${BGS_IMAGE_TAG:-${branded_asof:-latest}}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -401,25 +419,29 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
     ports:
-      - 2470:2470
-      - 2471:2471
+      - target: 2470
+        published: 2470
+        mode: host
+      - target: 2471
+        published: 2471
+        mode: host
     command: "sh -c '${UPDATE_CERTS_CMD:-true}; /bigsky --db-tracing'"
-    env_file: config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     environment:
       - ATP_PLC_HOST=https://${plcFQDN}
       - DATA_DIR=/data/bigsky
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
-#     - GODEBUG=netdns=go+4
-      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - RELAY_DEFAULT_REPO_LIMIT=100000
-      - RELAY_NEWPDS_PERDAY_LIMIT=10000
+      - RELAY_NEWPDS_PERDAY_LIMIT=500
       - RELAY_PERSISTER_DIR=/data/bigsky/events
+    env_file:
+      - config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     volumes:
       - bgs:/data/bigsky
       # CA certificates for connecting to self-signed, or a dummy directory if not used
@@ -438,7 +460,7 @@ services:
 
   bsky:
     # appview(api)
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${BSKY_IMAGE_TAG:-${branded_asof:-latest}}
     profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -452,16 +474,22 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} App View"
     ports:
-      - 2584:2584
-      - 3001:3001 # dataplane port # temporarily exposing for debugging
-      - 3002:3002 # bsync port # temporarily exposing for debugging
+      - target: 2584
+        published: 2584
+        mode: host
+      # dataplane port # temporarily exposing for debugging
+      - target: 3001
+        published: 3001
+        mode: host
+      # bsync port # temporarily exposing for debugging
+      - target: 3002
+        published: 3002
+        mode: host
     expose:
       - 2584
     command: sh -c '${UPDATE_CERTS_CMD:-true} ; node --enable-source-maps api.js'
-    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. >>>>
+    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root
     user: root
-    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root. <<<<
-    env_file: config/bsky-secrets.env
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
       - BSKY_BSYNC_HTTP_VERSION=1.1
@@ -489,16 +517,18 @@ services:
       - GOINSECURE=${GOINSECURE}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REDIS_HOST=redis
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
+    env_file:
+      - config/bsky-secrets.env
     volumes:
       - bsky:/cache/
       # CA certificates for connecting to self-signed, or a dummy directory if not used
@@ -517,8 +547,7 @@ services:
       - caddy
 
   social-app:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${SOCIAL_APP_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -540,9 +569,10 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
     ports:
-      - 8100:8100
-    command: /bin/sh -c "${UPDATE_CERTS_CMD:-true} ; /usr/bin/bskyweb serve"
-    <<: *certificate-volumes
+      - target: 8100
+        published: 8100
+        mode: host
+    command: ["/bin/sh", "-c", "${UPDATE_CERTS_CMD:-true}; /usr/bin/bskyweb serve"]
     environment:
       # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 :
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
@@ -559,20 +589,22 @@ services:
       - CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
       - EXPO_PUBLIC_GIF_HOST=${gifFQDN}
       - GOINSECURE=${GOINSECURE}
-      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - HTTP_ADDRESS=:8100
       - EXPO_PUBLIC_GEOLOCATION_CONFIG_URL=https://${ipFQDN}/config
       - IPCC_HOST=http://ipcc:8080
       - EXPO_PUBLIC_LINK_HOST=${linkFQDN}
       - LINK_HOST=${linkFQDN}
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
       - OGCARD_URL=https://${cardFQDN}
-      - PRECONNECT_DOMAINS="https://${pdsFQDN},https://${linkFQDN}" # comma-separated list for index.html
-      - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY= # we don't yet have one of these
+      # comma-separated list for index.html
+      - PRECONNECT_DOMAINS=https://${pdsFQDN},https://${linkFQDN}
+      # we don't yet have one of these
+      - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY=
       # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
       # - EXPO_PUBLIC_STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
@@ -580,17 +612,19 @@ services:
       - EXPO_PUBLIC_SOCIAL_APP_HOST=${socialappFQDN}
       - EXPO_PUBLIC_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - EXPO_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
-      - EXPO_PUBLIC_SOCIAL_EMBED_SERVICE=https://${embedFQDN} # TODO: actually publish the embed service on a domain
+      - EXPO_PUBLIC_SOCIAL_EMBED_SERVICE=https://${embedFQDN}
       - EXPO_PUBLIC_SOCIAL_HELP_DESK_URL=${SOCIAL_HELP_DESK_URL}
       - EXPO_PUBLIC_SOCIAL_POLICY_BASE_URL=${SOCIAL_POLICY_BASE_URL}
       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${STATSIG_CLIENT_KEY}
       - EXPO_PUBLIC_STATSIG_API_URL=${STATSIG_API_URL}
       - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
-      - EXPO_PUBLIC_VIDEO_SERVICE= # we don't yet have one of these
-      - EXPO_PUBLIC_VIDEO_SERVICE_DID= # we don't yet have one of these
+      # we don't yet have one of these
+      - EXPO_PUBLIC_VIDEO_SERVICE=
+      - EXPO_PUBLIC_VIDEO_SERVICE_DID=
       - SOCIAL_APP_SECURITY_EMAIL=${SOCIAL_APP_SECURITY_EMAIL}
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
@@ -599,8 +633,7 @@ services:
     restart: always
 
   social-card:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${SOCIAL_CARD_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -616,21 +649,21 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
     ports: []
-      # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
-      # - 3003:3003 # this is what we're configuring it to listen on
+      # - 3003:3003
     user: root
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    <<: *certificate-volumes
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
-      - CARD_ORIGIN_VERIFY= # Checks a req header x-origin-verify and returns 404 if not matching
+      # Checks a req header x-origin-verify and returns 404 if not matching
+      - CARD_ORIGIN_VERIFY=
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -639,8 +672,7 @@ services:
     restart: always
 
   social-embed:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${SOCIAL_EMBED_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']
@@ -655,20 +687,18 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
     ports: []
-      # - 8100:8100 # this is the default port it listens on, same as social-app
-      # - 8101:8101 # this is the default port we're telling it to listen on
-      # - 9090:9090 # this is the metrics port
+      # - 8101:8101 # listening port
+      # - 9090:9090 # metrics port
     entrypoint: ['sh', '-c', 'apt-get install -y wget ; ${UPDATE_CERTS_CMD:-true} ; dumb-init -- /usr/bin/embedr serve']
     command: ''
-    <<: *certificate-volumes
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - GOINSECURE=${GOINSECURE}
-      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - HTTP_ADDRESS=:8101
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       # in dev mode, bskyembed reads from its .env.* VITE_ variables which are interpreted into html
       # however, we're actually not using bskyembed/ (ts) but bskyweb/cmd/embedr (go), which doesn't use these
@@ -682,6 +712,7 @@ services:
       - SOCIAL_APP_URL=https://${socialappFQDN}
       # - SOCIAL_APP_SECURITY_EMAIL=
       # - SOCIAL_APP_SUPPORT_EMAIL=
+    <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8101/ | grep 'Embed' >/dev/null"]
       timeout: 10s
@@ -706,21 +737,15 @@ services:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
     ports: []
-      # - 3000:3000 # this is the default port it listens on, same as ozone and feedgen
-      # - 3004:3004 # this is what we're configuring it to listen on
+      # - 3004:3004 # listening port
     user: root
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    <<: *certificate-volumes
-    env_file:
-      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
-      - config/social-link-secrets.env
     environment:
       - LINK_PORT=3004
-      - LINK_HOSTNAMES=${linkFQDN} # ?? should this have more?
+      - LINK_HOSTNAMES=${linkFQDN}
       - LINK_APP_HOSTNAME=${socialappFQDN}
       # - LINK_DB_POSTGRES_MIGRATION_URL= # only set if you want to migrate from a previous database
-      # - LINK_DB_POSTGRES_URL= # this is in the secrets file
-      - LINK_DB_POSTGRES_SCHEMA= # presumably this will use the default
+      - LINK_DB_POSTGRES_SCHEMA=
       # just use the defaults for the pool
       # - LINK_DB_POSTGRES_POOL_SIZE=
       # - LINK_DB_POSTGRES_POOL_MAX_USES=
@@ -730,10 +755,14 @@ services:
       - LINK_SAFELINK_AGENT_IDENTIFIER=
       - LINK_SAFELINK_AGENT_PASS=
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    env_file:
+      # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
+      - config/social-link-secrets.env
+    <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3004/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -742,7 +771,7 @@ services:
     restart: always
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${PALOMAR_IMAGE_TAG:-${branded_asof:-latest}}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -758,15 +787,15 @@ services:
     entrypoint: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; dumb-init -- "$0" "$@"']
     command: ['/palomar', 'run']
     ports:
-      - 3999:3999
-      # - 3998:3998 # metrics port by default
-    <<: *certificate-volumes
-    env_file: config/palomar-secrets.env
+      - target: 3999
+        published: 3999
+        mode: host
+      # port 3998 is the default metrics port
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
       - ATP_BGS_HOST=wss://${bgsFQDN}
       - ATP_PLC_HOST=https://${plcFQDN}
-#     - ES_CERT_FILE=
+      # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
       - ES_USERNAME=admin
@@ -775,6 +804,9 @@ services:
       - PALOMAR_BIND=0.0.0.0:3999
       - PALOMAR_DISCOVER_REPOS=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    env_file:
+      - config/palomar-secrets.env
+    <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3999/_health | grep '\"status\":\"ok\"' >/dev/null"]
       timeout: 10s
@@ -787,7 +819,6 @@ services:
       - caddy
 
   jetstream:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     profiles: ['', 'jetstream']
     build:
@@ -799,7 +830,9 @@ services:
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
-      - 6008:6008
+      - target: 6008
+        published: 6008
+        mode: host
       # - 6009:6009 metrics address
     volumes:
       - jetstream:/data
@@ -819,7 +852,6 @@ services:
   ozone-standalone:
     # moderation-api:
     image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
-    #   image: itaru2622/bluesky-ozone:latest
     profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
@@ -829,20 +861,20 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+    command: ['node', './service']
     ports:
-      - 3005:3005
-    <<: *certificate-volumes
+      - target: 3005
+        published: 3005
+        mode: host
     volumes: []
-#     - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
-    env_file: config/ozone-secrets.env
+      # - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
     environment:
-#     https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
+      # https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
       - LOG_ENABLED=1
       - DEBUG_MODE=1
       - LOG_DESTINATION=1
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-#     - NODE_ENV=development
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - GOINSECURE=${GOINSECURE}
@@ -866,6 +898,8 @@ services:
       - OZONE_APPVIEW_PUSH_EVENTS=true
       - OZONE_PDS_DID=did:web:${pdsFQDN}
       - OZONE_PDS_URL=https://${pdsFQDN}
+    env_file:
+      - config/ozone-secrets.env
     restart: always
     depends_on:
       - database
@@ -873,7 +907,7 @@ services:
 
   ozone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -883,22 +917,20 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    command: node --enable-source-maps api.js
+    command: ['node', '--enable-source-maps', 'api.js']
     ports:
-      - 3006:3006
-    <<: *certificate-volumes
-#    volumes:
-#      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
-    env_file: config/ozone-secrets.env
+      - target: 3006
+        published: 3006
+        mode: host
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
       - GOINSECURE=${GOINSECURE}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -914,13 +946,18 @@ services:
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_SERVER_DID=did:web:${ozoneFQDN}
       - OZONE_TRIAGE_DIDS=
+    env_file:
+      - config/ozone-secrets.env
     restart: always
     depends_on:
       - database
       - caddy
+    <<: *certificate-volumes
+#    volumes:
+#      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
 
   ozone-daemon:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof}
+    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -930,18 +967,16 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    command: node --enable-source-maps daemon.js
-    <<: *certificate-volumes
-    env_file: config/ozone-secrets.env
+    command: ['node', '--enable-source-maps', 'daemon.js']
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
       - GOINSECURE=${GOINSECURE}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - OZONE_ADMIN_DIDS=
       - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
@@ -957,14 +992,16 @@ services:
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_SERVER_DID=did:web:${ozoneFQDN}
       - OZONE_TRIAGE_DIDS=
+    env_file:
+      - config/ozone-secrets.env
     restart: always
     depends_on:
       - ozone
       - database
       - caddy
+    <<: *certificate-volumes
 
   feed-generator:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:${asof}
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     profiles: ['', 'feed-generator']
     build:
@@ -976,7 +1013,9 @@ services:
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
     ports:
-      - 2586:3008
+      - target: 3008
+        published: 2586
+        mode: host
     environment:
       - FEEDGEN_HOSTNAME=${feedgenFQDN}
       - FEEDGEN_LISTENHOST=0.0.0.0
@@ -988,22 +1027,22 @@ services:
       - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${bgsFQDN}
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
-      - NODE_ENV=development
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-    restart: always
+    <<: *certificate-volumes
+    volumes:
+      - feed-generator:/data/
+      # - ${rDir}/feed-generator:/app
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:3000/xrpc/_health"]
       timeout: 10s
       interval: 10s
       retries: 5
-    <<: *certificate-volumes
-    volumes:
-      - feed-generator:/data/
-#     - ${rDir}/feed-generator:/app
+    restart: always
 
   ipcc:
-    image: davidfinconceivableza/ip-location-service-bsky
+    image: ${BRANDED_NAMESPACE}/ip-location-service-bsky:${IPCC_IMAGE_TAG:-latest}
     volumes:
       # persist ip location data
       - ipcc:/app/downloads
@@ -1019,8 +1058,10 @@ services:
     restart: always
 
   backup:
-    image: creativeprojects/resticprofile:0.32.0 # restic issue #5324 fix was released in 0.18.1, and 0.32.0 is subsequent to that
+    image: creativeprojects/resticprofile:0.32.0
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
+    entrypoint: ["/bin/sh"]
+    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
@@ -1032,11 +1073,11 @@ services:
       - bsky:/data/bsky:rw
       - backup-staging:/staging
       - backup-repo:/restic-repo
-    env_file: config/backup-secrets.env
     environment:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
-      - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite  # Glob pattern for SQLite files
+      # Glob pattern for SQLite files to backup
+      - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite
       - PGHOST=database
       - PGPORT=5432
       - PGUSER=${POSTGRES_USER}
@@ -1052,9 +1093,9 @@ services:
       # if any of these keys are needed for the remote storage services, they can be configured in the environment
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS-}
-    entrypoint: ["/bin/sh"]
-    command: ['-c', '/scripts/entrypoint.sh && resticprofile schedule --all && crond -f']
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS:-restic_google_creds.json}
+    env_file:
+      - config/backup-secrets.env
     depends_on:
       - database
     healthcheck:
@@ -1064,60 +1105,64 @@ services:
       retries: 5
     restart: always
 
-  jaeger:
-    image: jaegertracing/jaeger:latest
+  prometheus:
+    image: prom/prometheus:latest
     volumes:
-      - "./config/telemetry/jaeger.yaml:/etc/jaeger/jaeger.yml"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - METRICS_STORAGE_TYPE=prometheus
-      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+      - ./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # - "./data/prometheus:/prometheus"
     ports:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
-      # - "14250:14250"   # legacy jaeger-agent spans gRPC protobuf
-      # - "14268:14268"   # legacy thrift_http receiver and sampling
-      - "127.0.0.1:14269:14269"   # admin port: health check at / and metrics at /metrics
-      # - "4317:4317"     # otlp collector over gRPC
-      # - "4318:4318"     # otlp collector over http
-      # - "6831:6831/udp" # legacy thrift in compact thrift protocol
-      # - "6832:6832/udp" # legacy thrift in binary thrift protocol
-      # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
-      # - "13133:13133"   # healthcheck extension
-      - "127.0.0.1:16686:16686"   # Jaeger UI
-      # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
-      - "127.0.0.1:55680:55679" # ZPages for direct view of otel-collector info
-    depends_on:
-      - prometheus
+      - target: 9090
+        published: 9090
+        host_ip: '127.0.0.1'
+        mode: host
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      # - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=200h"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/metrics >/dev/null"]
       timeout: 10s
       interval: 10s
       retries: 5
     restart: always
 
-  # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
   otel-collector:
-    image: ${BRANDED_NAMESPACE}/otel-collector:latest
+    # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
+    image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ops/otel-collector-Dockerfile
     volumes:
-      - "./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml"
+      - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
     command:
       - "--config=/etc/otelcol/otel-collector.yml"
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
       # also expose receivers on localhost for when debugging local services
-      - "127.0.0.1:4317:4317"   # OTLP gRPC receiver
-      - "127.0.0.1:4318:4318"   # OTLP HTTP receiver
+      # OTLP gRPC receiver
+      - target: 4317
+        published: 4317
+        mode: host
+      # OTLP HTTP receiver
+      - target: 4318
+        published: 4318
+        mode: host
       # - "8888:8888"   # Prometheus metrics
       # - "8889:8889"   # Prometheus exporter metrics
       # - "13133:13133" # health_check extension
-      - "127.0.0.1:55679:55679" # ZPages for direct view
+      # ZPages for direct view
+      - target: 55679
+        published: 55679
+        mode: host
+        host_ip: '127.0.0.1'
       # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
       # - "14278:14278" # alternate jaeger thrift_http receiver
-      - "127.0.0.1:8126:8126"   # datadog receiver for services instrumented with ddtrace
+      # datadog receiver for services instrumented with ddtrace
+      - target: 8126
+        published: 8126
+        mode: host
     depends_on:
       # - jaeger
       - prometheus
@@ -1128,22 +1173,87 @@ services:
       retries: 50
     restart: always
 
-  prometheus:
-    image: prom/prometheus:latest
+  jaeger:
+    image: jaegertracing/jaeger:latest
     volumes:
-      - "./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml"
-      # - "./data/prometheus:/prometheus"
+      - ./config/telemetry/jaeger.yaml:/etc/jaeger/jaeger.yml:ro
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
       # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
-      - "127.0.0.1:9090:9090"
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      # - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=200h"
+      # - "14250:14250"   # legacy jaeger-agent spans gRPC protobuf
+      # - "14268:14268"   # legacy thrift_http receiver and sampling
+      # admin port: health check at / and metrics at /metrics
+      - target: 14269
+        published: 14269
+        mode: host
+      # - "4317:4317"     # otlp collector over gRPC
+      # - "4318:4318"     # otlp collector over http
+      # - "6831:6831/udp" # legacy thrift in compact thrift protocol
+      # - "6832:6832/udp" # legacy thrift in binary thrift protocol
+      # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
+      # - "13133:13133"   # healthcheck extension
+      # Jaeger UI
+      - target: 16686
+        published: 16686
+        mode: host
+      # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
+      # ZPages for direct view of otel-collector info
+      - target: 55679
+        published: 55680
+        mode: host
+        host_ip: '127.0.0.1'
+    depends_on:
+      - prometheus
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/metrics >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
       timeout: 10s
       interval: 10s
       retries: 5
+    restart: always
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    profiles: ['logs']
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - SERVER_NAME=${logsFQDN}
+      - SERVER_HOST=0.0.0.0
+      - OPENSEARCH_REQUESTTIMEOUT=60000
+    ports:
+      - target: 5601
+        published: 5601
+        mode: host
+    volumes:
+      - opensearch-dashboards:/usr/share/opensearch-dashboards/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q 'available'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      - opensearch
+    restart: always
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.2
+    profiles: ['logs']
+    user: root
+    volumes:
+      - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./config/logging/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - ./config/logging/add-container-metadata.lua:/fluent-bit/etc/add-container-metadata.lua:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - fluent-bit-storage:/var/log/flb-storage
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    depends_on:
+      - opensearch
     restart: always
 
