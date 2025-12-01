@@ -269,7 +269,7 @@ services:
     restart: always
 
   plc:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG:-${branded_asof:-latest}}
     profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
@@ -721,8 +721,7 @@ services:
     restart: always
 
   social-link:
-    # image: ${UNBRANDED_NAMESPACE}/bluesky-social-app:${asof}
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-link:${branded_asof}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
     platform: linux/amd64
     profiles: ['', 'social-app']

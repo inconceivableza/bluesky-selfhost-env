@@ -280,7 +280,7 @@ services:
       - foodios-net
 
   plc:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG:-latest}
     # profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
@@ -332,7 +332,7 @@ services:
     configs: *certs-config
 
   pds:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${PDS_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${PDS_IMAGE_TAG:-latest}
     command: ['sh', '-c', 'set -a; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
     # profiles: ['', 'atproto']
     build:
@@ -423,7 +423,7 @@ services:
       - caddy
 
   bgs:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${BGS_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${BGS_IMAGE_TAG:-latest}
     # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -482,7 +482,7 @@ services:
 
   bsky:
     # appview(api)
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${BSKY_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${BSKY_IMAGE_TAG:-latest}
     # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -573,7 +573,7 @@ services:
       - caddy
 
   social-app:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${SOCIAL_APP_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${SOCIAL_APP_IMAGE_TAG:-latest}
     # the social-app Dockerfile compiles for this platform
     # platform: linux/amd64
     # profiles: ['', 'social-app']
@@ -662,7 +662,7 @@ services:
       - foodios-net
 
   social-card:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${SOCIAL_CARD_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${SOCIAL_CARD_IMAGE_TAG:-latest}
     # the social-app Dockerfile compiles for this platform
     # platform: linux/amd64
     # profiles: ['', 'social-app']
@@ -706,7 +706,7 @@ services:
       - foodios-net
 
   social-embed:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${SOCIAL_EMBED_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${SOCIAL_EMBED_IMAGE_TAG:-latest}
     # the social-app Dockerfile compiles for this platform
     # platform: linux/amd64
     # profiles: ['', 'social-app']
@@ -757,7 +757,10 @@ services:
       - foodios-net
 
   social-link:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG:-latest}
+    # the social-app Dockerfile compiles for this platform
+    # platform: linux/amd64
+    # profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.bskylink
@@ -809,7 +812,7 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   palomar:
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${PALOMAR_IMAGE_TAG:-${branded_asof:-latest}}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${PALOMAR_IMAGE_TAG:-latest}
     # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
