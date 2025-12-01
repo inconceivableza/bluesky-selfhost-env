@@ -159,7 +159,7 @@ http://test-ws.{$DOMAIN} {
 
 # starts: simple mapping >>>>>
 
-{$plcFQDN:plc.{$DOMAIN}} {
+{$plcFQDN} {
 	import cors
 	import tracing plc
 	tls {$EMAIL4CERTS} {
@@ -168,7 +168,7 @@ http://test-ws.{$DOMAIN} {
 	reverse_proxy http://plc:2582
 }
 
-{$bgsFQDN:bgs.{$DOMAIN}} {
+{$bgsFQDN} {
 	import cors
 	import tracing bgs-relay
 	tls {$EMAIL4CERTS} {
@@ -177,7 +177,7 @@ http://test-ws.{$DOMAIN} {
 	reverse_proxy {$bgsPROXY:http://bgs:2470}
 }
 
-{$apiFQDN:api.{$DOMAIN}}, {$publicApiFQDN:public.api.{$DOMAIN}}, {$bskyFQDN:bsky.{$DOMAIN}} {
+{$apiFQDN}, {$publicApiFQDN}, {$bskyFQDN} {
 	import cors
 	import tracing bsky
 	tls {$EMAIL4CERTS} {
@@ -186,7 +186,7 @@ http://test-ws.{$DOMAIN} {
 	reverse_proxy {$bskyPROXY:http://bsky:2584}
 }
 
-{$socialappFQDN:social-app.{$DOMAIN}} {
+{$socialappFQDN} {
 	import cors
 	import tracing social-app
 	tls {$EMAIL4CERTS} {
@@ -204,7 +204,7 @@ yarnstart.{$DOMAIN} {
 	reverse_proxy {$socialappyarnPROXY:http://host.docker.internal:8081}
 }
 
-{$cardFQDN:ogcard.{$DOMAIN}} {
+{$cardFQDN} {
 	import cors
 	import tracing social-card
 	tls {$EMAIL4CERTS} {
@@ -213,7 +213,7 @@ yarnstart.{$DOMAIN} {
 	reverse_proxy http://social-card:3003
 }
 
-{$embedFQDN:embed.{$DOMAIN}} {
+{$embedFQDN} {
 	import cors
 	import tracing social-embed
 	tls {$EMAIL4CERTS} {
@@ -222,7 +222,7 @@ yarnstart.{$DOMAIN} {
 	reverse_proxy http://social-embed:8101
 }
 
-{$linkFQDN:go.{$DOMAIN}} {
+{$linkFQDN} {
 	import cors
 	import tracing social-link
 	tls {$EMAIL4CERTS} {
@@ -231,7 +231,7 @@ yarnstart.{$DOMAIN} {
 	reverse_proxy {$sociallinkPROXY:http://social-link:3004}
 }
 
-{$ipFQDN:ip.{$DOMAIN}} {
+{$ipFQDN} {
 	import cors
 	import tracing ipcc
 	tls {$EMAIL4CERTS} {
@@ -248,7 +248,7 @@ yarnstart.{$DOMAIN} {
 	}
 }
 
-{$ozoneFQDN:ozone.{$DOMAIN}} {
+{$ozoneFQDN} {
 	import cors
 	import tracing ozone
 	tls {$EMAIL4CERTS} {
@@ -266,7 +266,7 @@ ozone-standalone.{$DOMAIN} {
 	reverse_proxy http://ozone-standalone:3005
 }
 
-{$palomarFQDN:palomar.{$DOMAIN}} {
+{$palomarFQDN} {
 	import cors
 	import tracing palomar
 	tls {$EMAIL4CERTS} {
@@ -275,16 +275,16 @@ ozone-standalone.{$DOMAIN} {
 	reverse_proxy http://palomar:3999
 }
 
-{$feedgenFQDN:feed-generator.{$DOMAIN}} {
+{$feedgenFQDN} {
 	import cors
-	import tracing {$feedgenFQDN:feed-generator.{$DOMAIN}}
+	import tracing {$feedgenFQDN}
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
 	reverse_proxy http://feed-generator:3008
 }
 
-{$jetstreamFQDN:jetstream.{$DOMAIN}} {
+{$jetstreamFQDN} {
 	import cors
 	import tracing jetstream
 	tls {$EMAIL4CERTS} {
@@ -293,7 +293,7 @@ ozone-standalone.{$DOMAIN} {
 	reverse_proxy http://jetstream:6008
 }
 
-{$logsFQDN:logs.{$DOMAIN}} {
+{$logsFQDN} {
 	import cors
 	import tracing logs-dashboard
 	tls {$EMAIL4CERTS} {
@@ -302,7 +302,7 @@ ozone-standalone.{$DOMAIN} {
 	reverse_proxy http://opensearch-dashboards:5601
 }
 
-{$pdsFQDN:pds.{$DOMAIN}} {
+{$pdsFQDN} {
 	# import cors # disabled as pds serves its own CORS headers which then conflict
 	tls {$EMAIL4CERTS} {
 		on_demand
@@ -340,7 +340,7 @@ ozone-standalone.{$DOMAIN} {
 }
 
 # starts:  *.pdsFQDN (pds.DOMAIN) >>>>>>>>>>>
-*.{$pdsFQDN:pds.{$DOMAIN}} {
+*.{$pdsFQDN} {
 	import cors
 	tls {$EMAIL4CERTS} {
 		#         enables wildcards
@@ -352,7 +352,7 @@ ozone-standalone.{$DOMAIN} {
 	@ws {
 		header Connection *Upgrade*
 		header Upgrade websocket
-		header_regexp host Host ^(.*)\.{$pdsFQDN:pds.{$DOMAIN}}$
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(.*)
 	}
 	rewrite @ws {http.regexp.path.1}
@@ -361,7 +361,7 @@ ozone-standalone.{$DOMAIN} {
 	#---------------
 	#      *.pdsFQDN/xrpc*  => http://pds:2583
 	@xrpc {
-		header_regexp host Host ^(.*)\.{$pdsFQDN:pds.{$DOMAIN}}$
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/xrpc.*)
 	}
 	rewrite @xrpc {http.regexp.path.1}
@@ -370,7 +370,7 @@ ozone-standalone.{$DOMAIN} {
 	#---------------
 	#      *.pdsFQDN/.well-known* => http://pds:2583
 	@wellknown {
-		header_regexp host Host ^(.*)\.{$pdsFQDN:pds.{$DOMAIN}}$
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/\.well-known.*)
 	}
 	rewrite @wellknown {http.regexp.path.1}
@@ -379,7 +379,7 @@ ozone-standalone.{$DOMAIN} {
 	#---------------
 	#      *.pdsFQDN/robots.txt* => http://pds:2583
 	@robots {
-		header_regexp host Host ^(.*)\.{$pdsFQDN:pds.{$DOMAIN}}$
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		path_regexp path ^(/robots\.txt*)
 	}
 	rewrite @robots {http.regexp.path.1}
@@ -388,14 +388,14 @@ ozone-standalone.{$DOMAIN} {
 	#---------------
 	#     (.*).pdsFQDN/(.*) => http://social-app:8100/profile/$$1/$$2
 	@others {
-		header_regexp host Host ^(.*)\.{$pdsFQDN:pds.{$DOMAIN}}$
+		header_regexp host Host ^(.*)\.{$pdsFQDN}$
 		# this must exclude all above paths, as redir has a higher priority than rewrite
 		not {
 			path /xrpc* /.well-known* /robots.txt*
 		}
 		path_regexp path ^(.*)
 	}
-	redir @others https://{$socialappFQDN:social-app.{$DOMAIN}}/profile/{host}{http.regexp.path.1}
+	redir @others https://{$socialappFQDN}/profile/{host}{http.regexp.path.1}
 	import tracing_reverse_proxy @others http://social-app:8100 pds-profile-others
 }
 # ends: *.pdsFQDN <<<<<<<<<<<
