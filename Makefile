@@ -124,8 +124,8 @@ config/pds-secrets.env: ${passfile}
 config/plc-secrets.env: config/db-secrets.env
 	@cat $^ > $@
 	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/plc' >> $@
-	@echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
-	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+	@echo 'DB_CREDS_JSON="{\"username\":\"$${POSTGRES_USER}\",\"password\":\"$${POSTGRES_PASSWORD}\",\"host\":\"database\",\"port\":\"5432\",\"database\":\"plc\"}"' >> $@
+	@echo 'DB_MIGRATE_CREDS_JSON="{\"username\":\"$${POSTGRES_USER}\",\"password\":\"$${POSTGRES_PASSWORD}\",\"host\":\"database\",\"port\":\"5432\",\"database\":\"plc\"}"' >> $@
 
 config/social-link-secrets.env: config/db-secrets.env
 	@cat $^ > $@
