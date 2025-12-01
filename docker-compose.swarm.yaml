@@ -136,7 +136,7 @@ services:
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
       # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.crt:ro
-      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/local/root.key:ro
+      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.key:ro
       # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
