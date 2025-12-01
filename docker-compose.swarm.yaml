@@ -1116,7 +1116,8 @@ services:
   backup:
     image: creativeprojects/resticprofile:0.32.0
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
-    command: ["/bin/sh",'-c', 'set -a; . /run/secrets/backup_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
+    entrypoint: ['/bin/sh', '-c', 'set -a; . /run/secrets/backup_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; /scripts/entrypoint.sh && resticprofile schedule --all && exec crond -f']
+    command: []
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
