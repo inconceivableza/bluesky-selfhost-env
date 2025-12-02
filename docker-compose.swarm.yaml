@@ -228,7 +228,7 @@ services:
       - foodios-net
 
   opensearch:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${branded_asof:-latest}
     # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -864,7 +864,7 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   jetstream:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
+    image: ${BRANDED_NAMESPACE}/bluesky-jetstream:${branded_asof:-latest}
     # profiles: ['', 'jetstream']
     build:
       context: ./repos/jetstream/
@@ -895,7 +895,7 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-ozone:${branded_asof:-latest}
     # profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
@@ -952,7 +952,7 @@ services:
 
   ozone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
     # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -1004,7 +1004,7 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   ozone-daemon:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
     # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -1053,7 +1053,7 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.s
 
   feed-generator:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
+    image: ${BRANDED_NAMESPACE}/bluesky-feed-generator:${branded_asof:-latest}
     # profiles: ['', 'feed-generator']
     build:
       context: ./repos/feed-generator/

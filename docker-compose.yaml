@@ -226,7 +226,7 @@ services:
     restart: always
 
   opensearch:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${branded_asof:-latest}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
@@ -850,7 +850,7 @@ services:
 
   ozone-standalone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-ozone:${asof}
+    image: ${BRANDED_NAMESPACE}/bluesky-ozone:${branded_asof:-latest}
     profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
@@ -906,7 +906,7 @@ services:
 
   ozone:
     # moderation-api:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
     profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
@@ -956,7 +956,7 @@ services:
 #      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
 
   ozone-daemon:
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
     profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
