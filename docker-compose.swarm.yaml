@@ -825,7 +825,7 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
-    command: ['sh', '-c', 'set -a; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 opensearch:9200 database:5432; exec /palomar run']
+    command: ['sh', '-c', 'set -a; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -v -t 120 opensearch:9200 database:5432 bgs:2470 pds:2583; exec /palomar run']
     ports:
       - target: 3999
         published: 3999
@@ -833,8 +833,8 @@ services:
       # port 3998 is the default metrics port
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
-      - ATP_BGS_HOST=wss://${bgsFQDN}
-      - ATP_PLC_HOST=https://${plcFQDN}
+      - ATP_BGS_HOST=ws://bgs:2470
+      - ATP_PLC_HOST=http://pds:2583
       # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true

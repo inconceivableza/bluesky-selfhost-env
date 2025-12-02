@@ -792,8 +792,8 @@ services:
       # port 3998 is the default metrics port
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
-      - ATP_BGS_HOST=wss://${bgsFQDN}
-      - ATP_PLC_HOST=https://${plcFQDN}
+      - ATP_BGS_HOST=ws://bgs:2470
+      - ATP_PLC_HOST=http://pds:2583
       # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
