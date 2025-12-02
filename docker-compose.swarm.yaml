@@ -878,6 +878,7 @@ services:
       - target: 6008
         published: 6008
         mode: host
+      # - 6009:6009 metrics address
     volumes:
       - jetstream:/data
     environment:
@@ -1237,6 +1238,9 @@ services:
       retries: 50
     deploy:
       <<: *deploy-defaults
+      placement:
+        constraints:
+          - 'node.platform.arch == aarch64'
     networks:
       - foodios-net
 
