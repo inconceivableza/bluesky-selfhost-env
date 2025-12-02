@@ -69,11 +69,24 @@ function macos_deploy_haproxy() {
   brew services start haproxy
 }
 
-[ "$nondocker_services" == "haproxy" ] && {
+function macos_undeploy_haproxy() {
+  has_haproxy_service="$(brew services list --json | jq '.[] | select(.name == "haproxy")')"
+  [ "$has_haproxy_service" != "" ] && {
+    haproxy_status="$(echo "$has_haproxy_service" | jq -r '.status')"
+    [ "$haproxy_status" == "started" ] && {
+      show_heading "Undeploying haproxy" "service previously configured"
+      brew services stop haproxy
+    }
+  }
+}
+
+if [ "$nondocker_services" == "haproxy" ]; then
   if [ "$os" == macos ]; then macos_deploy_haproxy
   else show_warning "haproxy is configured" "but starting it is not yet automated on your os ($os)"
   fi
-}
+else
+  if [ "$os" == macos ]; then macos_undeploy_haproxy; fi
+fi
 
 show_heading "Checking certificates" "which may need to refresh with letsencrypt"
 domains_to_test="${DOMAIN} ${socialappFQDN} ${cardFQDN} ${embedFQDN} ${linkFQDN} ${pdsFQDN} ${bgsFQDN} ${bskyFQDN} ${feedgenFQDN} ${ipFQDN} ${jetstreamFQDN} ${ozoneFQDN} ${palomarFQDN} ${plcFQDN} ${publicApiFQDN} ${apiFQDN} ${gifFQDN} ${videoFQDN}"
