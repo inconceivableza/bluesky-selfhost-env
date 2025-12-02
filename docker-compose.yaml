@@ -439,7 +439,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - RELAY_DEFAULT_REPO_LIMIT=100000
       - RELAY_NEWPDS_PERDAY_LIMIT=500
-      - RELAY_PERSISTER_DIR=/data/bigsky/events
+      # - RELAY_PERSISTER_DIR=/data/bigsky/events
     env_file:
       - config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     volumes:
