@@ -1,0 +1,96 @@
+{{- if .Values.opensearch.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: opensearch
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  serviceName: opensearch
+  replicas: {{ .Values.opensearch.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: opensearch
+  template:
+    metadata:
+      labels:
+        app: opensearch
+    spec:
+      containers:
+      - name: opensearch
+        image: {{ include "foodios.image" (dict "image" .Values.opensearch.image "tag" .Values.opensearch.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.opensearch.port }}
+          name: http
+        - containerPort: 9300
+          name: transport
+        env:
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: OPENSEARCH_JAVA_OPTS
+          value: {{ .Values.opensearch.javaOpts | default "-Xms512m -Xmx512m" | quote }}
+        - name: bootstrap.memory_lock
+          value: "true"
+        - name: cluster.name
+          value: "docker-cluster"
+        - name: discovery.type
+          value: "single-node"
+        - name: http.host
+          value: "0.0.0.0"
+        - name: node.name
+          value: "os-node"
+        - name: plugins.security.disabled
+          value: "true"
+        - name: transport.host
+          value: "127.0.0.1"
+        envFrom:
+        {{- if .Values.opensearch.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.opensearch.secrets.name | default "opensearch-secrets" }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/opensearch/data/
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              curl -s http://localhost:9200/_cluster/health | grep -q '"status":'
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - |
+              curl -s http://localhost:9200/_cluster/health | grep -q '"status":'
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        {{- if .Values.opensearch.resources }}
+        resources:
+          {{- toYaml .Values.opensearch.resources | nindent 10 }}
+        {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.opensearch.storage.storageClass }}
+      storageClassName: {{ .Values.opensearch.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.opensearch.storage.size | default "20Gi" }}
+{{- end }}

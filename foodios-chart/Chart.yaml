@@ -1,0 +1,13 @@
+apiVersion: v2
+name: foodios
+description: Self-hosted Foodios/ATProto stack
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - foodios
+  - bluesky
+  - atproto
+  - social
+maintainers:
+  - name: Foodios Self-host

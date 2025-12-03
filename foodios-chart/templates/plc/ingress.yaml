@@ -1,0 +1,3 @@
+{{- if .Values.plc.enabled }}
+{{- include "foodios.ingress" (dict "name" "plc" "host" .Values.fqdns.plc "port" .Values.plc.port "root" .) }}
+{{- end }}

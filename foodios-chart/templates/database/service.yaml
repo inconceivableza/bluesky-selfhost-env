@@ -1,0 +1,19 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: database
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP  # Regular service for simple DNS
+  ports:
+  - port: {{ .Values.database.port }}
+    targetPort: postgres
+    protocol: TCP
+    name: postgres
+  selector:
+    app: database
+{{- end }}

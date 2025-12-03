@@ -1,0 +1,19 @@
+{{- if .Values.pds.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pds-data
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.pds.storage.storageClass }}
+  storageClassName: {{ .Values.pds.storage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.pds.storage.size | default "10Gi" }}
+{{- end }}

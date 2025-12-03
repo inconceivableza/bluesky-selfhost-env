@@ -1,0 +1,100 @@
+{{- if .Values.bgs.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bgs
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: bgs
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  serviceName: bgs
+  replicas: {{ .Values.bgs.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: bgs
+  template:
+    metadata:
+      labels:
+        app: bgs
+    spec:
+      initContainers:
+      - name: wait-for-database
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database 5432; do echo waiting for database; sleep 2; done']
+      containers:
+      - name: bgs
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.bgs.image }}:{{ .Values.bgs.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.bgs.port }}
+          name: http
+        - containerPort: 2471
+          name: metrics
+        env:
+        - name: ATP_PLC_HOST
+          value: "https://{{ .Values.fqdns.plc }}"
+        - name: DATA_DIR
+          value: "/data/bigsky"
+        - name: DEBUG_MODE
+          value: "1"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: GOLOG_LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4318"
+        - name: RELAY_DEFAULT_REPO_LIMIT
+          value: "100000"
+        - name: RELAY_NEWPDS_PERDAY_LIMIT
+          value: "500"
+        - name: RELAY_PERSISTER_DIR
+          value: "/data/bigsky/events"
+        envFrom:
+        {{- if .Values.bgs.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.bgs.secrets.name | default "bgs-secrets" }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: /data/bigsky
+        livenessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.bgs.resources }}
+        resources:
+          {{- toYaml .Values.bgs.resources | nindent 10 }}
+        {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.bgs.storage.storageClass }}
+      storageClassName: {{ .Values.bgs.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.bgs.storage.size | default "50Gi" }}
+{{- end }}

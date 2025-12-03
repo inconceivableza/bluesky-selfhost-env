@@ -1,0 +1,18 @@
+{{- if .Values.socialCard.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: social-card
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-card
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.socialCard.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: social-card
+{{- end }}

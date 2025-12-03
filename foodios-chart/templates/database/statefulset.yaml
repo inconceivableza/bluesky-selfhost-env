@@ -1,0 +1,89 @@
+{{- if .Values.database.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: database
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: database
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  serviceName: database
+  replicas: {{ .Values.database.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      containers:
+      - name: postgres
+        image: {{ .Values.database.image }}:{{ .Values.database.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.database.port }}
+          name: postgres
+        env:
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: POSTGRES_INITDB_ARGS
+          value: "-A scram-sha-256 --encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+        - name: POSTGRES_USER
+          value: {{ .Values.database.user }}
+        - name: POSTGRES_DB
+          value: "healthcheck"
+        envFrom:
+        {{- if .Values.database.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.database.secrets.name | default "db-secrets" }}
+        {{- end }}
+        volumeMounts:
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d/
+          readOnly: true
+        - name: data
+          mountPath: /var/lib/postgresql/data/
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.user }} -d healthcheck
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.user }} -d healthcheck
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        {{- if .Values.database.resources }}
+        resources:
+          {{- toYaml .Values.database.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: postgres-init
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.database.storage.storageClass }}
+      storageClassName: {{ .Values.database.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.database.storage.size | default "10Gi" }}
+{{- end }}

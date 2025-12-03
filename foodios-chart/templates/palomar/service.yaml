@@ -1,0 +1,18 @@
+{{- if .Values.palomar.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: palomar
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: palomar
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.palomar.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: palomar
+{{- end }}

@@ -1,0 +1,26 @@
+{{- if .Values.bsky.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: bsky
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: bsky
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.bsky.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 3001
+    targetPort: dataplane
+    protocol: TCP
+    name: dataplane
+  - port: 3002
+    targetPort: bsync
+    protocol: TCP
+    name: bsync
+  selector:
+    app: bsky
+{{- end }}

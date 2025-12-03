@@ -1,0 +1,18 @@
+{{- if .Values.socialLink.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: social-link
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-link
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.socialLink.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: social-link
+{{- end }}

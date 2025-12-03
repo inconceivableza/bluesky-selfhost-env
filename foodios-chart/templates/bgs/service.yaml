@@ -1,0 +1,23 @@
+{{- if .Values.bgs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: bgs
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: bgs
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP  # Regular service for simple DNS
+  ports:
+  - port: {{ .Values.bgs.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 2471
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  selector:
+    app: bgs
+{{- end }}

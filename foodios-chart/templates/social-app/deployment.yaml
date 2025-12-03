@@ -1,0 +1,119 @@
+{{- if .Values.socialApp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-app
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-app
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.socialApp.replicas }}
+  selector:
+    matchLabels:
+      app: social-app
+  template:
+    metadata:
+      labels:
+        app: social-app
+    spec:
+      containers:
+      - name: social-app
+        image: {{ include "foodios.image" (dict "image" .Values.socialApp.image "tag" .Values.socialApp.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        {{- if .Values.socialApp.command }}
+        command:
+          {{- toYaml .Values.socialApp.command | nindent 10 }}
+        {{- end }}
+        {{- if .Values.socialApp.args }}
+        args:
+          {{- toYaml .Values.socialApp.args | nindent 10 }}
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.socialApp.port }}
+          protocol: TCP
+        env:
+        # ATP Configuration
+        - name: EXPO_PUBLIC_ATP_APPVIEW_DID
+          value: "did:web:{{ .Values.fqdns.api }}"
+        - name: EXPO_PUBLIC_ATP_APPVIEW_URL
+          value: "http://{{ .Values.fqdns.api }}"
+        - name: ATP_APPVIEW_URL
+          value: "http://bsky.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.bsky.port }}"
+        
+        # PDS Configuration
+        - name: EXPO_PUBLIC_ATP_PDS_DID
+          value: "did:web:{{ .Values.fqdns.pds }}"
+        - name: EXPO_PUBLIC_ATP_PDS_URL
+          value: "http://{{ .Values.fqdns.pds }}"
+        
+        # Public App View
+        - name: EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL
+          value: "http://{{ .Values.fqdns.publicApi }}"
+        
+        # Bluesky Proxy
+        - name: EXPO_PUBLIC_BLUESKY_PROXY_DID
+          value: "did:web:{{ .Values.fqdns.bsky }}"
+        
+        # CORS Configuration
+        - name: EXPO_PUBLIC_CORS_ALLOWED_ORIGINS
+          value: "http://{{ .Values.fqdns.socialapp }}"
+        - name: CORS_ALLOWED_ORIGINS
+          value: "http://{{ .Values.fqdns.socialapp }}"
+        
+        # Service URLs
+        - name: HTTP_ADDRESS
+          value: ":{{ .Values.socialApp.port }}"
+        - name: EXPO_PUBLIC_LINK_HOST
+          value: {{ .Values.fqdns.link }}
+        - name: LINK_HOST
+          value: {{ .Values.fqdns.link }}
+        - name: EXPO_PUBLIC_OGCARD_URL
+          value: "http://{{ .Values.fqdns.card }}"
+        - name: OGCARD_URL
+          value: "http://social-card.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.socialCard.port }}"
+        - name: EXPO_PUBLIC_SOCIAL_EMBED_SERVICE
+          value: "http://{{ .Values.fqdns.embed }}"
+        
+        # Social App Configuration
+        - name: EXPO_PUBLIC_SOCIAL_APP_HOST
+          value: {{ .Values.fqdns.socialapp }}
+        - name: EXPO_PUBLIC_SOCIAL_APP_URL
+          value: "http://{{ .Values.fqdns.socialapp }}"
+        - name: EXPO_PUBLIC_SOCIAL_APP_ABOUT
+          value: "http://{{ .Values.fqdns.pds }}"
+        
+        # Environment
+        - name: NODE_ENV
+          value: {{ .Values.global.environment }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: GOLOG_LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" }}
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" }}
+        
+        {{- if .Values.socialApp.resources }}
+        resources:
+          {{- toYaml .Values.socialApp.resources | nindent 10 }}
+        {{- end }}
+        
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.socialApp.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.socialApp.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+{{- end }}

@@ -1,0 +1,3 @@
+{{- if .Values.palomar.enabled }}
+{{- include "foodios.ingress" (dict "name" "palomar" "host" .Values.fqdns.palomar "port" .Values.palomar.port "root" .) }}
+{{- end }}

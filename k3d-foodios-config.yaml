@@ -1,0 +1,34 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: foodios-local
+
+servers: 1
+agents: 1
+
+# Use specific k3s version
+image: rancher/k3s:v1.28.5-k3s1
+
+# Port mappings - expose to localhost
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+
+# Options
+options:
+  k3d:
+    wait: true
+    timeout: "120s"
+  
+  # k3s options - Traefik is enabled by default
+  k3s:
+    extraArgs: []  # No extra args needed, Traefik will be included
+  
+  # Kubeconfig settings
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

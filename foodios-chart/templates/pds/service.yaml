@@ -1,0 +1,19 @@
+{{- if .Values.pds.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: pds
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.pds.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: pds
+{{- end }}

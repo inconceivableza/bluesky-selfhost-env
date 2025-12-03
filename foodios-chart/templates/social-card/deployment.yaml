@@ -1,0 +1,70 @@
+{{- if .Values.socialCard.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-card
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-card
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.socialCard.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: social-card
+  template:
+    metadata:
+      labels:
+        app: social-card
+    spec:
+      initContainers:
+      - name: wait-for-database
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database 5432; do echo waiting for database; sleep 2; done']
+      containers:
+      - name: social-card
+        image: {{ include "foodios.image" (dict "image" .Values.socialCard.image "tag" .Values.socialCard.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.socialCard.port }}
+          name: http
+        env:
+        - name: CARD_PORT
+          value: {{ .Values.socialCard.port | quote }}
+        - name: CARD_APPVIEW_URL
+          value: "https://{{ .Values.fqdns.api }}"
+        - name: CARD_ORIGIN_VERIFY
+          value: ""
+        - name: SOCIAL_APP_NAME
+          value: {{ .Values.global.socialAppName | quote }}
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        livenessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.socialCard.resources }}
+        resources:
+          {{- toYaml .Values.socialCard.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

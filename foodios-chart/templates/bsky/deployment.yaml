@@ -1,0 +1,130 @@
+{{- if .Values.bsky.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bsky
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: bsky
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.bsky.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: bsky
+  template:
+    metadata:
+      labels:
+        app: bsky
+    spec:
+      initContainers:
+      - name: wait-for-dependencies
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database 5432 && nc -z redis 6379; do echo waiting for dependencies; sleep 2; done']
+      containers:
+      - name: bsky
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.bsky.image }}:{{ .Values.bsky.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.bsky.port }}
+          name: http
+        - containerPort: 3001
+          name: dataplane
+        - containerPort: 3002
+          name: bsync
+        env:
+        - name: BSKY_BLOB_CACHE_LOC
+          value: "/cache/"
+        - name: BSKY_BSYNC_HTTP_VERSION
+          value: "1.1"
+        - name: BSKY_BSYNC_PORT
+          value: "3002"
+        - name: BSKY_BSYNC_URL
+          value: "http://bsky:3002"
+        - name: BSKY_DATAPLANE_HTTP_VERSION
+          value: "1.1"
+        - name: BSKY_DATAPLANE_PORT
+          value: "3001"
+        - name: BSKY_DATAPLANE_URLS
+          value: "http://bsky:3001"
+        - name: BSKY_DB_POSTGRES_SCHEMA
+          value: "bsky"
+        - name: BSKY_DID_PLC_URL
+          value: "http://plc:{{ .Values.plc.port }}"
+        - name: BSKY_PORT
+          value: {{ .Values.bsky.port | quote }}
+        - name: BSKY_PUBLIC_URL
+          value: "https://{{ .Values.fqdns.bsky }}"
+        - name: BSKY_REPO_PROVIDER
+          value: "ws://bgs:{{ .Values.bgs.port }}"
+        - name: BSKY_SEARCH_URL
+          value: "http://palomar:{{ .Values.palomar.port }}"
+        - name: BSKY_SERVER_DID
+          value: "did:web:{{ .Values.fqdns.bsky }}"
+        - name: DEBUG_MODE
+          value: "1"
+        - name: DID_PLC_URL
+          value: "http://plc:{{ .Values.plc.port }}"
+        - name: ENABLE_MIGRATIONS
+          value: "false"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: MOD_SERVICE_DID
+          value: "did:web:{{ .Values.fqdns.ozone }}"
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: REDIS_HOST
+          value: "redis"
+        - name: DD_TRACE_AGENT_URL
+          value: "http://otel-collector:8126"
+        - name: DD_TRACE_PROPAGATION_STYLE
+          value: "tracecontext,baggage"
+        - name: DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED
+          value: "true"
+        envFrom:
+        {{- if .Values.bsky.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.bsky.secrets.name | default "bsky-secrets" }}
+        {{- end }}
+        volumeMounts:
+        - name: cache
+          mountPath: /cache/
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.bsky.resources }}
+        resources:
+          {{- toYaml .Values.bsky.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: cache
+        {{- if .Values.bsky.storage.enabled }}
+        persistentVolumeClaim:
+          claimName: bsky-cache
+        {{- else }}
+        emptyDir: {}  # Ephemeral cache
+        {{- end }}
+{{- end }}

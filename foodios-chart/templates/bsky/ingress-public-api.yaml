@@ -1,0 +1,4 @@
+{{- if .Values.bsky.enabled }}
+# Public API alias for bsky service
+{{ include "foodios.ingress" (dict "name" "bsky-public-api" "host" .Values.fqdns.publicApi "port" .Values.bsky.port "root" .) }}
+{{- end }}

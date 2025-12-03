@@ -1,0 +1,77 @@
+{{- if .Values.palomar.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: palomar
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: palomar
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.palomar.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: palomar
+  template:
+    metadata:
+      labels:
+        app: palomar
+    spec:
+      initContainers:
+      - name: wait-for-dependencies
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z opensearch 9200 && nc -z database 5432 && nc -z bgs 2470; do echo waiting for dependencies; sleep 2; done']
+      containers:
+      - name: palomar
+        image: {{ include "foodios.image" (dict "image" .Values.palomar.image "tag" .Values.palomar.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.palomar.port }}
+          name: http
+        env:
+        - name: ATP_BGS_HOST
+          value: "ws://bgs:{{ .Values.bgs.port }}"
+        - name: ATP_PLC_HOST
+          value: "http://plc:{{ .Values.plc.port }}"
+        - name: ES_HOSTS
+          value: "http://opensearch:9200"
+        - name: ES_INSECURE_SSL
+          value: "true"
+        - name: ES_USERNAME
+          value: "admin"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: PALOMAR_BIND
+          value: "0.0.0.0:{{ .Values.palomar.port }}"
+        - name: PALOMAR_DISCOVER_REPOS
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4318"
+        envFrom:
+        {{- if .Values.palomar.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.palomar.secrets.name | default "palomar-secrets" }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.palomar.resources }}
+        resources:
+          {{- toYaml .Values.palomar.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

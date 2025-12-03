@@ -1,0 +1,84 @@
+{{- if .Values.socialEmbed.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-embed
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-embed
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.socialEmbed.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: social-embed
+  template:
+    metadata:
+      labels:
+        app: social-embed
+    spec:
+      containers:
+      - name: social-embed
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.socialEmbed.image }}:{{ .Values.socialEmbed.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        {{- if .Values.socialEmbed.command }}
+        command:
+          {{- toYaml .Values.socialEmbed.command | nindent 10 }}
+        {{- end }}
+        {{- if .Values.socialEmbed.args }}
+        args:
+          {{- toYaml .Values.socialEmbed.args | nindent 10 }}
+        {{- end }}
+        ports:
+        - containerPort: {{ .Values.socialEmbed.port }}
+          name: http
+        env:
+        - name: ATP_PUBLIC_APPVIEW_URL
+          value: "https://{{ .Values.fqdns.publicApi }}"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: GOLOG_LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: HTTP_ADDRESS
+          value: ":{{ .Values.socialEmbed.port }}"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: OGCARD_URL
+          value: "https://{{ .Values.fqdns.card }}"
+        - name: SOCIAL_EMBED_SERVICE
+          value: "https://{{ .Values.fqdns.embed }}"
+        - name: LINK_URL
+          value: "https://{{ .Values.fqdns.link }}"
+        - name: SOCIAL_APP_ABOUT
+          value: "https://{{ .Values.fqdns.pds }}/about"
+        - name: SOCIAL_APP_NAME
+          value: {{ .Values.global.socialAppName | quote }}
+        - name: SOCIAL_APP_URL
+          value: "https://{{ .Values.fqdns.socialapp }}"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.socialEmbed.resources }}
+        resources:
+          {{- toYaml .Values.socialEmbed.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

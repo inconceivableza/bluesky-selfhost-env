@@ -1,0 +1,83 @@
+{{- if .Values.socialLink.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-link
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-link
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.socialLink.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: social-link
+  template:
+    metadata:
+      labels:
+        app: social-link
+    spec:
+      initContainers:
+      - name: wait-for-database
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database 5432; do echo waiting for database; sleep 2; done']
+      containers:
+      - name: social-link
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.socialLink.image }}:{{ .Values.socialLink.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.socialLink.port }}
+          name: http
+        env:
+        - name: LINK_PORT
+          value: {{ .Values.socialLink.port | quote }}
+        - name: LINK_HOSTNAMES
+          value: {{ .Values.fqdns.link | quote }}
+        - name: LINK_APP_HOSTNAME
+          value: {{ .Values.fqdns.socialapp | quote }}
+        - name: LINK_DB_POSTGRES_SCHEMA
+          value: ""
+        - name: LINK_SAFELINK_ENABLED
+          value: "0"
+        - name: LINK_SAFELINK_PDS_URL
+          value: "https://{{ .Values.fqdns.pds }}"
+        - name: LINK_SAFELINK_AGENT_IDENTIFIER
+          value: ""
+        - name: LINK_SAFELINK_AGENT_PASS
+          value: ""
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        envFrom:
+        {{- if .Values.socialLink.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.socialLink.secrets.name | default "social-link-secrets" }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.socialLink.resources }}
+        resources:
+          {{- toYaml .Values.socialLink.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

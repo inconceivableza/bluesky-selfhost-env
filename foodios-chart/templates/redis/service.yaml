@@ -1,0 +1,19 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: redis
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP  # Regular service for simple DNS
+  ports:
+  - port: {{ .Values.redis.port }}
+    targetPort: redis
+    protocol: TCP
+    name: redis
+  selector:
+    app: redis
+{{- end }}

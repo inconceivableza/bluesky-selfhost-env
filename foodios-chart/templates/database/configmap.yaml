@@ -1,0 +1,43 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: database
+    {{- include "foodios.labels" . | nindent 4 }}
+data:
+  init.sql: |
+    -- admin user=pg
+
+    -- PLC
+    CREATE DATABASE plc;
+    GRANT ALL PRIVILEGES ON DATABASE plc TO pg;
+
+    -- BGS
+    CREATE DATABASE bgs;
+    GRANT ALL PRIVILEGES ON DATABASE bgs TO pg;
+    CREATE DATABASE carstore;
+    GRANT ALL PRIVILEGES ON DATABASE carstore TO pg;
+
+    -- bsky(AppView)
+    CREATE DATABASE bsky;
+    GRANT ALL PRIVILEGES ON DATABASE bsky TO pg;
+
+    -- palomar(search)
+    CREATE DATABASE palomar;
+    GRANT ALL PRIVILEGES ON DATABASE palomar TO pg;
+
+    -- pds
+    --CREATE DATABASE pds;
+    --GRANT ALL PRIVILEGES ON DATABASE pds TO pg;
+
+    -- ozone(Moderation)
+    CREATE DATABASE ozone;
+    GRANT ALL PRIVILEGES ON DATABASE ozone TO pg;
+
+    -- link(social-app-link)
+    CREATE DATABASE link;
+    GRANT ALL PRIVILEGES ON DATABASE link TO pg;
+{{- end }}

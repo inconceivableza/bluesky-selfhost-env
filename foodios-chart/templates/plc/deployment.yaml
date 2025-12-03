@@ -1,0 +1,83 @@
+{{- if .Values.plc.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: plc
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.plc.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: plc
+  template:
+    metadata:
+      labels:
+        app: plc
+    spec:
+      initContainers:
+      - name: wait-for-database
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database 5432; do echo waiting for database; sleep 2; done']
+      containers:
+      - name: plc
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.plc.image }}:{{ .Values.plc.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.plc.port }}
+          name: http
+        env:
+        - name: DEBUG_MODE
+          value: "1"
+        - name: ENABLE_MIGRATIONS
+          value: "true"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: PORT
+          value: {{ .Values.plc.port | quote }}
+        - name: DD_TRACE_AGENT_URL
+          value: "http://otel-collector:8126"
+        - name: DD_TRACE_PROPAGATION_STYLE
+          value: "tracecontext,baggage"
+        - name: DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED
+          value: "true"
+        envFrom:
+        {{- if .Values.plc.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.plc.secrets.name | default "plc-secrets" }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        {{- if .Values.plc.resources }}
+        resources:
+          {{- toYaml .Values.plc.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

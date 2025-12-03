@@ -1,0 +1,3 @@
+{{- if .Values.socialApp.enabled }}
+{{- include "foodios.ingress" (dict "name" "social-app" "host" .Values.fqdns.socialapp "port" .Values.socialApp.port "root" .) }}
+{{- end }}

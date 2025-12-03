@@ -1,0 +1,204 @@
+# Local development values
+global:
+  namespace: foodios
+  domain: mysky.local.app  # Update this to match your local DNS
+  imageRegistry: inconceivableza
+  imagePullPolicy: IfNotPresent
+  tls:
+    enabled: true
+    secretName: local-tls  # Self-signed cert for local dev
+    createSecret: false  # Create manually with kubectl due to extended attributes
+    certFile: "certs/tls.crt"  # Path relative to chart root
+    keyFile: "certs/tls.key"
+  environment: development
+  goInsecure: ""
+  nodeTlsRejectUnauthorized: "0"
+  logLevel: debug
+  socialAppName: "Foodios"  # Your social app name
+
+ingress:
+  className: traefik
+
+fqdns:
+  api: api.mysky.local.app
+  bgs: bgs.mysky.local.app
+  bsky: bsky.mysky.local.app
+  card: card.mysky.local.app
+  embed: embed.mysky.local.app
+  feedgen: feedgen.mysky.local.app
+  ip: ip.mysky.local.app
+  jetstream: jetstream.mysky.local.app
+  link: link.mysky.local.app
+  logs: logs.mysky.local.app
+  ozone: ozone.mysky.local.app
+  palomar: palomar.mysky.local.app
+  pds: mysky.local.social
+  plc: plc.mysky.local.app
+  publicApi: public-api.mysky.local.app
+  socialapp: mysky.local.app
+
+database:
+  enabled: true
+  image: postgres
+  tag: 16-trixie
+  replicas: 1
+  port: 5432
+  user: pg
+  storage:
+    size: 10Gi
+    storageClass: local-path  # k3s default
+  secrets:
+    enabled: true 
+    name: db-secrets
+  livenessProbe: true
+  readinessProbe: true
+pds:
+  enabled: true
+  replicas: 1
+  image: foodios-atproto-pds
+  tag: da516812727da5e3757f2577ca5006d86fad1e7a
+  port: 2583
+  storage:
+    size: 50Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: pds-secrets
+
+# Bsky (App View)
+bsky:
+  enabled: true
+  replicas: 1
+  image: foodios-atproto-bsky
+  tag: 424a929f9d3f41ba4e754efe98ec27f9c252dd53
+  port: 2584
+  storage:
+    enabled: false  # Set to true for persistent cache
+    size: 10Gi
+    storageClass: local-path
+  secrets:
+    enabled: true  
+    name: bsky-secrets
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      memory: 512Mi
+
+# PLC (DID service)
+plc:
+  enabled: true
+  replicas: 1
+  image: foodios-did-method-plc
+  tag: 5aadb90ae6995b0e007eae8d81b03af1e7b83949
+  port: 2582
+  secrets:
+    enabled: true 
+    name: plc-secrets
+
+# BGS (Big Graph Service / Relay)
+bgs:
+  enabled: true
+  replicas: 1
+  image: foodios-indigo-bgs
+  tag: 5ddcdeaa04dafa023fb59860920c604e8227b332
+  port: 2470
+  storage:
+    size: 50Gi
+    storageClass: local-path
+  secrets:
+    enabled: true  
+    name: bgs-secrets
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      memory: 512Mi
+
+socialApp:
+  enabled: true
+  replicas: 1
+  image: foodios-social-app
+  tag: 4e241662d365b25e52b876781b7d82866e27abe4
+  port: 8100
+  command: ["/bin/sh", "-c"]
+  args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
+
+# Social Card (OG Card service)
+socialCard:
+  enabled: true
+  replicas: 1
+  image: foodios-social-card
+  tag: 2fdff4034d25d0655d86a35db371675ec50b3e6b
+  port: 3003
+
+# Social Embed
+socialEmbed:
+  enabled: true
+  replicas: 1
+  image: foodios-social-embed
+  tag: b14a1e1c250967ea00e1613172cb957ea242ebbf
+  port: 8101
+  command: ['sh', '-c']
+  args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
+
+# Social Link
+socialLink:
+  enabled: true
+  replicas: 1
+  image: foodios-social-link
+  tag: 2fdff4034d25d0655d86a35db371675ec50b3e6b
+  port: 3004
+  secrets:
+    enabled: true  
+    name: social-link-secrets
+
+# Palomar (Search service)
+palomar:
+  enabled: true
+  replicas: 1
+  image: foodios-indigo-palomar
+  tag: 5ddcdeaa04dafa023fb59860920c604e8227b332
+  port: 3999
+  secrets:
+    enabled: true  
+    name: palomar-secrets
+
+# Ozone (Moderation service)
+# ozone:
+#   enabled: false
+#   replicas: 1
+#   image: foodios-atproto-ozone
+#   tag: latest
+#   port: 3006
+
+# Redis
+redis:
+  enabled: true
+  image: redis
+  tag: 8-bookworm
+  replicas: 1
+  port: 6379
+  storage:
+    size: 5Gi
+    storageClass: local-path
+
+# OpenSearch
+opensearch:
+  enabled: true
+  image: foodios-indigo-opensearch
+  tag: 7922781b42cae64a2353fd89848f7d8b2546b676
+  replicas: 1
+  port: 9200
+  javaOpts: "-Xms512m -Xmx512m"
+  storage:
+    size: 20Gi
+    storageClass: local-path
+  secrets:
+    enabled: true  
+    name: opensearch-secrets
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      memory: 512Mi

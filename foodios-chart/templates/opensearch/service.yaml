@@ -1,0 +1,23 @@
+{{- if .Values.opensearch.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: opensearch
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP  # Regular service so opensearch:9200 works
+  ports:
+  - port: {{ .Values.opensearch.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9300
+    targetPort: transport
+    protocol: TCP
+    name: transport
+  selector:
+    app: opensearch
+{{- end }}

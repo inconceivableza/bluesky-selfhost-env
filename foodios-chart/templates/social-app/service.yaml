@@ -1,0 +1,19 @@
+{{- if .Values.socialApp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: social-app
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: social-app
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.socialApp.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: social-app
+{{- end }}
