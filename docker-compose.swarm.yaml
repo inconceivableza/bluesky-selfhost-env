@@ -81,13 +81,16 @@ x-deploy-defaults: &deploy-defaults
 
 services:
   caddy:
+    #   reverse proxy
+    #   cf. https://blog.kurokobo.com/archives/3669#Caddy_acme_server
+    image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG:-2}
     build:
       context: .
       dockerfile: ops/caddy-Dockerfile
       args:
-        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-}
-    image: ${BRANDED_NAMESPACE}/caddy:${CADDY_IMAGE_TAG}
+        CADDY_DNS_PACKAGE_SRC: ${CADDY_DNS_PACKAGE_SRC-github.com/caddy-dns/cloudflare}
     ports:
+      # these ports can be overridden in .env if using haproxy to forward requests to caddy
       - target: 80
         published: ${CADDY_HTTP_PORT:-80}
         mode: host
@@ -98,6 +101,7 @@ services:
         published: ${CADDY_HTTPS_PORT:-443}
         protocol: udp
         mode: host
+      # - 9000:9000 # internal CA server; doesn't need to be public
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
@@ -132,11 +136,12 @@ services:
       - ./config/caddy-dynamic.env:/etc/caddy-dynamic.env:ro
       # CA certificates for serving self-signed. >>>
       - ./certs/root.crt:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.crt:ro
-      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/local/root.key:ro
+      - ./certs/root.key:${CADDY_CERTS_DIR-/tmp/dummy-certs}/root.key:ro
       # CA certificates for serving self-signed. <<<
       - caddy-data:/data
       - caddy-config:/config
-    # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro TODO: uncomment when there's something in here to copy
+      # the social app's static website. TODO: uncomment when there's something in here to copy
+      # - ./${PDS_WEB_DIR:-staticweb}:/socialweb:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/metrics"]
       interval: 5s
@@ -148,6 +153,7 @@ services:
       - foodios-net
 
   caddy-sidecar:
+    # decides which domains caddy should generate certificates for
     image: httpd:2
     environment:
       - GOINSECURE=${GOINSECURE}
@@ -194,16 +200,16 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     command: ['sh', 'c', 'sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; ./entrypoint.sh']
-    depends_on:
-      - database
     ports:
       - target: 80
         published: 54321
         mode: host
     environment:
-    # TODO store in secret
+      # TODO store in secret
       - PGADMIN_DEFAULT_EMAIL=example@example.com
       - PGADMIN_DEFAULT_PASSWORD=password
+    depends_on:
+      - database
     deploy:
       <<: *deploy-defaults
       replicas: 1  # Set to 1 to enable pgadmin
@@ -222,6 +228,8 @@ services:
       - foodios-net
 
   opensearch:
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${branded_asof:-latest}
+    # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
@@ -232,7 +240,6 @@ services:
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
          # cf. https://github.com/opensearch-project/OpenSearch/issues/8215
        - OPENSEARCH_JAVA_OPTS=${OPENSEARCH_JAVA_OPTS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-indigo-opensearch:${asof:-latest}
     command: ['sh', '-c', 'set -a; . /run/secrets/opensearch_secrets; set +a;  exec /usr/share/opensearch/opensearch-docker-entrypoint.sh']
     ports:
       - target: 9200
@@ -251,6 +258,10 @@ services:
       - transport.host=127.0.0.1
     secrets:
       - opensearch_secrets
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
       - opensearch:/usr/share/opensearch/data/
     healthcheck:
@@ -269,7 +280,8 @@ services:
       - foodios-net
 
   plc:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-did-method-plc:${PLC_IMAGE_TAG:-latest}
+    # profiles: ['', 'did-method-plc']
     build:
       context: ./repos/did-method-plc/
       dockerfile: packages/server/Dockerfile
@@ -281,14 +293,12 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/did-method-plc"
         org.opencontainers.image.description: "${REBRANDING_NAME} DID PLC server"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-did-method-plc:${PLC_IMAGE_TAG}
     user: root
     command: ['sh', '-c', 'set -a; . /run/secrets/plc_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; su node -c "dumb-init -- node --enable-source-maps index.js"']      
     ports:
       - target: 2582
         published: 2582
         mode: host
-    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -319,8 +329,12 @@ services:
       - caddy
     volumes:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
-  pds:
     configs: *certs-config
+
+  pds:
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-pds:${PDS_IMAGE_TAG:-latest}
+    command: ['sh', '-c', 'set -a; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
+    # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/pds/Dockerfile
@@ -332,20 +346,21 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Personal Data Server (PDS)"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-pds:${PDS_IMAGE_TAG}
-    command: ['sh', '-c', 'set -a; . /run/secrets/pds_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
     ports:
       - target: 2583
         published: 2583
         mode: host
+    # expose:
+    #   - 2583
+    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root
     user: root
     environment:
       - DEBUG_MODE=1
       - GOINSECURE=${GOINSECURE}
       - LOG_DESTINATION=1
       - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=${NODE_ENV}
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - NODE_ENV=development
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
@@ -354,6 +369,7 @@ services:
       - PDS_CRAWLERS=https://${bgsFQDN}
       - PDS_DATA_DIRECTORY=/pds
       - PDS_DEV_MODE=true
+#     - PDS_BLOBSTORE_DISK_TMP_LOCATION=/pds/image/tmp
       - PDS_DID_PLC_URL=https://${plcFQDN}
       - PDS_EMAIL_FROM_ADDRESS=${PDS_EMAIL_FROM_ADDRESS}
       - PDS_EMAIL_IMAGES_BASE_URL=${PDS_EMAIL_IMAGES_BASE_URL}
@@ -363,13 +379,21 @@ services:
       - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
       - PDS_PORT=2583
+# starts: unset optional env for testing ozone >>>>>>>
+#     - PDS_MOD_SERVICE_DID=did:web:${ozoneFQDN}
+#     - PDS_MOD_SERVICE_URL=https://${ozoneFQDN}
+#     - PDS_REPORT_SERVICE_DID=did:web:${ozoneFQDN}
+#     - PDS_REPORT_SERVICE_URL=https://${ozoneFQDN}
+# ends: unset optional env for tesing ozone <<<<<<<
       - PDS_SERVICE_DID=did:web:${pdsFQDN}
       - PDS_SOCIAL_APP_DESCRIPTION=${SOCIAL_APP_DESCRIPTION}
       - PDS_SOCIAL_APP_EMOJI=${SOCIAL_APP_EMOJI}
       - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
+      # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_OTEL_ENABLED=true
+      # the package.json misconfigures this service as plc-service
       - DD_SERVICE=pds
       - DD_TRACE_PROPAGATION_STYLE=datadog,tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
@@ -381,6 +405,7 @@ services:
     volumes:
       - pds:/pds
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2583/xrpc/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -398,7 +423,8 @@ services:
       - caddy
 
   bgs:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${BGS_IMAGE_TAG:-latest}
+    # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
@@ -410,7 +436,6 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
         org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay (aka BGS)"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-bgs:${BGS_IMAGE_TAG}
     ports:
       - target: 2470
         published: 2470
@@ -432,12 +457,13 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - RELAY_DEFAULT_REPO_LIMIT=100000
       - RELAY_NEWPDS_PERDAY_LIMIT=500
-      - RELAY_PERSISTER_DIR=/data/bigsky/events
+      # - RELAY_PERSISTER_DIR=/data/bigsky/events
     secrets:
       - bgs_secrets
     volumes:
       - bgs:/data/bigsky
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
@@ -455,7 +481,9 @@ services:
       - caddy
 
   bsky:
-    configs: *certs-config
+    # appview(api)
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-atproto-bsky:${BSKY_IMAGE_TAG:-latest}
+    # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/bsky/Dockerfile
@@ -467,18 +495,22 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/atproto"
         org.opencontainers.image.description: "${REBRANDING_NAME} App View"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-atproto-bsky:${BSKY_IMAGE_TAG}
     ports:
       - target: 2584
         published: 2584
         mode: host
+      # dataplane port # temporarily exposing for debugging
       - target: 3001
         published: 3001
         mode: host
+      # bsync port # temporarily exposing for debugging
       - target: 3002
         published: 3002
         mode: host
+    # expose:
+    #   - 2584
     command: ["sh", "-c", 'set -a; . /run/secrets/bsky_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432;  exec node --enable-source-maps api.js']
+    # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root
     user: root
     environment:
       - BSKY_BLOB_CACHE_LOC=/cache/
@@ -513,6 +545,7 @@ services:
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - REDIS_HOST=redis
+      # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
       - DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED=true
@@ -521,6 +554,7 @@ services:
     volumes:
       - bsky:/cache/
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2584/ | grep 'AppView' >/dev/null"]
       timeout: 10s
@@ -539,7 +573,10 @@ services:
       - caddy
 
   social-app:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${SOCIAL_APP_IMAGE_TAG:-latest}
+    # the social-app Dockerfile compiles for this platform
+    # platform: linux/amd64
+    # profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile
@@ -557,13 +594,13 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Web App"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-app:${SOCIAL_APP_IMAGE_TAG}
     ports:
       - target: 8100
         published: 8100
         mode: host
     command: ["/bin/sh", "-c", "${UPDATE_CERTS_CMD:-true}; /usr/bin/bskyweb serve"]
     environment:
+      # cf. https://github.com/bluesky-social/social-app/blob/main/bskyweb/example.env and https://github.com/bluesky-social/bsky-docs/issues/63 :
       - EXPO_PUBLIC_ATP_APPVIEW_DID=did:web:${apiFQDN}
       - EXPO_PUBLIC_ATP_APPVIEW_URL=https://${apiFQDN}
       - ATP_APPVIEW_URL=https://${apiFQDN}
@@ -572,6 +609,8 @@ services:
       - EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
       - EXPO_PUBLIC_BLUESKY_PROXY_DID=did:web:${bskyFQDN}
       - EXPO_PUBLIC_CHAT_PROXY_DID=${dmServiceDID}
+      # - BSKY_CANONICAL_INSTANCE=true # Enable if this is the canonical deployment. This enables routes like /ips-v4, /ips-v6, /security.txt and /.well-known/*
+      # - BRANDING_FILE=branding.json # This will usually use the branding.json generated by step10 by exporting from branding.yml
       - EXPO_PUBLIC_CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
       - CORS_ALLOWED_ORIGINS=https://${socialappFQDN}
       - EXPO_PUBLIC_GIF_HOST=${gifFQDN}
@@ -588,9 +627,13 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
       - OGCARD_URL=https://${cardFQDN}
+      # comma-separated list for index.html
       - PRECONNECT_DOMAINS=https://${pdsFQDN},https://${linkFQDN}
+      # we don't yet have one of these
       - EXPO_PUBLIC_PREVIEW_LINK_META_PROXY=
+      # - ROBOTS_DISALLOW_ALL=true # enable this flag to disallow crawling
       - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN-}
+      # - EXPO_PUBLIC_STATIC_CDN_HOST= # optional variable that is used to serve up fonts and icons
       - EXPO_PUBLIC_SOCIAL_APP_ABOUT=https://${pdsFQDN}
       - EXPO_PUBLIC_SOCIAL_APP_HOST=${socialappFQDN}
       - EXPO_PUBLIC_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
@@ -601,11 +644,13 @@ services:
       - EXPO_PUBLIC_STATSIG_CLIENT_KEY=${STATSIG_CLIENT_KEY}
       - EXPO_PUBLIC_STATSIG_API_URL=${STATSIG_API_URL}
       - EXPO_PUBLIC_STATUS_PAGE_URL=${STATUS_PAGE_URL}
+      # we don't yet have one of these
       - EXPO_PUBLIC_VIDEO_SERVICE=
       - EXPO_PUBLIC_VIDEO_SERVICE_DID=
       - SOCIAL_APP_SECURITY_EMAIL=${SOCIAL_APP_SECURITY_EMAIL}
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:8100 | grep 'API docs at https://atproto.com' >/dev/null"]
       timeout: 10s
@@ -617,7 +662,10 @@ services:
       - foodios-net
 
   social-card:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${SOCIAL_CARD_IMAGE_TAG:-latest}
+    # the social-app Dockerfile compiles for this platform
+    # platform: linux/amd64
+    # profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.bskyogcard
@@ -629,14 +677,14 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Card Service"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-card:${SOCIAL_CARD_IMAGE_TAG}
+    ports: []
+      # - 3003:3003
     user: root
     command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432;  su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
-    volumes:
-      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
     environment:
       - CARD_PORT=3003
       - CARD_APPVIEW_URL=https://${apiFQDN}
+      # Checks a req header x-origin-verify and returns 404 if not matching
       - CARD_ORIGIN_VERIFY=
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - LOG_ENABLED=true
@@ -644,6 +692,9 @@ services:
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+    volumes:
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -655,7 +706,10 @@ services:
       - foodios-net
 
   social-embed:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${SOCIAL_EMBED_IMAGE_TAG:-latest}
+    # the social-app Dockerfile compiles for this platform
+    # platform: linux/amd64
+    # profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.embedr
@@ -666,7 +720,9 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} embed web app"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-embed:${SOCIAL_EMBED_IMAGE_TAG}
+    ports: []
+      # - 8101:8101 # listening port
+      # - 9090:9090 # metrics port
     command: ['sh', '-c', '${UPDATE_CERTS_CMD:-true}; apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
     environment:
       - ATP_PUBLIC_APPVIEW_URL=https://${publicApiFQDN}
@@ -677,12 +733,19 @@ services:
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      # in dev mode, bskyembed reads from its .env.* VITE_ variables which are interpreted into html
+      # however, we're actually not using bskyembed/ (ts) but bskyweb/cmd/embedr (go), which doesn't use these
+      # we rather use a combination of .env.go-templates which puts "{{ .varname }}" syntax into the templates, for server-side rendering
+      # and a /env-config.json URL which is served up using the environment or command-line parameters
       - OGCARD_URL=https://${cardFQDN}
       - SOCIAL_EMBED_SERVICE=https://${embedFQDN}
       - LINK_URL=https://${linkFQDN}
       - SOCIAL_APP_ABOUT=https://${pdsFQDN}/about
       - SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - SOCIAL_APP_URL=https://${socialappFQDN}
+      # - SOCIAL_APP_SECURITY_EMAIL=
+      # - SOCIAL_APP_SUPPORT_EMAIL=
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8101/ | grep 'Embed' >/dev/null"]
       timeout: 10s
@@ -694,7 +757,10 @@ services:
       - foodios-net
 
   social-link:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG:-latest}
+    # the social-app Dockerfile compiles for this platform
+    # platform: linux/amd64
+    # profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
       dockerfile: Dockerfile.bskylink
@@ -705,14 +771,20 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} Link Service"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG}
+    ports: []
+      # - 3004:3004 # listening port
     user: root
     command: ['sh', '-c', 'set -a; . /run/secrets/social_link_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec su node -c "dumb-init -- node --heapsnapshot-signal=SIGUSR2 --enable-source-maps dist/bin.js"']
     environment:
       - LINK_PORT=3004
       - LINK_HOSTNAMES=${linkFQDN}
       - LINK_APP_HOSTNAME=${socialappFQDN}
+      # - LINK_DB_POSTGRES_MIGRATION_URL= # only set if you want to migrate from a previous database
       - LINK_DB_POSTGRES_SCHEMA=
+      # just use the defaults for the pool
+      # - LINK_DB_POSTGRES_POOL_SIZE=
+      # - LINK_DB_POSTGRES_POOL_MAX_USES=
+      # - LINK_DB_POSTGRES_POOL_IDLE_TIMEOUT_MS=
       - LINK_SAFELINK_ENABLED=0
       - LINK_SAFELINK_PDS_URL=https://${pdsFQDN}
       - LINK_SAFELINK_AGENT_IDENTIFIER=
@@ -724,6 +796,7 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     secrets:
       - social_link_secrets
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3004/_health | grep 'version' >/dev/null"]
       timeout: 10s
@@ -739,7 +812,8 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   palomar:
-    configs: *certs-config
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-palomar:${PALOMAR_IMAGE_TAG:-latest}
+    # profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile
@@ -751,16 +825,17 @@ services:
       labels:
         org.opencontainers.image.source: "https://github.com/inconceivableza/social-app"
         org.opencontainers.image.description: "${REBRANDING_NAME} atproto Search Service"
-    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-indigo-palomar:${PALOMAR_IMAGE_TAG}
-    command: ['sh', '-c', 'set -a; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -t 120 opensearch:9200 database:5432; exec /palomar run']
+    command: ['sh', '-c', 'set -a; . /run/secrets/palomar_secrets; set +a; ${UPDATE_CERTS_CMD:-true}; sh /usr/local/bin/wait-for-ports.sh -v -t 120 opensearch:9200 database:5432 bgs:2470 pds:2583; exec /palomar run']
     ports:
       - target: 3999
         published: 3999
         mode: host
-    
+      # port 3998 is the default metrics port
     environment:
-      - ATP_BGS_HOST=wss://${bgsFQDN}
-      - ATP_PLC_HOST=https://${plcFQDN}
+      # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
+      - ATP_BGS_HOST=ws://bgs:2470
+      - ATP_PLC_HOST=http://pds:2583
+      # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
       - ES_INSECURE_SSL=true
       - ES_USERNAME=admin
@@ -771,6 +846,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     secrets:
       - palomar_secrets
+    configs: *certs-config
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3999/_health | grep '\"status\":\"ok\"' >/dev/null"]
       timeout: 10s
@@ -788,6 +864,8 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   jetstream:
+    image: ${BRANDED_NAMESPACE}/bluesky-jetstream:${branded_asof:-latest}
+    # profiles: ['', 'jetstream']
     build:
       context: ./repos/jetstream/
       dockerfile: Dockerfile
@@ -796,11 +874,11 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-jetstream:latest
     ports:
       - target: 6008
         published: 6008
         mode: host
+      # - 6009:6009 metrics address
     volumes:
       - jetstream:/data
     environment:
@@ -816,7 +894,67 @@ services:
     depends_on:
       - caddy
 
+  ozone-standalone:
+    # moderation-api:
+    image: ${BRANDED_NAMESPACE}/bluesky-ozone:${branded_asof:-latest}
+    # profiles: ['', 'ozone']
+    build:
+      context: ./repos/ozone/
+      dockerfile: Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+    command: ['sh', '-c', 'set -a; . /run/secrets/ozone_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node ./service']
+    ports:
+      - target: 3005
+        published: 3005
+        mode: host
+    volumes:
+      # - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
+      - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
+    environment:
+      # https://github.com/bluesky-social/ozone/blob/main/HOSTING.md
+      - LOG_ENABLED=1
+      - DEBUG_MODE=1
+      - LOG_DESTINATION=1
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
+      - NODE_ENV=${NODE_ENV}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - GOINSECURE=${GOINSECURE}
+      - OZONE_DEV_MODE=true
+      - OZONE_PORT=3005
+      - OZONE_SERVER_DID=${OZONE_SERVER_DID-}
+      - OZONE_PUBLIC_URL=https://${ozoneFQDN}
+      - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
+      - OZONE_ADMIN_DIDS=${OZONE_ADMIN_DIDS-}
+      - OZONE_DB_POSTGRES_SCHEMA=ozone
+      - OZONE_DB_MIGRATE=1
+      - OZONE_DID_PLC_URL=https://${plcFQDN}
+      - NEXT_PUBLIC_PLC_DIRECTORY_URL=https://${plcFQDN}
+      - NEXT_PUBLIC_OZONE_SERVICE_DID=${OZONE_SERVER_DID-}
+      - NEXT_PUBLIC_OZONE_PUBLIC_URL=https://${ozoneFQDN}
+      - NEXT_PUBLIC_SOCIAL_APP_DOMAIN=${socialappFQDN}
+      - NEXT_PUBLIC_SOCIAL_APP_URL=https://${socialappFQDN}
+      - NEXT_PUBLIC_HANDLE_RESOLVER_URL=https://${publicApiFQDN}
+      - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
+      - OZONE_APPVIEW_URL=https://${bskyFQDN}
+      - OZONE_APPVIEW_PUSH_EVENTS=true
+      - OZONE_PDS_DID=did:web:${pdsFQDN}
+      - OZONE_PDS_URL=https://${pdsFQDN}
+    secrets:
+      - ozone_secrets
+    restart: always
+    depends_on:
+      - database
+      - caddy
+
   ozone:
+    # moderation-api:
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
+    # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -825,7 +963,6 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: ['sh', '-c', 'set -a; . /run/secrets/ozone_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --enable-source-maps api.js']
     ports:
       - target: 3006
@@ -868,6 +1005,8 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.sh
 
   ozone-daemon:
+    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
+    # profiles: ['', 'atproto']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -876,9 +1015,7 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-atproto-ozone:${asof:-latest}
     command: ['sh', '-c', 'set -a; . /run/secrets/ozone_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; exec node --enable-source-maps daemon.js']
-    
     environment:
       - DEBUG_MODE=1
       - ENABLE_MIGRATIONS=true
@@ -917,6 +1054,8 @@ services:
       - ./selfhost_scripts/wait-for-ports.sh:/usr/local/bin/wait-for-ports.s
 
   feed-generator:
+    image: ${BRANDED_NAMESPACE}/bluesky-feed-generator:${branded_asof:-latest}
+    # profiles: ['', 'feed-generator']
     build:
       context: ./repos/feed-generator/
       dockerfile: Dockerfile
@@ -925,7 +1064,6 @@ services:
        - https_proxy=${https_proxy-}
        - no_proxy=${no_proxy-}
        - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
     ports:
       - target: 3008
         published: 2586
@@ -946,6 +1084,7 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
     volumes:
       - feed-generator:/data/
+      # - ${rDir}/feed-generator:/app
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:3008/xrpc/_health"]
       timeout: 10s
@@ -957,8 +1096,9 @@ services:
       - foodios-net
 
   ipcc:
-    image: ${BRANDED_NAMESPACE}/ip-location-service-bsky:${IPCC_IMAGE_TAG}
+    image: ${BRANDED_NAMESPACE}/ip-location-service-bsky:${IPCC_IMAGE_TAG:-latest}
     volumes:
+      # persist ip location data
       - ipcc:/app/downloads
     environment:
       - DB_TYPE=mmdb
@@ -977,7 +1117,8 @@ services:
   backup:
     image: creativeprojects/resticprofile:0.32.0
     hostname: backup.${HOST_HOSTNAME:-${DOMAIN}}
-    command: ["/bin/sh",'-c', 'set -a; . /run/secrets/backup_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; /scripts/entrypoint.sh && exec resticprofile schedule --all && crond -f']
+    entrypoint: ['/bin/sh', '-c', 'set -a; . /run/secrets/backup_secrets; set +a; sh /usr/local/bin/wait-for-ports.sh -t 120 database:5432; /scripts/entrypoint.sh && resticprofile schedule --all && exec crond -f']
+    command: []
     volumes:
       - ./selfhost_scripts/backup-scripts:/scripts:ro
       - ./config/backup/:/etc/resticprofile/:ro
@@ -992,25 +1133,30 @@ services:
     environment:
       - TZ=Etc/UTC
       - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
+      # Glob pattern for SQLite files to backup
       - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite
       - PGHOST=database
       - PGPORT=5432
       - PGUSER=${POSTGRES_USER}
       - RESTIC_REPOSITORY=/restic-repo
+      # if RESTIC_REMOTE_REPO#N and RESTIC_REMOTE_PASSWORD#N defined, these repos will be initialized and copied to automatically. N=1,2,3
+      # passwords are in secrets file though
       - RESTIC_PASSWORD_FILE=/resticprofile/credentials/local-password
       - RESTIC_AUTO_REMOTE=${RESTIC_AUTO_REMOTE}
       - RESTIC_REMOTE_REPO1=${RESTIC_REMOTE_REPO1-}
       - RESTIC_REMOTE_REPO2=${RESTIC_REMOTE_REPO2-}
       - RESTIC_REMOTE_REPO3=${RESTIC_REMOTE_REPO3-}
       - RESTIC_LOGDIR=/var/log
+      # if any of these keys are needed for the remote storage services, they can be configured in the environment
       - AWS_ACCESS_KEY_ID=${RESTIC_AWS_ACCESS_KEY_ID-}
       - GOOGLE_PROJECT_ID=${RESTIC_GOOGLE_PROJECT_ID-}
-      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/restic_google_creds.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/resticprofile/credentials/remote/${RESTIC_GOOGLE_APPLICATION_CREDENTIALS:-restic_google_creds.json}
     secrets:
       - backup_secrets
       - source: google_backup_credentials
         target: /resticprofile/credentials/remote/restic_google_creds.json
-
+    depends_on:
+      - database
     healthcheck:
       test: ["CMD-SHELL", "which psql && resticprofile all.status"]
       timeout: 10s
@@ -1020,19 +1166,21 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
-    depends_on:
-      - database
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
       - ./config/telemetry/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # - "./data/prometheus:/prometheus"
     ports:
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
       - target: 9090
         published: 9090
+        # host_ip: '127.0.0.1'
         mode: host
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      # - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=200h"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9090/metrics >/dev/null"]
@@ -1045,28 +1193,44 @@ services:
       - foodios-net
 
   otel-collector:
+    # opentelemetry otel-collector that collects ddtrace and forwards to jaeger
+    image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ops/otel-collector-Dockerfile
-    image: ${BRANDED_NAMESPACE}/otel-collector:${OTEL_IMAGE_TAG}
     volumes:
       - ./config/telemetry/otel-collector.yml:/etc/otelcol/otel-collector.yml:ro
     command:
       - "--config=/etc/otelcol/otel-collector.yml"
       - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
     ports:
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
+      # also expose receivers on localhost for when debugging local services
+      # OTLP gRPC receiver
       - target: 4317
         published: 4317
         mode: host
+      # OTLP HTTP receiver
       - target: 4318
         published: 4318
         mode: host
+      # - "8888:8888"   # Prometheus metrics
+      # - "8889:8889"   # Prometheus exporter metrics
+      # - "13133:13133" # health_check extension
+      # ZPages for direct view
       - target: 55679
         published: 55679
         mode: host
+        # host_ip: '127.0.0.1'
+      # - "14268:14268" # default jaeger thrift_http receiver, but jaeger listens there
+      # - "14278:14278" # alternate jaeger thrift_http receiver
+      # datadog receiver for services instrumented with ddtrace
       - target: 8126
         published: 8126
         mode: host
+    depends_on:
+      # - jaeger
+      - prometheus
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
       timeout: 10s
@@ -1074,11 +1238,11 @@ services:
       retries: 50
     deploy:
       <<: *deploy-defaults
+      placement:
+        constraints:
+          - 'node.platform.arch == aarch64'
     networks:
       - foodios-net
-    depends_on:
-      # - jaeger
-      - prometheus
 
   jaeger:
     image: jaegertracing/jaeger:latest
@@ -1089,15 +1253,33 @@ services:
       - METRICS_STORAGE_TYPE=prometheus
       - PROMETHEUS_SERVER_URL=http://prometheus:9090
     ports:
+      # don't expose telemetry to public networks; other containers can connect directly, but expose the web interface on localhost
+      # - "14250:14250"   # legacy jaeger-agent spans gRPC protobuf
+      # - "14268:14268"   # legacy thrift_http receiver and sampling
+      # admin port: health check at / and metrics at /metrics
       - target: 14269
         published: 14269
         mode: host
+        # host_ip: '127.0.0.1'
+      # - "4317:4317"     # otlp collector over gRPC
+      # - "4318:4318"     # otlp collector over http
+      # - "6831:6831/udp" # legacy thrift in compact thrift protocol
+      # - "6832:6832/udp" # legacy thrift in binary thrift protocol
+      # - "9411:9411"     # zipkin v1 JSON or Thrift, v2 JSON or protobuf
+      # - "13133:13133"   # healthcheck extension
+      # Jaeger UI
       - target: 16686
         published: 16686
         mode: host
+        # host_ip: '127.0.0.1'
+      # - "16685:16685"   # otlp-based protobuf, legacy protobuf read
+      # ZPages for direct view of otel-collector info
       - target: 55679
         published: 55680
         mode: host
+        # host_ip: '127.0.0.1'
+    depends_on:
+      - prometheus
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8888/metrics >/dev/null"]
       timeout: 10s
@@ -1107,11 +1289,10 @@ services:
       <<: *deploy-defaults
     networks:
       - foodios-net
-    depends_on:
-      - prometheus
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
+    # profiles: ['logs']
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
@@ -1139,6 +1320,7 @@ services:
 
   fluent-bit:
     image: fluent/fluent-bit:2.2
+    # profiles: ['logs']
     user: root
     volumes:
       - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
@@ -1161,3 +1343,4 @@ services:
       - foodios-net
     depends_on:
       - opensearch
+

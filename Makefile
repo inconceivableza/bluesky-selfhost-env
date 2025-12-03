@@ -48,7 +48,7 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 # derived configuration for caddy
 
 config/caddy-dynamic.env: .env
-ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(socialappYARN)$(sociallinkDEBUG)),)
+ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
 else
 	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
@@ -70,6 +70,9 @@ ifeq ($(socialappDEBUG), true)
 endif
 ifeq ($(socialappYARN), true)
 	@echo "socialappyarnPROXY=http://host.docker.internal:8081" >> $@
+endif
+ifeq ($(socialembedDEBUG), true)
+	@echo "socialembedPROXY=http://host.docker.internal:$(shell yq -r .services.social-embed.env_override.HTTP_ADDRESS ./debug-services.yaml | sed 's/^.*://')" >> $@
 endif
 
 derived-envs: $(DERIVED_ENV_FILES)
@@ -124,8 +127,8 @@ config/pds-secrets.env: ${passfile}
 config/plc-secrets.env: config/db-secrets.env
 	@cat $^ > $@
 	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/plc' >> $@
-	@echo 'DB_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
-	@echo 'DB_MIGRATE_CREDS_JSON={"username":"$${POSTGRES_USER}","password":"$${POSTGRES_PASSWORD}","host":"database","port":"5432","database":"plc"}' >> $@
+	@echo 'DB_CREDS_JSON="{\"username\":\"$${POSTGRES_USER}\",\"password\":\"$${POSTGRES_PASSWORD}\",\"host\":\"database\",\"port\":\"5432\",\"database\":\"plc\"}"' >> $@
+	@echo 'DB_MIGRATE_CREDS_JSON="{\"username\":\"$${POSTGRES_USER}\",\"password\":\"$${POSTGRES_PASSWORD}\",\"host\":\"database\",\"port\":\"5432\",\"database\":\"plc\"}"' >> $@
 
 config/social-link-secrets.env: config/db-secrets.env
 	@cat $^ > $@

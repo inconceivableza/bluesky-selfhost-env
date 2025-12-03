@@ -5,16 +5,41 @@ script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 source_env || exit 1
 
+function show_usage() {
+  echo "Syntax $0 [-?|-h|--help] [service...]"
+}
+
+function show_help() {
+  echo "Usage: $0 [-?|-h|--help] [service...]"
+  echo
+  echo "Build docker containers for services"
+  echo
+  echo "Options:"
+  echo "  service             name of the service to build - defaults to all services"
+  echo
+}
+
 show_heading "Building Docker containers" "using applied branding"
 
-if [ $# -gt 0 ]
-  then
-    cmdlineDirs="$@"
-    show_info "Will only build services" $cmdlineDirs
-    BUILD_SERVICES="$cmdlineDirs"
-  else
-    BUILD_SERVICES="$CUSTOM_SERVICES $REBRANDED_SERVICES"
-  fi
+cmdlineDirs=""
+while [ $# -gt 0 ]
+  do
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
+    [[ "${1#-}" != "$1" ]] && {
+      show_error "Unknown parameter" "$1"
+      show_usage >&2
+      exit 1
+    }
+    cmdlineDirs="$cmdlineDirs $1"
+    shift 1
+  done
+
+if [ "$cmdlineDirs" == "" ]; then
+  BUILD_SERVICE="$CUSTOM_SERVICES $REBRANDED_SERVICES"
+else
+  BUILD_SERVICES="${cmdlineDirs# }"
+fi
+show_info --oneline "Will build services" "$BUILD_SERVICES"
 
 repoDirs="`make echo | grep ^repoDirs: | sed 's/^repoDirs: //'`"
 missingRepos="`for repoDir in ${repoDirs}; do [ -d "$repoDir" ] || echo $repoDir ; done`"

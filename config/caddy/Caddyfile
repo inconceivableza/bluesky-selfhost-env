@@ -219,7 +219,7 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://social-embed:8101
+	reverse_proxy {$socialembedPROXY:http://social-embed:8101}
 }
 
 {$linkFQDN} {
