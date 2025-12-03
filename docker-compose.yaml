@@ -491,6 +491,7 @@ services:
     # to fix permision mismatch between volume owner(root) and process user(uid:1000, i.e: node), run as root
     user: root
     environment:
+      - APPVIEW_ENV_CONTENT_FILE=env-content.${ENV_CONTENT_SUFFIX}${ENV_CONTENT_SUFFIX:+.}json
       - BSKY_BLOB_CACHE_LOC=/cache/
       - BSKY_BSYNC_HTTP_VERSION=1.1
       - BSKY_BSYNC_PORT=3002
