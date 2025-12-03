@@ -28,7 +28,7 @@ O=Foodios Local Development
 CN=*.mysky.local
 
 [v3_req]
-keyUsage = keyEncipherment, dataEncipherment
+keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
@@ -37,7 +37,6 @@ DNS.1 = $DOMAIN1
 DNS.2 = *.$DOMAIN1
 DNS.3 = $DOMAIN2
 DNS.4 = *.$DOMAIN2
-DNS.5 = *.mysky.local
 EOF
 
 # Generate private key
@@ -58,3 +57,6 @@ echo "Next steps:"
 echo "1. Create Kubernetes secret: kubectl create secret tls local-tls --cert=$CERT_DIR/tls.crt --key=$CERT_DIR/tls.key -n foodios"
 echo "2. Trust the certificate on macOS: sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $CERT_DIR/tls.crt"
 echo ""
+# kubectl delete secret local-tls -n foodios
+# kubectl create secret tls local-tls --cert=foodios-chart/certs/tls.crt --key=foodios-chart/certs/tls.key -n foodios
+# kubectl rollout restart deployment -n foodios
