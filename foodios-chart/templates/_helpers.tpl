@@ -65,8 +65,10 @@ metadata:
     {{- if and .root.Values.global.tls.enabled .root.Values.global.tls.certIssuer }}
     cert-manager.io/cluster-issuer: {{ .root.Values.global.tls.certIssuer }}
     {{- end }}
+    {{- if .root.Values.global.developmentMode }}
     {{- with .root.Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
     {{- end }}
 spec:
   ingressClassName: {{ .root.Values.ingress.className }}
@@ -84,7 +86,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ .name }}
+            name: {{ .service | default .name }}
             port:
               number: {{ .port }}
 {{- end }}
