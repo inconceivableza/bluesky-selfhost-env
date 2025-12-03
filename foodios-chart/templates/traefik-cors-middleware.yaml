@@ -1,0 +1,28 @@
+{{- if .Values.global.developmentMode }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: {{ .Values.global.namespace }}
+spec:
+  headers:
+    accessControlAllowMethods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "PATCH"
+      - "OPTIONS"
+    accessControlAllowHeaders:
+      - "*"
+    accessControlAllowOriginList:
+      - "http://localhost:3000"
+      - "http://localhost:8100"
+      - "http://localhost:19006"
+      - "http://127.0.0.1:3000"
+      - "http://127.0.0.1:8100"
+      - "http://127.0.0.1:19006"
+    accessControlMaxAge: 100
+    addVaryHeader: true
+    accessControlAllowCredentials: true
+{{- end }}
