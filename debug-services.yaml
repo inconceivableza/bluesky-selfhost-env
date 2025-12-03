@@ -84,6 +84,7 @@ services:
       - 'yarn install'
       - 'yarn intl:build'
       - 'yarn build-web'
+      - 'cp conf/branding-bluesky.json bskyweb/branding-bluesky.json'
       - 'cp conf/branding.json bskyweb/'
       - 'cd bskyweb'
       - 'go mod download'
@@ -96,7 +97,34 @@ services:
       - 'PWD'
       - 'IPCC_HOST' # http://ipcc:8080 won't work outside docker
     env_override:
-      HTTP_ADDRESS: :8101
+      HTTP_ADDRESS: :8110
+      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
+      OTEL_PROPAGATORS: 'datadog,tracecontext,baggage'
+      OTEL_EXPORTER_OTLP_INSECURE: true
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318'
+  social-embed:
+    working_dir: './repos/social-app/bskyweb'
+    build:
+      - 'cd ../'
+      - 'yarn atproto:install'
+      - 'yarn atproto:build'
+      - 'yarn install'
+      - 'yarn intl:build'
+      - 'yarn build-embed'
+      - 'cp conf/branding-bluesky.json bskyweb/branding-bluesky.json'
+      - 'cp conf/branding.json bskyweb/'
+      - 'cd bskyweb'
+      - 'go mod download'
+    run:
+      - 'go run ./cmd/embedr serve'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+      - 'IPCC_HOST' # http://ipcc:8080 won't work outside docker
+    env_override:
+      HTTP_ADDRESS: :8111
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
       OTEL_PROPAGATORS: 'datadog,tracecontext,baggage'
       OTEL_EXPORTER_OTLP_INSECURE: true

@@ -48,7 +48,7 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 # derived configuration for caddy
 
 config/caddy-dynamic.env: .env
-ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(socialappYARN)$(sociallinkDEBUG)),)
+ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
 else
 	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
@@ -70,6 +70,9 @@ ifeq ($(socialappDEBUG), true)
 endif
 ifeq ($(socialappYARN), true)
 	@echo "socialappyarnPROXY=http://host.docker.internal:8081" >> $@
+endif
+ifeq ($(socialembedDEBUG), true)
+	@echo "socialembedPROXY=http://host.docker.internal:$(shell yq -r .services.social-embed.env_override.HTTP_ADDRESS ./debug-services.yaml | sed 's/^.*://')" >> $@
 endif
 
 derived-envs: $(DERIVED_ENV_FILES)
