@@ -5,6 +5,36 @@ script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 source_env
 
+function show_usage() {
+  echo "Syntax $0 [-?|-h|--help] [--no-pull] [--no-check-certs]"
+}
+
+function show_help() {
+  echo "Usage: $0 [-?|-h|--help]"
+  echo
+  echo "Start the docker services"
+  echo
+  echo "Options:"
+  echo "  --no-pull            don't try and pull images from docker hub"
+  echo "  --no-check-certs     don't try and check certificates for the relevant domains"
+  echo
+}
+
+do_check_certs=1
+do_pull=1
+while [ $# -gt 0 ]
+  do
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
+    [[ "$1" == "--no-pull" ]] && { do_pull= ; shift 1 ; }
+    [[ "$1" == "--no-check-certs" ]] && { do_check_certs= ; shift 1 ; }
+    [[ "${1#-}" != "$1" ]] && {
+      show_error "Unknown parameter" "$1"
+      show_usage >&2
+      exit 1
+    }
+    shift 1
+  done
+
 include_haproxy=""
 [ "$haproxyFORWARD" == "true" ] && include_haproxy=haproxy
 
@@ -33,7 +63,7 @@ done
 echo "branded services: $branded_services"
 echo "custom services: $custom_services" 
 echo "unbranded services: $unbranded_services"
-make docker-pull-unbranded unbranded_services="${unbranded_services//$'\n'/ }" || { show_error "Fetching Containers failed:" "Please see error above" ; exit 1 ; }
+[ "$do_pull" == 1 ] && { make docker-pull-unbranded unbranded_services="${unbranded_services//$'\n'/ }" || { show_error "Fetching Containers failed:" "Please see error above" ; exit 1 ; } ; }
 
 show_heading "Deploy required containers" "(database, caddy etc)"
 make docker-start || { show_error "Required Containers failed:" "Please see error above" ; exit 1 ; }
@@ -88,29 +118,31 @@ else
   if [ "$os" == macos ]; then macos_undeploy_haproxy; fi
 fi
 
-show_heading "Checking certificates" "which may need to refresh with letsencrypt"
-domains_to_test="${DOMAIN} ${socialappFQDN} ${cardFQDN} ${embedFQDN} ${linkFQDN} ${pdsFQDN} ${bgsFQDN} ${bskyFQDN} ${feedgenFQDN} ${ipFQDN} ${jetstreamFQDN} ${ozoneFQDN} ${palomarFQDN} ${plcFQDN} ${publicApiFQDN} ${apiFQDN} ${gifFQDN} ${videoFQDN}"
-num_checks=0
-while [[ "$domains_to_test" != "" ]]
-  do
-    [ "$num_checks" -gt 0 ] && {
-      show_info --oneline "Sleeping before retesting" "for domains $domains_to_test..."
-      sleep 10
-    }
-    show_info "Testing certificates" "for domains $domains_to_test"
-    error_domains=
-    for domain in $domains_to_test
-      do
-        show_info --oneline "Testing" "$domain"
-        { echo 'HEAD / HTTP/1.0' ; echo ; } | openssl s_client -connect ${domain}:443 >/dev/null 2>&1 || {
-          show_warning --oneline "Connection error" "for domain $domain"
-          error_domains="$error_domains $domain"
-        }
-      done
-    domains_to_test="$error_domains"
-    num_checks=$((num_checks+1))
-    [ "$num_checks" -gt "3" ] && { show_error "Certificates not successful" "after $num_checks_tries" ; break ; }
-  done
+if [ "$do_check_certs" == 1]; then
+  show_heading "Checking certificates" "which may need to refresh with letsencrypt"
+  domains_to_test="${DOMAIN} ${socialappFQDN} ${cardFQDN} ${embedFQDN} ${linkFQDN} ${pdsFQDN} ${bgsFQDN} ${bskyFQDN} ${feedgenFQDN} ${ipFQDN} ${jetstreamFQDN} ${ozoneFQDN} ${palomarFQDN} ${plcFQDN} ${publicApiFQDN} ${apiFQDN} ${gifFQDN} ${videoFQDN}"
+  num_checks=0
+  while [[ "$domains_to_test" != "" ]]
+    do
+      [ "$num_checks" -gt 0 ] && {
+        show_info --oneline "Sleeping before retesting" "for domains $domains_to_test..."
+        sleep 10
+      }
+      show_info "Testing certificates" "for domains $domains_to_test"
+      error_domains=
+      for domain in $domains_to_test
+        do
+          show_info --oneline "Testing" "$domain"
+          { echo 'HEAD / HTTP/1.0' ; echo ; } | openssl s_client -connect ${domain}:443 >/dev/null 2>&1 || {
+            show_warning --oneline "Connection error" "for domain $domain"
+            error_domains="$error_domains $domain"
+          }
+        done
+      domains_to_test="$error_domains"
+      num_checks=$((num_checks+1))
+      [ "$num_checks" -gt "3" ] && { show_error "Certificates not successful" "after $num_checks_tries" ; break ; }
+    done
+fi
 
 show_heading "Deploy bluesky containers" "(plc, bgs, appview, pds, ozone, ...)"
 make docker-start-bsky || { show_error "BlueSky Containers failed:" "Please see error above" ; exit 1 ; }
