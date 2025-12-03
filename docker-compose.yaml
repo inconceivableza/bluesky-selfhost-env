@@ -549,7 +549,6 @@ services:
   social-app:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-app:${SOCIAL_APP_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
-    platform: linux/amd64
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
@@ -635,7 +634,6 @@ services:
   social-card:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-card:${SOCIAL_CARD_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
-    platform: linux/amd64
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
@@ -674,7 +672,6 @@ services:
   social-embed:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-social-embed:${SOCIAL_EMBED_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
-    platform: linux/amd64
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
@@ -723,7 +720,6 @@ services:
   social-link:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME}-social-link:${SOCIAL_LINK_IMAGE_TAG:-${branded_asof:-latest}}
     # the social-app Dockerfile compiles for this platform
-    platform: linux/amd64
     profiles: ['', 'social-app']
     build:
       context: ./repos/social-app/
