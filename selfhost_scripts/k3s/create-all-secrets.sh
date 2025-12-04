@@ -2,7 +2,10 @@
 set -e
 
 NAMESPACE="foodios"
-CONFIG_DIR="./config"
+
+BASE_DIR=$(git rev-parse --show-toplevel)
+CONFIG_DIR=$BASE_DIR/config
+CERT_DIR=$BASE_DIR/foodios-chart/certs
 
 echo "Creating Kubernetes secrets for Foodios stack from existing config files..."
 echo ""
@@ -63,8 +66,8 @@ create_secret_from_file "backup-secrets" "$CONFIG_DIR/backup-secrets.env"
 
 echo "Creating tls secret"
 kubectl create secret tls local-tls \
-    --cert=certs/tls.crt \
-    --key=certs/tls.key \
+    --cert=$CERT_DIR/tls.crt \
+    --key=$CERT_DIR/tls.key \
     -n foodios
 
 echo ""
