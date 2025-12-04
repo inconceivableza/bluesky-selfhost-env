@@ -12,6 +12,7 @@ global:
 
 mixins:
   schedule-defaults:
+    force-inactive-lock: true
     backup:
       schedule-permission: system
       schedule-priority: background
