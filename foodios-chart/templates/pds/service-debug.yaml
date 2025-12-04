@@ -1,0 +1,41 @@
+{{- if and .Values.pds.enabled .Values.pds.debugMode }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pds
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - name: http
+    port: 2583
+    targetPort: 2583
+    protocol: TCP
+  - name: debug
+    port: 9229
+    targetPort: 9229
+    protocol: TCP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: pds
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+subsets:
+- addresses:
+  - ip: {{ .Values.pds.debugHostIP }}
+  ports:
+  - name: http
+    port: 2583
+    protocol: TCP
+  - name: debug
+    port: 9229
+    protocol: TCP
+{{- end }}

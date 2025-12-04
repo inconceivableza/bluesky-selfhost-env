@@ -5,6 +5,7 @@ certs/**
 downloads/**
 config/**secret**
 !config/**secret**.example
+config/google_backup_credentials.json
 **/__pycache__
 **/node_modules/**
 **/venv*/**
@@ -23,3 +24,4 @@ android-builds
 ios-builds
 tmp-builds
 build-logs
+foodios-chart/certs

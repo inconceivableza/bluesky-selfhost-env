@@ -13,7 +13,7 @@ global:
   environment: development
   developmentMode: true  # Enable dev-only features like CORS
   goInsecure: ""
-  nodeTlsRejectUnauthorized: "0"
+  nodeTlsRejectUnauthorized: "0"  # Temporarily disable TLS verification until CA cert issue is fixed
   logLevel: debug
   socialAppName: "Foodios"  # Your social app name
 
@@ -57,6 +57,8 @@ database:
   readinessProbe: true
 pds:
   enabled: true
+  debugMode: false  # Set to true to run PDS from source on host
+  debugHostIP: "172.48.0.46"  # Your host machine IP
   replicas: 1
   image: foodios-atproto-pds
   tag: da516812727da5e3757f2577ca5006d86fad1e7a
