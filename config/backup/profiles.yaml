@@ -15,6 +15,7 @@ global:
 
 mixins:
   schedule-defaults:
+    force-inactive-lock: true
     backup:
       schedule-permission: system
       schedule-priority: background
@@ -22,6 +23,7 @@ mixins:
       schedule-lock-wait: 15m
 {{ if .Env.RESTIC_AUTO_REMOTE }}
       run-finally: 'resticprofile {{ .Env.RESTIC_AUTO_REMOTE }}.copy'
+{{ else }}
 {{ end }}
     retention:
       prune: true
