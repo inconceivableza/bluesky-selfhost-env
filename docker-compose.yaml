@@ -904,7 +904,7 @@ services:
   ozone:
     # moderation-api:
     image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
-    profiles: ['', 'atproto']
+    profiles: ['ozone-disabled']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -944,7 +944,7 @@ services:
       - OZONE_TRIAGE_DIDS=
     env_file:
       - config/ozone-secrets.env
-    restart: always
+    restart: never
     depends_on:
       - database
       - caddy
@@ -954,7 +954,7 @@ services:
 
   ozone-daemon:
     image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
-    profiles: ['', 'atproto']
+    profiles: ['ozone-disabled']
     build:
       context: ./repos/social-app/submodules/atproto/
       dockerfile: services/ozone/Dockerfile
@@ -990,7 +990,7 @@ services:
       - OZONE_TRIAGE_DIDS=
     env_file:
       - config/ozone-secrets.env
-    restart: always
+    restart: never
     depends_on:
       - ozone
       - database
