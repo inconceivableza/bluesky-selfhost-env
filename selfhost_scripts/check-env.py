@@ -404,7 +404,7 @@ def main():
             print()
 
         if not check_single_env_file(env_file, args):
-            problem_env_files.append(env_file.name)
+            problem_env_files.append(env_file)
 
     # Exit with appropriate code
     if problem_env_files:
