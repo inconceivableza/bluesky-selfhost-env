@@ -226,7 +226,7 @@ services:
     restart: always
 
   opensearch:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${OPENSEARCH_IMAGE_TAG:-${branded_asof:-latest}}
     profiles: ['', 'indigo']
     build:
       context: ./repos/indigo/
