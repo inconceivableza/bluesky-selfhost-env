@@ -30,8 +30,6 @@ volumes:
     name: backup-repo
   ipcc:
     name: ipcc
-# ozone:
-# ozone-daemon:
 # plc:
 # palomar:
 # social-app:
@@ -77,7 +75,7 @@ services:
       # - 9000:9000 # internal CA server; doesn't need to be public
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - DOMAIN=${DOMAIN}
       - EMAIL4CERTS=${EMAIL4CERTS}
       - apiFQDN=${apiFQDN}
@@ -102,6 +100,7 @@ services:
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
+      - LOGS_DISABLED=${LOGS_DISABLED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     # this gets created by make and redirects caddy to local debug services if populated
@@ -134,7 +133,7 @@ services:
     image: httpd:2
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
 
   test-wss:
@@ -178,7 +177,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
 
   database:
@@ -189,7 +188,7 @@ services:
         mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - POSTGRES_INITDB_ARGS=-A scram-sha-256 --encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=healthcheck
@@ -226,8 +225,8 @@ services:
     restart: always
 
   opensearch:
-    image: ${BRANDED_NAMESPACE}/bluesky-indigo-opensearch:${branded_asof:-latest}
-    profiles: ['', 'indigo']
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-opensearch:${OPENSEARCH_IMAGE_TAG:-${branded_asof:-latest}}
+    profiles: ['', 'indigo', 'logs']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
@@ -244,7 +243,7 @@ services:
         mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       - bootstrap.memory_lock=true
       - cluster.name=docker-cluster
@@ -298,7 +297,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PORT=2582
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
@@ -348,7 +347,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
       - PDS_BSKY_APP_VIEW_URL=https://${bskyFQDN}
@@ -522,7 +521,7 @@ services:
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - REDIS_HOST=redis
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
@@ -598,7 +597,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
       - OGCARD_URL=https://${cardFQDN}
       # comma-separated list for index.html
@@ -661,7 +660,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/_health | grep 'version' >/dev/null"]
@@ -697,7 +696,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       # in dev mode, bskyembed reads from its .env.* VITE_ variables which are interpreted into html
       # however, we're actually not using bskyembed/ (ts) but bskyweb/cmd/embedr (go), which doesn't use these
       # we rather use a combination of .env.go-templates which puts "{{ .varname }}" syntax into the templates, for server-side rendering
@@ -754,7 +753,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     env_file:
       # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
       - config/social-link-secrets.env
@@ -796,7 +795,7 @@ services:
       - ES_INSECURE_SSL=true
       - ES_USERNAME=admin
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PALOMAR_BIND=0.0.0.0:3999
       - PALOMAR_DISCOVER_REPOS=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
@@ -872,7 +871,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
       - OZONE_PORT=3005
@@ -900,102 +899,6 @@ services:
     depends_on:
       - database
       - caddy
-
-  ozone:
-    # moderation-api:
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
-    profiles: ['', 'atproto']
-    build:
-      context: ./repos/social-app/submodules/atproto/
-      dockerfile: services/ozone/Dockerfile
-      args:
-       - http_proxy=${http_proxy-}
-       - https_proxy=${https_proxy-}
-       - no_proxy=${no_proxy-}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    command: ['node', '--enable-source-maps', 'api.js']
-    ports:
-      - target: 3006
-        published: 3006
-        mode: host
-    environment:
-      - DEBUG_MODE=1
-      - ENABLE_MIGRATIONS=true
-      - GOINSECURE=${GOINSECURE}
-      - LOG_DESTINATION=1
-      - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=${NODE_ENV}
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-      - OZONE_ADMIN_DIDS=
-      - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
-      - OZONE_APPVIEW_PUSH_EVENTS=true
-      - OZONE_APPVIEW_URL=https://${bskyFQDN}
-      - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DEV_MODE=true
-      - OZONE_DID_PLC_URL=https://${plcFQDN}
-      - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
-      - OZONE_PDS_DID=did:web:${pdsFQDN}
-      - OZONE_PDS_URL=https://${pdsFQDN}
-      - OZONE_PORT=3006
-      - OZONE_PUBLIC_URL=https://${ozoneFQDN}
-      - OZONE_SERVER_DID=did:web:${ozoneFQDN}
-      - OZONE_TRIAGE_DIDS=
-    env_file:
-      - config/ozone-secrets.env
-    restart: always
-    depends_on:
-      - database
-      - caddy
-    <<: *certificate-volumes
-#    volumes:
-#      - ./repos/social-app/submodules/atproto/services/ozone/api.js:/app/services/ozone/api.js:ro
-
-  ozone-daemon:
-    image: ${BRANDED_NAMESPACE}/bluesky-atproto-ozone:${branded_asof:-latest}
-    profiles: ['', 'atproto']
-    build:
-      context: ./repos/social-app/submodules/atproto/
-      dockerfile: services/ozone/Dockerfile
-      args:
-       - http_proxy=${http_proxy-}
-       - https_proxy=${https_proxy-}
-       - no_proxy=${no_proxy-}
-       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
-    command: ['node', '--enable-source-maps', 'daemon.js']
-    environment:
-      - DEBUG_MODE=1
-      - ENABLE_MIGRATIONS=true
-      - GOINSECURE=${GOINSECURE}
-      - LOG_DESTINATION=1
-      - LOG_ENABLED=true
-      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
-      - NODE_ENV=${NODE_ENV}
-      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
-      - OZONE_ADMIN_DIDS=
-      - OZONE_APPVIEW_DID=did:web:${bskyFQDN}
-      - OZONE_APPVIEW_PUSH_EVENTS=true
-      - OZONE_APPVIEW_URL=https://${bskyFQDN}
-      - OZONE_DB_POSTGRES_SCHEMA=ozone
-      - OZONE_DEV_MODE=true
-      - OZONE_DID_PLC_URL=https://${plcFQDN}
-      - OZONE_MODERATOR_DIDS=did:web:${bskyFQDN}
-      - OZONE_PDS_DID=did:web:${pdsFQDN}
-      - OZONE_PDS_URL=https://${pdsFQDN}
-      - OZONE_PORT=3007
-      - OZONE_PUBLIC_URL=https://${ozoneFQDN}
-      - OZONE_SERVER_DID=did:web:${ozoneFQDN}
-      - OZONE_TRIAGE_DIDS=
-    env_file:
-      - config/ozone-secrets.env
-    restart: always
-    depends_on:
-      - ozone
-      - database
-      - caddy
-    <<: *certificate-volumes
 
   feed-generator:
     image: ${UNBRANDED_NAMESPACE}/bluesky-feed-generator:latest
@@ -1025,7 +928,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
     volumes:
       - feed-generator:/data/
@@ -1212,7 +1115,8 @@ services:
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
-    profiles: ['logs']
+    # log services will be included in the default profile if LOGS_ENABLED is set to a non-empty value
+    profiles: ['${LOGS_DISABLED-}', 'logs']
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
@@ -1237,7 +1141,8 @@ services:
 
   fluent-bit:
     image: fluent/fluent-bit:2.2
-    profiles: ['logs']
+    # log services will be included in the default profile if LOGS_ENABLED is set to a non-empty value
+    profiles: ['${LOGS_DISABLED-}', 'logs']
     user: root
     volumes:
       - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro

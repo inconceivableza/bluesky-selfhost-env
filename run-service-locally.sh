@@ -19,6 +19,7 @@ function show_help() {
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the script stores data in after running"
   echo "  -B, --skip-build    skips the build commands"
   echo "  -f, --format-logs   pipes the output through a log formatter"
+  echo "  -w, --watch         runs the watcher commands simultaneously after build, rather than the run commands"
   echo
   echo "Supported services:"
   for service in $(yq -oj -r ".services | keys() []" $debug_config)
@@ -31,12 +32,14 @@ function show_help() {
 keep_tmp=
 skip_build=
 format_logs=
+do_watch=
 
 while [ "$#" -gt 0 ]
   do
     [[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; continue ; }
     [[ "$1" == "-B" || "$1" == "--skip-build" ]] && { skip_build=1 ; shift 1 ; continue ; }
     [[ "$1" == "-f" || "$1" == "--format-logs" ]] && { format_logs=1 ; shift 1 ; continue ; }
+    [[ "$1" == "-w" || "$1" == "--watch" ]] && { do_watch=1 ; shift 1 ; continue ; }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
     [[ "${1#/}" != "$1" ]] && {
       show_error "Unknown parameter" "$1"
@@ -88,6 +91,7 @@ cd $script_dir
 running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
 build_commands="$(jq_service '.build[]')"
 run_commands="$(jq_service '.run[]')"
+watch_commands="$(jq_service '.watchers[]')"
 
 # build commands are run in the normal environment
 
@@ -98,7 +102,7 @@ if [ "$skip_build" == 1 ]
   else
     while IFS= read -r cmd
       do
-        show_info --oneline "Running build command" "$cmd"
+        show_info --oneline "Running build command" "$cmd in $(pwd)"
         $cmd || { show_warning --oneline "Error running build command" "please correct and rerun" ; exit 1 ; }
       done <<< "$build_commands"
   fi
@@ -107,26 +111,45 @@ cd $script_dir
 cd "$working_dir"
 export local_service_tmp_dir="`mktemp -d -t localdebug-$service`"
 
-# run commands are run in the adopted environment
+# run and watch commands are run in the adopted environment
 adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.env"
 (
   . "$local_service_tmp_dir/local-service-export.env"
   rm "$local_service_tmp_dir/local-service-export.env"
-  set | grep ^PDS
-  while IFS= read -r cmd
-    do
-      cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
-      show_info --oneline "Running command" "$cmd"
-      $cmd | {
-        if [ "$format_logs" == 1 ]
-          then
-            "$script_dir/selfhost_scripts/log_formatter.py" --no-json-prefix --default-service-prefix "$service"
-          else
-            cat
-          fi
-      }
-      [ ${PIPESTATUS[0]} -ne 0 ] && { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
-    done <<< "$run_commands"
+  if [ "$do_watch" == 1 ]; then
+    PIDS=()
+    # Trap SIGINT (Ctrl-C) to kill all background processes
+    trap "kill ${PIDS[*]} 2>/dev/null" SIGINT
+    while IFS= read -r cmd
+      do
+        cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
+        show_info --oneline "Running watcher command in background" "$cmd"
+        $cmd &
+        PIDS+=($!)
+      done <<< "$watch_commands"
+    show_info --oneline "Watcher commands started" "press Ctrl-C to terminate them all"
+    wait
+  else
+    while IFS= read -r cmd
+      do
+        cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
+        show_info --oneline "Running command" "$cmd in $(pwd)"
+        # cd commands will have no effect if piped as they're run in a subshell. likewise for export etc
+        [ "${cmd#cd }" != "$cmd" ] && {
+          $cmd || { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+          continue
+        }
+        $cmd | {
+          if [ "$format_logs" == 1 ]
+            then
+              "$script_dir/selfhost_scripts/log_formatter.py" --no-json-prefix --default-service-prefix "$service"
+            else
+              cat
+            fi
+        }
+        [ ${PIPESTATUS[0]} -ne 0 ] && { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+      done <<< "$run_commands"
+  fi
 )
 
 if [ "$keep_tmp" == 1 ]

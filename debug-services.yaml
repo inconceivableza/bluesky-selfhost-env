@@ -76,9 +76,8 @@ services:
     volumes:
       - pds: '$local_service_tmp_dir/pds'
   social-app:
-    working_dir: './repos/social-app/bskyweb'
+    working_dir: './repos/social-app/'
     build:
-      - 'cd ../'
       - 'yarn atproto:install'
       - 'yarn atproto:build'
       - 'yarn install'
@@ -88,8 +87,16 @@ services:
       - 'cp conf/branding.json bskyweb/'
       - 'cd bskyweb'
       - 'go mod download'
+      - 'cd ..'
     run:
+      - 'cd bskyweb'
       - 'go run ./cmd/bskyweb serve'
+    watchers:
+      - 'watchexec --postpone -w submodules/atproto -f package.json -f pnpm-lock.yaml -f pnpm-workspace.yaml -f "tsconfig/*" -f tsconfig.json --on-busy-update queue -- yarn atproto:install'
+      - 'watchexec --postpone -w submodules/atproto/packages/api -w submodules/atproto/packages/common-web -w submodules/atproto/packages/syntax -w submodules/atproto/packages/lexicon -w submodules/atproto/packages/xrpc --on-busy-update queue -- yarn atproto:build'
+      - 'watchexec --postpone -w src --on-busy-update queue -- yarn build-web'
+      - 'watchexec --postpone -w bskyweb -f go.mod -f go.sym --on-busy-update queue -- bash -c "cd bskyweb ; go mod download"'
+      - 'watchexec -w bskyweb --debounce 5sec --on-busy-update queue -- bash -c "cd bskyweb ; go run ./cmd/bskyweb serve"'
     env_exclude:
       - 'HOME'
       - 'HOSTNAME'

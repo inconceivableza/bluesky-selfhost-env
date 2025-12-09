@@ -237,29 +237,17 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	@config {
-		path /config
-	}
 	log {
 		format json
 	}
-	reverse_proxy @config http://ipcc:8080 {
-		header_up X-Real-IP {remote_host}
+	reverse_proxy http://ipcc:8080 {
+		header_up X-Real-IP {client_ip}
 	}
 }
 
 {$ozoneFQDN} {
 	import cors
 	import tracing ozone
-	tls {$EMAIL4CERTS} {
-		on_demand
-	}
-	#	reverse_proxy http://ozone:3006
-	reverse_proxy http://ozone-standalone:3005
-}
-ozone-standalone.{$DOMAIN} {
-	import cors
-	import tracing ozone-standalone
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
@@ -293,14 +281,22 @@ ozone-standalone.{$DOMAIN} {
 	reverse_proxy http://jetstream:6008
 }
 
-{$logsFQDN} {
-	import cors
-	import tracing logs-dashboard
-	tls {$EMAIL4CERTS} {
-		on_demand
+# this only sets up logsFQDN if LOGS_DISABLED=false
+(logs_) {
+	{$logsFQDN} {
+		import cors
+		import tracing logs-dashboard
+		tls {$EMAIL4CERTS} {
+			on_demand
+		}
+		reverse_proxy http://opensearch-dashboards:5601
 	}
-	reverse_proxy http://opensearch-dashboards:5601
 }
+
+(logs_disabled) {
+}
+
+import logs_{$LOGS_DISABLED}
 
 {$pdsFQDN} {
 	# import cors # disabled as pds serves its own CORS headers which then conflict

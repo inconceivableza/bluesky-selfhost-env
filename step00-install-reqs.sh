@@ -4,6 +4,47 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 
+function show_usage() {
+  echo "Syntax $0 [-?|-h|--help] [--no-android] [--no-sudo]"
+}
+
+function show_help() {
+  echo "Usage: $0 [-?|-h|--help] []"
+  echo
+  echo "Install requirements for bluesky-selfhost-env"
+  echo
+  echo "Options:"
+  echo "  --no-sudo            don't run any commands that require sudo; simply output them"
+  echo "  --no-android         don't install android build components"
+  echo
+}
+
+do_android=1
+do_sudo=1
+while [ $# -gt 0 ]
+  do
+    [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
+    [[ "$1" == "--no-android" ]] && { do_android=0 ; shift 1 ; continue; }
+    [[ "$1" == "--no-sudo" ]] && { do_sudo=0 ; shift 1 ; continue; }
+    [[ "${1#-}" != "$1" ]] && {
+      show_error "Unknown parameter" "$1"
+      show_usage >&2
+      exit 1
+    }
+    show_error "Unknown parameter" "$1"
+    show_usage >&2
+    exit 1
+  done
+
+function exec_sudo() {
+  if [ "$do_sudo" == 1 ]; then
+    sudo "$@"
+  else
+    show_info --oneline "sudo command required but --no-sudo given" "please run the following command manually:"
+    echo "sudo $@"
+  fi
+}
+
 if ! which docker >/dev/null
   then
     show_error --oneline "Docker install required" "in order to use this self-hosting environment"
@@ -17,14 +58,14 @@ if [ "$os" == "linux-ubuntu" ]
     # make is used to run setup scripts etc
     # pwgen is used to generate new securish passwords
     # jq in are used in extracting json data for config and tests
-    apt_packages="make pwgen jq json5"
+    apt_packages="make pwgen jq"
 
     if dpkg-query -l $apt_packages
       then
         show_info "No install required:" all packages already installed
       else
-        sudo apt update
-        sudo apt install -y $apt_packages
+        exec_sudo apt update
+        exec_sudo apt install -y $apt_packages
       fi
 
     show_heading "Setting up snap packages" that are requirements for building running and testing these docker images
@@ -34,13 +75,13 @@ if [ "$os" == "linux-ubuntu" ]
     if dpkg-query -l $old_apt_packages
       then
         show_warning "Old version of $old_apt_packages found" "installed using apt; will remove and install snap version"
-        sudo apt remove $old_apt_packages
+        exec_sudo apt remove $old_apt_packages
     fi
     if snap list $snap_packages
       then
         show_info "No install required:" all packages already installed
       else
-        sudo snap install $snap_packages
+        exec_sudo snap install $snap_packages
       fi
     
     show_heading "Setting up websocat" directly from executable download, in /usr/local/bin
@@ -48,14 +89,14 @@ if [ "$os" == "linux-ubuntu" ]
       then
         show_info "No install required:" websocat already present
       else
-        (sudo curl -o /usr/local/bin/websocat -L https://github.com/vi/websocat/releases/download/v1.13.0/websocat.x86_64-unknown-linux-musl; sudo chmod a+x /usr/local/bin/websocat)
+        (exec_sudo curl -o /usr/local/bin/websocat -L https://github.com/vi/websocat/releases/download/v1.13.0/websocat.x86_64-unknown-linux-musl; exec_sudo chmod a+x /usr/local/bin/websocat)
       fi
 elif [ "$os" == "macos" ]
   then
     if which brew >/dev/null
       then
         required_packages= 
-        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools bundletool go pnpm json5
+        for pkg in make pwgen jq yq websocat inkscape imagemagick semgrep comby python fastlane cocoapods expo-orbit watchman zulu@17 android-platform-tools android-commandlinetools bundletool go pnpm json5 watchexec crowdin
           do
             cmd=$pkg
             check_cmd=which
@@ -101,7 +142,7 @@ elif [ "$os" == "macos" ]
   if [ "$(xcode-select -p)" != "$expected_xcode" ]
     then
       show_heading "Correcting xcode location" "which will require password for sudo rights"
-      sudo xcode-select -s "$expected_xcode"
+      exec_sudo xcode-select -s "$expected_xcode"
     fi
 fi
 
@@ -128,67 +169,69 @@ show_info "Checking yarn" in node $NODE_VER
   which yarn > /dev/null || npm install -g yarn
 )
 
-show_heading "Installing Android tools" "and checking that licenses have been accepted (on $os)"
+if [ "$do_android" == 1 ]; then
+  show_heading "Installing Android tools" "and checking that licenses have been accepted (on $os)"
 
-new_android_home=$(check_android_home) || exit 1
-if [ "$new_android_home" != "" ]
-  then
-    export ANDROID_HOME="$new_android_home"
-    show_info "Default Android SDK" "found at $ANDROID_HOME"
-  fi
+  new_android_home=$(check_android_home) || exit 1
+  if [ "$new_android_home" != "" ]
+    then
+      export ANDROID_HOME="$new_android_home"
+      show_info "Default Android SDK" "found at $ANDROID_HOME"
+    fi
 
-if [ "${os/linux/}" != "$os" ]
-  then
-    # we have to install cmdline-tools manually on Linux
-    [ -d $ANDROID_HOME/cmdline-tools ] || {
-      show_info "Installing Android SDK Manager" "into $ANDROID_HOME"
-      downloads_dir="$script_dir/downloads"
-      mkdir -p "$downloads_dir"
-      commandlinetools_url="$(curl -s 'https://developer.android.com/studio#command-line-tools-only' | grep 'href="[^"]*commandlinetools-linux.*latest[.]zip"' | sed 's/^.*href="\([^"]*\)".*/\1/g')"
-      commandlinetools_zip="$downloads_dir/$(basename "$commandlinetools_url")"
-      [ -f "$commandlinetools_zip" ] || {
-        show_info --oneline "Downloading latest commandlinetools" "from $commandlinetools_url into $commandlinetools_zip"
-        curl -o "$commandlinetools_zip" "$commandlinetools_url" || { show_error "Could not download" "$commandlinetools_url" ; exit 1 ; }
+  if [ "${os/linux/}" != "$os" ]
+    then
+      # we have to install cmdline-tools manually on Linux
+      [ -d $ANDROID_HOME/cmdline-tools ] || {
+        show_info "Installing Android SDK Manager" "into $ANDROID_HOME"
+        downloads_dir="$script_dir/downloads"
+        mkdir -p "$downloads_dir"
+        commandlinetools_url="$(curl -s 'https://developer.android.com/studio#command-line-tools-only' | grep 'href="[^"]*commandlinetools-linux.*latest[.]zip"' | sed 's/^.*href="\([^"]*\)".*/\1/g')"
+        commandlinetools_zip="$downloads_dir/$(basename "$commandlinetools_url")"
+        [ -f "$commandlinetools_zip" ] || {
+          show_info --oneline "Downloading latest commandlinetools" "from $commandlinetools_url into $commandlinetools_zip"
+          curl -o "$commandlinetools_zip" "$commandlinetools_url" || { show_error "Could not download" "$commandlinetools_url" ; exit 1 ; }
+        }
+        show_info --oneline "Unpacking latest commandlinetools" "from $commandlinetools_zip into $ANDROID_HOME"
+        unzip -d "$ANDROID_HOME" "$commandlinetools_zip"
       }
-      show_info --oneline "Unpacking latest commandlinetools" "from $commandlinetools_zip into $ANDROID_HOME"
-      unzip -d "$ANDROID_HOME" "$commandlinetools_zip"
-    }
-    sdkmanager_params="--sdk_root=$ANDROID_HOME"
-  fi
+      sdkmanager_params="--sdk_root=$ANDROID_HOME"
+    fi
 
-which sdkmanager >/dev/null 2>&1 || export PATH="$PATH:$ANDROID_HOME/cmdline-tools/bin"
+  which sdkmanager >/dev/null 2>&1 || export PATH="$PATH:$ANDROID_HOME/cmdline-tools/bin"
 
-which sdkmanager >/dev/null 2>&1 || {
-  show_error "Android SDK Manager not found;" "check that you have the commandlinetools installed"
-  exit 1
-}
+  which sdkmanager >/dev/null 2>&1 || {
+    show_error "Android SDK Manager not found;" "check that you have the commandlinetools installed"
+    exit 1
+  }
 
-show_info "Checking License Acceptance" "for Android SDK packages; accept as required"
-sdkmanager $sdkmanager_params --licenses
+  show_info "Checking License Acceptance" "for Android SDK packages; accept as required"
+  sdkmanager $sdkmanager_params --licenses
 
-show_info --oneline "Checking Android Versions" "configured in social-app"
-android_versions="$($script_dir/selfhost_scripts/get-social-app-android-build-properties.js)"
-android_platform="$(echo "$android_versions" | jq -r .compileSdkVersion)"
-android_build_tools="$(echo "$android_versions" | jq -r .buildToolsVersion)"
-# - In "SDK Platforms": "Android x" (where x is Android's current version).
-# - In "SDK Tools": "Android SDK Build-Tools" and "Android Emulator" are required.
-android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator ndk"
-android_installed="$(sdkmanager $sdkmanager_params --list_installed)"
-needed_android_reqs=""
-for android_req in $android_reqs
-  do
-    echo "$android_req" | grep "$android_req" >/dev/null || needed_android_reqs="$needed_android_reqs $android_req"
-  done
-if [ "$needed_android_reqs" != "" ]
-  then
-    for android_req in $android_reqs
-      do
-        show_info "Installing Android SDK" "$android_req"
-        sdkmanager $sdkmanager_params --install $android_req
-      done
-  else
-    show_info "Android SDK requirements already installed:" "no install required"
-  fi
+  show_info --oneline "Checking Android Versions" "configured in social-app"
+  android_versions="$($script_dir/selfhost_scripts/get-social-app-android-build-properties.js)"
+  android_platform="$(echo "$android_versions" | jq -r .compileSdkVersion)"
+  android_build_tools="$(echo "$android_versions" | jq -r .buildToolsVersion)"
+  # - In "SDK Platforms": "Android x" (where x is Android's current version).
+  # - In "SDK Tools": "Android SDK Build-Tools" and "Android Emulator" are required.
+  android_reqs="platform-tools platforms;android-$android_platform build-tools;$android_build_tools emulator ndk"
+  android_installed="$(sdkmanager $sdkmanager_params --list_installed)"
+  needed_android_reqs=""
+  for android_req in $android_reqs
+    do
+      echo "$android_req" | grep "$android_req" >/dev/null || needed_android_reqs="$needed_android_reqs $android_req"
+    done
+  if [ "$needed_android_reqs" != "" ]
+    then
+      for android_req in $android_reqs
+        do
+          show_info "Installing Android SDK" "$android_req"
+          sdkmanager $sdkmanager_params --install $android_req
+        done
+    else
+      show_info "Android SDK requirements already installed:" "no install required"
+    fi
+fi
 
 show_heading "Building internal tool" "selfhost_scripts/apiImpl" 
 (

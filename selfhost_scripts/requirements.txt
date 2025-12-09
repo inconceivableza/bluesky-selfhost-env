@@ -1,6 +1,7 @@
 atproto
 json-five
 libipld
+openpyxl
 pystache
 PyYAML
 rich

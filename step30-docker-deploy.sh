@@ -39,8 +39,8 @@ include_haproxy=""
 [ "$haproxyFORWARD" == "true" ] && include_haproxy=haproxy
 
 show_heading "Fetching unbranded containers" "for required services with generic builds"
-# Get all services defined in docker-compose.yaml
-all_services="$(yq '.services | keys | .[]' docker-compose.yaml) $include_haproxy"
+# Get all services defined in docker-compose.yaml - this can be affected by the current .env
+all_services="$(docker compose config --services) $include_haproxy"
 
 # Categorize services using utils.sh definitions
 branded_services=""
@@ -118,7 +118,7 @@ else
   if [ "$os" == macos ]; then macos_undeploy_haproxy; fi
 fi
 
-if [ "$do_check_certs" == 1]; then
+if [ "$do_check_certs" == 1 ]; then
   show_heading "Checking certificates" "which may need to refresh with letsencrypt"
   domains_to_test="${DOMAIN} ${socialappFQDN} ${cardFQDN} ${embedFQDN} ${linkFQDN} ${pdsFQDN} ${bgsFQDN} ${bskyFQDN} ${feedgenFQDN} ${ipFQDN} ${jetstreamFQDN} ${ozoneFQDN} ${palomarFQDN} ${plcFQDN} ${publicApiFQDN} ${apiFQDN} ${gifFQDN} ${videoFQDN}"
   num_checks=0
