@@ -1,4 +1,4 @@
-# Production values - override values.yaml
+# Staging values - optimized for 4 vCPU, 8GB RAM, 160GB storage
 global:
   namespace: foodios
   domain: yourdomain.com  # Your actual production domain
@@ -10,6 +10,10 @@ global:
     enabled: true
     certIssuer: letsencrypt-prod
     createSecret: false  # cert-manager will create secrets automatically
+    email: your-email@example.com  # Let's Encrypt notification email
+    cloudflare:
+      email: your-cloudflare-email@example.com  # Optional, defaults to tls.email
+      apiToken: ""  # Set via environment variable or GitHub secret
 
   # Environment
   environment: staging
@@ -54,11 +58,18 @@ database:
   port: 5432
   user: pg
   storage:
-    size: 100Gi  # Larger for production
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: db-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 1Gi
+    requests:
+      cpu: "200m"
+      memory: 512Mi
   livenessProbe: true
   readinessProbe: true
 
@@ -71,18 +82,18 @@ pds:
   tag: latest  # Will be overridden by workflow
   port: 2583
   storage:
-    size: 100Gi
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: pds-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
-    requests:
       cpu: "1"
-      memory: 2Gi
+      memory: 1.5Gi
+    requests:
+      cpu: "500m"
+      memory: 1Gi
 
 # Bsky (App View)
 bsky:
@@ -94,18 +105,18 @@ bsky:
   port: 2584
   storage:
     enabled: true
-    size: 20Gi
+    size: 10Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: bsky-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
-    requests:
       cpu: "1"
-      memory: 2Gi
+      memory: 1.5Gi
+    requests:
+      cpu: "500m"
+      memory: 1Gi
 
 # PLC (DID service)
 plc:
@@ -119,9 +130,11 @@ plc:
     name: plc-secrets
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # BGS (Big Graph Service / Relay)
 bgs:
@@ -131,18 +144,18 @@ bgs:
   tag: latest  # Will be overridden by workflow
   port: 2470
   storage:
-    size: 100Gi
+    size: 40Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: bgs-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "500m"
+      memory: 1Gi
     requests:
-      cpu: "1"
-      memory: 2Gi
+      cpu: "300m"
+      memory: 512Mi
 
 # Social App (Web UI)
 socialApp:
@@ -155,9 +168,11 @@ socialApp:
   args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # Social Card (OG Card service)
 socialCard:
@@ -168,9 +183,11 @@ socialCard:
   port: 3003
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Social Embed
 socialEmbed:
@@ -183,9 +200,11 @@ socialEmbed:
   args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Social Link
 socialLink:
@@ -199,9 +218,11 @@ socialLink:
     name: social-link-secrets
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Palomar (Search service)
 palomar:
@@ -215,11 +236,11 @@ palomar:
     name: palomar-secrets
   resources:
     limits:
-      cpu: "1"
-      memory: 2Gi
-    requests:
       cpu: "500m"
-      memory: 1Gi
+      memory: 512Mi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
 
 # Ozone (Moderation service)
 ozone:
@@ -240,13 +261,15 @@ redis:
   replicas: 1
   port: 6379
   storage:
-    size: 10Gi
+    size: 5Gi  # Reduced for staging
     storageClass: local-path
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # OpenSearch
 opensearch:
@@ -255,15 +278,17 @@ opensearch:
   tag: latest  # Will be overridden by workflow
   replicas: 1
   port: 9200
-  javaOpts: "-Xms1g -Xmx1g"  # Larger heap for production
+  javaOpts: "-Xms512m -Xmx512m"  # Reduced heap for staging
   storage:
-    size: 100Gi
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: opensearch-secrets
   resources:
     limits:
-      memory: 2Gi
-    requests:
+      cpu: "500m"
       memory: 1Gi
+    requests:
+      cpu: "200m"
+      memory: 512Mi
