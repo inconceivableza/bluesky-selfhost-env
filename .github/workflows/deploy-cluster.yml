@@ -91,6 +91,10 @@ jobs:
             namespace: "foodios-${{ inputs.environment }}"
             domain: "${{ vars.DOMAIN }}"
             imageRegistry: "${{ vars.BRANDED_NAMESPACE }}"
+            tls:
+              email: "${{ vars.EMAIL4CERTS }}"
+              cloudflare:
+                apiToken: "${{ secrets.CADDY_DNS_API_TOKEN }}"
 
           # FQDNs (override from GitHub variables)
           fqdns:
