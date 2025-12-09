@@ -75,7 +75,7 @@ services:
       # - 9000:9000 # internal CA server; doesn't need to be public
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - DOMAIN=${DOMAIN}
       - EMAIL4CERTS=${EMAIL4CERTS}
       - apiFQDN=${apiFQDN}
@@ -133,7 +133,7 @@ services:
     image: httpd:2
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
 
   test-wss:
@@ -177,7 +177,7 @@ services:
       - LOG_ENABLED=true
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
 
   database:
@@ -188,7 +188,7 @@ services:
         mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - POSTGRES_INITDB_ARGS=-A scram-sha-256 --encoding=UTF-8 --lc-collate=C --lc-ctype=C
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=healthcheck
@@ -243,7 +243,7 @@ services:
         mode: host
     environment:
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       - bootstrap.memory_lock=true
       - cluster.name=docker-cluster
@@ -297,7 +297,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PORT=2582
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_PROPAGATION_STYLE=tracecontext,baggage
@@ -347,7 +347,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=development
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
       - PDS_BSKY_APP_VIEW_URL=https://${bskyFQDN}
@@ -521,7 +521,7 @@ services:
       - MOD_SERVICE_DID=did:web:${ozoneFQDN}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - REDIS_HOST=redis
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
@@ -597,7 +597,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - EXPO_PUBLIC_OGCARD_URL=https://${cardFQDN}
       - OGCARD_URL=https://${cardFQDN}
       # comma-separated list for index.html
@@ -660,7 +660,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/_health | grep 'version' >/dev/null"]
@@ -696,7 +696,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       # in dev mode, bskyembed reads from its .env.* VITE_ variables which are interpreted into html
       # however, we're actually not using bskyembed/ (ts) but bskyweb/cmd/embedr (go), which doesn't use these
       # we rather use a combination of .env.go-templates which puts "{{ .varname }}" syntax into the templates, for server-side rendering
@@ -753,7 +753,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     env_file:
       # this contains POSTGRES_USER, POSTGRES_PASSWORD, DATABASE_URL, DB_CREDS_JSON, DB_MIGRATE_CREDS_JSON
       - config/social-link-secrets.env
@@ -795,7 +795,7 @@ services:
       - ES_INSECURE_SSL=true
       - ES_USERNAME=admin
       - GOINSECURE=${GOINSECURE}
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - PALOMAR_BIND=0.0.0.0:3999
       - PALOMAR_DISCOVER_REPOS=true
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
@@ -871,7 +871,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
       - OZONE_PORT=3005
@@ -928,7 +928,7 @@ services:
       - GOINSECURE=${GOINSECURE}
       - NODE_ENV=${NODE_ENV}
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED}
+      - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
     <<: *certificate-volumes
     volumes:
       - feed-generator:/data/
