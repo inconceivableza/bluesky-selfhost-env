@@ -217,3 +217,4 @@ export npm_config_yes=true # stop npx eas-cli from asking whether to install its
 export REBRANDED_REPOS=social-app
 export REBRANDED_SERVICES="social-app social-card social-embed social-link"
 export CUSTOM_SERVICES="pds palomar plc bgs bsky backup opensearch jetstream ozone-standalone feed-generator"
+[ "$LOGS_DISABLED" == "" ] && export CUSTOM_SERVICES="$CUSTOM_SERVICES opensearch-dashboard fluent-bit"

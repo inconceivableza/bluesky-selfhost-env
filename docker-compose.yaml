@@ -100,6 +100,7 @@ services:
       - CADDY_DNS_API_TOKEN=${CADDY_DNS_API_TOKEN-}
       - CADDY_DNS_RESOLVER=${CADDY_DNS_RESOLVER-}
       - CADDY_DNS_USED=${CADDY_DNS_USED-}
+      - LOGS_DISABLED=${LOGS_DISABLED-}
       - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=caddy
     # this gets created by make and redirects caddy to local debug services if populated
@@ -225,7 +226,7 @@ services:
 
   opensearch:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-opensearch:${OPENSEARCH_IMAGE_TAG:-${branded_asof:-latest}}
-    profiles: ['', 'indigo']
+    profiles: ['', 'indigo', 'logs']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/palomar/Dockerfile.opensearch
@@ -1114,7 +1115,8 @@ services:
 
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
-    profiles: ['logs']
+    # log services will be included in the default profile if LOGS_ENABLED is set to a non-empty value
+    profiles: ['${LOGS_DISABLED-}', 'logs']
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
@@ -1139,7 +1141,8 @@ services:
 
   fluent-bit:
     image: fluent/fluent-bit:2.2
-    profiles: ['logs']
+    # log services will be included in the default profile if LOGS_ENABLED is set to a non-empty value
+    profiles: ['${LOGS_DISABLED-}', 'logs']
     user: root
     volumes:
       - ./config/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro

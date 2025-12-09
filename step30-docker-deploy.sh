@@ -39,8 +39,8 @@ include_haproxy=""
 [ "$haproxyFORWARD" == "true" ] && include_haproxy=haproxy
 
 show_heading "Fetching unbranded containers" "for required services with generic builds"
-# Get all services defined in docker-compose.yaml
-all_services="$(yq '.services | keys | .[]' docker-compose.yaml) $include_haproxy"
+# Get all services defined in docker-compose.yaml - this can be affected by the current .env
+all_services="$(docker compose config --services) $include_haproxy"
 
 # Categorize services using utils.sh definitions
 branded_services=""

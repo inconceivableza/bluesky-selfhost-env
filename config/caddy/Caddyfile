@@ -281,14 +281,22 @@ yarnstart.{$DOMAIN} {
 	reverse_proxy http://jetstream:6008
 }
 
-{$logsFQDN} {
-	import cors
-	import tracing logs-dashboard
-	tls {$EMAIL4CERTS} {
-		on_demand
+# this only sets up logsFQDN if LOGS_DISABLED=false
+(logs_) {
+	{$logsFQDN} {
+		import cors
+		import tracing logs-dashboard
+		tls {$EMAIL4CERTS} {
+			on_demand
+		}
+		reverse_proxy http://opensearch-dashboards:5601
 	}
-	reverse_proxy http://opensearch-dashboards:5601
 }
+
+(logs_disabled) {
+}
+
+import logs_{$LOGS_DISABLED}
 
 {$pdsFQDN} {
 	# import cors # disabled as pds serves its own CORS headers which then conflict
