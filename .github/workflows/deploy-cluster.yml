@@ -294,7 +294,7 @@ jobs:
               -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
               -f ./helm-values-override.yaml \
               --wait \
-              --timeout 10m \
+              --timeout 5m \
               --atomic
 
             echo ""
