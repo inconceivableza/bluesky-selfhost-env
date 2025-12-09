@@ -174,7 +174,7 @@ origin_repo_did_prefix  ?=${gh}did-method-plc/
 Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
 Sbsky ?=plc pds bgs bsky social-app social-card social-embed social-link palomar
 Sfeed ?=feed-generator
-Sozone ?=ozone-standalone
+Sozone ?=ozone
 Sjetstream ?=jetstream
 Sbackup ?=backup
 

@@ -844,7 +844,7 @@ services:
     depends_on:
       - caddy
 
-  ozone-standalone:
+  ozone:
     # moderation-api:
     image: ${BRANDED_NAMESPACE}/bluesky-ozone:${branded_asof:-latest}
     profiles: ['', 'ozone']
