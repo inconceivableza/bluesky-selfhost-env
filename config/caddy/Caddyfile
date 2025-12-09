@@ -237,14 +237,11 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	@config {
-		path /config
-	}
 	log {
 		format json
 	}
-	reverse_proxy @config http://ipcc:8080 {
-		header_up X-Real-IP {remote_host}
+	reverse_proxy http://ipcc:8080 {
+		header_up X-Real-IP {client_ip}
 	}
 }
 
