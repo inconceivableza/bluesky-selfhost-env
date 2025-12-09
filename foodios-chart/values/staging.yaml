@@ -11,9 +11,6 @@ global:
     certIssuer: letsencrypt-staging
     createSecret: false  # cert-manager will create secrets automatically
     email: your-email@example.com  # Let's Encrypt notification email
-    cloudflare:
-      email: your-cloudflare-email@example.com  # Optional, defaults to tls.email
-      apiToken: ""  # Set via environment variable or GitHub secret
 
   # Environment
   environment: staging
