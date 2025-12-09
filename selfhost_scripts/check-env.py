@@ -409,7 +409,7 @@ def main():
     # Exit with appropriate code
     if problem_env_files:
         if not args.silent:
-            print(f"\n❌ The following environment files have issues: {', '.join(problem_env_files)}")
+            print(f"\n❌ The following environment files have issues: {', '.join(p.name for p in problem_env_files)}")
         return False
     elif not args.silent and len(env_files) > 1:
         print(f"\n✅ All {len(env_files)} environment files are valid!")
