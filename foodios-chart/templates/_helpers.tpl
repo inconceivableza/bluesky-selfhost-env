@@ -77,7 +77,9 @@ spec:
   tls:
   - hosts:
     - {{ .host }}
-    secretName: {{ .root.Values.global.tls.secretName | default (printf "%s-tls" .name) }}
+    {{- if .root.Values.global.developmentMode }}
+    secretName: {{ .root.Values.global.tls.secretName }}
+{{- end }}
   {{- end }}
   rules:
   - host: {{ .host }}
