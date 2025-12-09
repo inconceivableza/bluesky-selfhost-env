@@ -1,0 +1,371 @@
+name: Deploy cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      dry_run:
+        description: 'Perform a dry-run deployment'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }} via SSH
+    runs-on: ubuntu-22.04
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ vars.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          echo "Testing SSH connection..."
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} "echo '✓ SSH connection successful'"
+
+      - name: Fetch latest image tags from Docker Hub
+        run: |
+          echo "Fetching latest image tags from Docker Hub..."
+
+          export BRANDED_NAMESPACE="${{ vars.BRANDED_NAMESPACE }}"
+
+          SERVICES=(
+            "foodios-atproto-bsky"
+            "foodios-atproto-pds"
+            "foodios-did-method-plc"
+            "foodios-indigo-bgs"
+            "foodios-indigo-palomar"
+            "foodios-indigo-opensearch"
+            "foodios-social-app"
+            "foodios-social-card"
+            "foodios-social-embed"
+            "foodios-social-link"
+          )
+
+          for REPO in "${SERVICES[@]}"; do
+            echo "Fetching tags for ${BRANDED_NAMESPACE}/${REPO}..."
+
+            RESPONSE=$(curl -s "https://registry.hub.docker.com/v2/repositories/${BRANDED_NAMESPACE}/${REPO}/tags/?page_size=1")
+            LATEST_TAG=$(echo "$RESPONSE" | jq -r '.results[0].name')
+
+            if [ -n "$LATEST_TAG" ] && [ "$LATEST_TAG" != "null" ]; then
+              ENV_VAR_NAME=$(echo "${REPO}" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_IMAGE_TAG
+              echo "${ENV_VAR_NAME}=${LATEST_TAG}" >> $GITHUB_ENV
+              echo "  ✓ ${ENV_VAR_NAME}=${LATEST_TAG}"
+            else
+              echo "  ⚠ No tags found for ${BRANDED_NAMESPACE}/${REPO}"
+            fi
+
+            sleep 0.5
+          done
+
+          echo ""
+          echo "Image tag discovery complete"
+
+      - name: Create values override file
+        run: |
+          cat > helm-values-override.yaml << 'EOF'
+          # Auto-generated values for ${{ inputs.environment }} deployment
+          # Generated at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Global overrides
+          global:
+            domain: "${{ vars.DOMAIN }}"
+            imageRegistry: "${{ vars.BRANDED_NAMESPACE }}"
+
+          # FQDNs (override from GitHub variables)
+          fqdns:
+            api: "${{ vars.APIFQDN }}"
+            bgs: "${{ vars.BGSFQDN }}"
+            bsky: "${{ vars.BSKYFQDN }}"
+            card: "${{ vars.CARDFQDN }}"
+            embed: "${{ vars.EMBEDFQDN }}"
+            feedgen: "${{ vars.FEEDGENFQDN }}"
+            ip: "${{ vars.IPFQDN }}"
+            jetstream: "${{ vars.JETSTREAMFQDN }}"
+            link: "${{ vars.LINKFQDN }}"
+            ozone: "${{ vars.OZONEFQDN }}"
+            palomar: "${{ vars.PALOMARFQDN }}"
+            pds: "${{ vars.PDSFQDN }}"
+            plc: "${{ vars.PLCFQDN }}"
+            publicApi: "${{ vars.PUBLICAPIFQDN }}"
+            socialapp: "${{ vars.SOCIALAPPFQDN }}"
+            logs: "${{ vars.LOGSFQDN }}"
+
+          # Image tags from Docker Hub
+          pds:
+            tag: "${{ env.FOODIOS_ATPROTO_PDS_IMAGE_TAG }}"
+
+          bsky:
+            tag: "${{ env.FOODIOS_ATPROTO_BSKY_IMAGE_TAG }}"
+
+          plc:
+            tag: "${{ env.FOODIOS_DID_METHOD_PLC_IMAGE_TAG }}"
+
+          bgs:
+            tag: "${{ env.FOODIOS_INDIGO_BGS_IMAGE_TAG }}"
+
+          palomar:
+            tag: "${{ env.FOODIOS_INDIGO_PALOMAR_IMAGE_TAG }}"
+
+          socialApp:
+            tag: "${{ env.FOODIOS_SOCIAL_APP_IMAGE_TAG }}"
+
+          socialCard:
+            tag: "${{ env.FOODIOS_SOCIAL_CARD_IMAGE_TAG }}"
+
+          socialEmbed:
+            tag: "${{ env.FOODIOS_SOCIAL_EMBED_IMAGE_TAG }}"
+
+          socialLink:
+            tag: "${{ env.FOODIOS_SOCIAL_LINK_IMAGE_TAG }}"
+
+          opensearch:
+            tag: "${{ env.FOODIOS_INDIGO_OPENSEARCH_IMAGE_TAG }}"
+          EOF
+
+      - name: Create deployment directory on server
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} "mkdir -p ~/helm-deploy/${{ inputs.environment }}"
+
+      - name: Copy files to server
+        run: |
+          # Copy Helm chart
+          scp -r foodios-chart \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+
+          # Copy values override
+          scp helm-values-override.yaml \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+
+      - name: Check and create Kubernetes secrets
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔐 Checking Kubernetes secrets"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            NAMESPACE="foodios-${{ inputs.environment }}"
+
+            # Create namespace if it doesn't exist
+            kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+            # Function to create or update secret
+            create_or_update_secret() {
+              local secret_name=$1
+              shift
+              local secret_data=("$@")
+
+              if kubectl get secret $secret_name -n $NAMESPACE &> /dev/null; then
+                echo "  ℹ️  Secret '$secret_name' already exists"
+              else
+                echo "  🔐 Creating secret '$secret_name'..."
+                kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}"
+                echo "  ✅ Created secret '$secret_name'"
+              fi
+            }
+
+            # Database secrets
+            create_or_update_secret "db-secrets" \
+              --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}'
+
+            # BGS secrets
+            create_or_update_secret "bgs-secrets" \
+              --from-literal=BGS_ADMIN_KEY='${{ secrets.BGS_ADMIN_KEY }}' \
+              --from-literal=DATABASE_URL='${{ secrets.BGS_DATABASE_URL }}'
+
+            # PDS secrets
+            create_or_update_secret "pds-secrets" \
+              --from-literal=PDS_JWT_SECRET='${{ secrets.PDS_JWT_SECRET }}' \
+              --from-literal=PDS_ADMIN_PASSWORD='${{ secrets.PDS_ADMIN_PASSWORD }}' \
+              --from-literal=PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX='${{ secrets.PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX }}'
+
+            # Bsky secrets
+            create_or_update_secret "bsky-secrets" \
+              --from-literal=BSKY_DB_POSTGRES_URL='${{ secrets.BSKY_DB_POSTGRES_URL }}' \
+              --from-literal=BSKY_SERVICE_SIGNING_KEY='${{ secrets.BSKY_SERVICE_SIGNING_KEY }}'
+
+            # PLC secrets
+            create_or_update_secret "plc-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}'
+
+            # Ozone secrets (if enabled)
+            if [ "${{ secrets.OZONE_DB_POSTGRES_URL }}" != "" ]; then
+              create_or_update_secret "ozone-secrets" \
+                --from-literal=DATABASE_URL='${{ secrets.OZONE_DB_POSTGRES_URL }}' \
+                --from-literal=OZONE_ADMIN_PASSWORD='${{ secrets.OZONE_ADMIN_PASSWORD }}' \
+                --from-literal=OZONE_SIGNING_KEY_HEX='${{ secrets.OZONE_SIGNING_KEY_HEX }}'
+            fi
+
+            # Palomar secrets
+            create_or_update_secret "palomar-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}'
+
+            # Social Link secrets
+            create_or_update_secret "social-link-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}'
+
+            # OpenSearch secrets
+            create_or_update_secret "opensearch-secrets" \
+              --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+
+            echo ""
+            echo "✅ All secrets verified/created"
+            echo ""
+            echo "Secrets in namespace:"
+            kubectl get secrets -n $NAMESPACE
+          ENDSSH
+
+      - name: Lint Helm chart
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            cd ~/helm-deploy/${{ inputs.environment }}
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔍 Linting Helm chart"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            helm lint ./foodios-chart \
+              -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
+              -f ./helm-values-override.yaml
+
+            echo "✓ Lint successful"
+          ENDSSH
+
+      - name: Perform dry-run deployment
+        if: inputs.dry_run == true
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            cd ~/helm-deploy/${{ inputs.environment }}
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🧪 Performing dry-run deployment"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
+              --namespace foodios-${{ inputs.environment }} \
+              --create-namespace \
+              -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
+              -f ./helm-values-override.yaml \
+              --dry-run \
+              --debug | head -100
+
+            echo ""
+            echo "✅ Dry-run completed successfully"
+          ENDSSH
+
+      - name: Deploy Helm chart
+        if: inputs.dry_run == false
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            cd ~/helm-deploy/${{ inputs.environment }}
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🚀 Deploying Helm chart to ${{ inputs.environment }}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
+              --namespace foodios-${{ inputs.environment }} \
+              --create-namespace \
+              -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
+              -f ./helm-values-override.yaml \
+              --wait \
+              --timeout 10m \
+              --atomic
+
+            echo ""
+            echo "✅ Helm deployment completed"
+          ENDSSH
+
+      - name: Verify deployment
+        if: inputs.dry_run == false
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📊 Deployment Status"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            kubectl get all -n foodios-${{ inputs.environment }}
+
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📋 Helm Release Info"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            helm list -n foodios-${{ inputs.environment }}
+          ENDSSH
+
+      - name: Wait for pods to be ready
+        if: inputs.dry_run == false
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            echo ""
+            echo "⏳ Waiting for pods to be ready (max 5 min)..."
+
+            kubectl wait --for=condition=ready pod \
+              --all \
+              -n foodios-${{ inputs.environment }} \
+              --timeout=300s || true
+
+            echo ""
+            echo "📈 Final Pod Status:"
+            kubectl get pods -n foodios-${{ inputs.environment }} \
+              -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,READY:.status.conditions[?(@.type=="Ready")].status,RESTARTS:.status.containerStatuses[0].restartCount'
+          ENDSSH
+
+      - name: Collect failure diagnostics
+        if: failure() && inputs.dry_run == false
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            echo ""
+            echo "❌ Deployment had issues. Collecting diagnostics..."
+            echo ""
+
+            # Get failed pods
+            FAILED_PODS=$(kubectl get pods -n foodios-${{ inputs.environment }} \
+              --field-selector=status.phase!=Running \
+              -o jsonpath='{.items[*].metadata.name}')
+
+            if [ -n "$FAILED_PODS" ]; then
+              for pod in $FAILED_PODS; do
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo "📝 Logs for pod: $pod"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                kubectl logs $pod -n foodios-${{ inputs.environment }} --tail=50 2>&1 || echo "Could not get logs"
+
+                echo ""
+                echo "🔍 Pod description:"
+                kubectl describe pod $pod -n foodios-${{ inputs.environment }} | tail -30
+                echo ""
+              done
+            else
+              echo "No failed pods found, but deployment may have issues."
+              echo "Recent events:"
+              kubectl get events -n foodios-${{ inputs.environment }} --sort-by='.lastTimestamp' | tail -20
+            fi
+          ENDSSH
+
+      - name: Cleanup local files
+        if: always()
+        run: |
+          rm -f helm-values-override.yaml
+          echo "🧹 Cleaned up local files"

@@ -1,0 +1,544 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Foodios/ATProto Helm Chart Values",
+  "description": "Schema for validating Helm chart values for self-hosted Foodios/ATProto stack",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global configuration that applies to all services",
+      "additionalProperties": false,
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Kubernetes namespace for all resources",
+          "default": "foodios"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Base domain for all services",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+        },
+        "imageRegistry": {
+          "type": "string",
+          "description": "Docker registry/namespace for all images"
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "description": "Image pull policy for all containers",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "default": "IfNotPresent"
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS/HTTPS configuration",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable TLS/HTTPS for ingresses",
+              "default": true
+            },
+            "secretName": {
+              "type": "string",
+              "description": "Name of the TLS secret (for manually created certs)"
+            },
+            "certIssuer": {
+              "type": "string",
+              "description": "cert-manager ClusterIssuer name"
+            },
+            "createSecret": {
+              "type": "boolean",
+              "description": "Whether to create TLS secret from files",
+              "default": false
+            },
+            "certFile": {
+              "type": "string",
+              "description": "Path to certificate file (relative to chart root)"
+            },
+            "keyFile": {
+              "type": "string",
+              "description": "Path to private key file (relative to chart root)"
+            }
+          }
+        },
+        "environment": {
+          "type": "string",
+          "description": "Environment name",
+          "enum": ["development", "staging", "production"]
+        },
+        "developmentMode": {
+          "type": "boolean",
+          "description": "Enable development-only features (CORS, debug logging, etc.)",
+          "default": false
+        },
+        "goInsecure": {
+          "type": "string",
+          "description": "GOINSECURE environment variable for Go services"
+        },
+        "nodeTlsRejectUnauthorized": {
+          "type": "string",
+          "description": "NODE_TLS_REJECT_UNAUTHORIZED setting (0 or 1)",
+          "pattern": "^[01]$"
+        },
+        "logLevel": {
+          "type": "string",
+          "description": "Default log level for all services",
+          "enum": ["trace", "debug", "info", "warn", "error"],
+          "default": "info"
+        },
+        "socialAppName": {
+          "type": "string",
+          "description": "Name of your social application"
+        }
+      },
+      "required": ["namespace", "domain", "imageRegistry"]
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Ingress controller configuration",
+      "additionalProperties": false,
+      "properties": {
+        "className": {
+          "type": "string",
+          "description": "Ingress class name",
+          "default": "traefik"
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations to add to all ingresses",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fqdns": {
+      "type": "object",
+      "description": "Fully Qualified Domain Names for all services",
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "type": "string",
+          "description": "API service domain",
+          "format": "hostname"
+        },
+        "bgs": {
+          "type": "string",
+          "description": "BGS (Big Graph Service) domain",
+          "format": "hostname"
+        },
+        "bsky": {
+          "type": "string",
+          "description": "Bluesky AppView domain",
+          "format": "hostname"
+        },
+        "card": {
+          "type": "string",
+          "description": "OG Card service domain",
+          "format": "hostname"
+        },
+        "embed": {
+          "type": "string",
+          "description": "Embed service domain",
+          "format": "hostname"
+        },
+        "feedgen": {
+          "type": "string",
+          "description": "Feed generator domain",
+          "format": "hostname"
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP location service domain",
+          "format": "hostname"
+        },
+        "jetstream": {
+          "type": "string",
+          "description": "Jetstream service domain",
+          "format": "hostname"
+        },
+        "link": {
+          "type": "string",
+          "description": "Link service domain",
+          "format": "hostname"
+        },
+        "logs": {
+          "type": "string",
+          "description": "Logs/observability domain",
+          "format": "hostname"
+        },
+        "ozone": {
+          "type": "string",
+          "description": "Ozone moderation service domain",
+          "format": "hostname"
+        },
+        "palomar": {
+          "type": "string",
+          "description": "Palomar search service domain",
+          "format": "hostname"
+        },
+        "pds": {
+          "type": "string",
+          "description": "PDS (Personal Data Server) domain",
+          "format": "hostname"
+        },
+        "plc": {
+          "type": "string",
+          "description": "PLC (DID registry) domain",
+          "format": "hostname"
+        },
+        "publicApi": {
+          "type": "string",
+          "description": "Public API domain",
+          "format": "hostname"
+        },
+        "socialapp": {
+          "type": "string",
+          "description": "Social app web UI domain",
+          "format": "hostname"
+        }
+      },
+      "required": ["pds", "bsky", "plc"]
+    },
+    "database": {
+      "type": "object",
+      "description": "PostgreSQL database configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Deploy PostgreSQL database",
+          "default": true
+        },
+        "image": {
+          "type": "string",
+          "description": "PostgreSQL image name",
+          "default": "postgres"
+        },
+        "tag": {
+          "type": "string",
+          "description": "PostgreSQL image tag"
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of database replicas",
+          "minimum": 1,
+          "default": 1
+        },
+        "port": {
+          "type": "integer",
+          "description": "PostgreSQL port",
+          "default": 5432
+        },
+        "user": {
+          "type": "string",
+          "description": "PostgreSQL username"
+        },
+        "storage": {
+          "$ref": "#/definitions/storage"
+        },
+        "secrets": {
+          "$ref": "#/definitions/secrets"
+        },
+        "livenessProbe": {
+          "type": "boolean",
+          "description": "Enable liveness probe",
+          "default": true
+        },
+        "readinessProbe": {
+          "type": "boolean",
+          "description": "Enable readiness probe",
+          "default": true
+        }
+      }
+    },
+    "pds": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "PDS (Personal Data Server) configuration",
+          "properties": {
+            "debugMode": {
+              "type": "boolean",
+              "description": "Enable debug mode (connect to host-based PDS)",
+              "default": false
+            },
+            "debugHostIP": {
+              "type": "string",
+              "description": "Host IP for debug mode",
+              "format": "ipv4"
+            },
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    },
+    "bsky": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Bluesky AppView configuration",
+          "properties": {
+            "debugMode": {
+              "type": "boolean",
+              "description": "Enable debug mode",
+              "default": false
+            },
+            "debugHostIP": {
+              "type": "string",
+              "description": "Host IP for debug mode",
+              "format": "ipv4"
+            },
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent cache storage"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "plc": {
+      "$ref": "#/definitions/service",
+      "description": "PLC (DID registry) configuration"
+    },
+    "bgs": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "BGS (Big Graph Service/Relay) configuration",
+          "properties": {
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    },
+    "socialApp": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Social App web UI configuration",
+          "properties": {
+            "command": {
+              "type": "array",
+              "description": "Container command override",
+              "items": {
+                "type": "string"
+              }
+            },
+            "args": {
+              "type": "array",
+              "description": "Container args override",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "socialCard": {
+      "$ref": "#/definitions/service",
+      "description": "OG Card generation service configuration"
+    },
+    "socialEmbed": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Embed service configuration",
+          "properties": {
+            "command": {
+              "type": "array",
+              "description": "Container command override",
+              "items": {
+                "type": "string"
+              }
+            },
+            "args": {
+              "type": "array",
+              "description": "Container args override",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "socialLink": {
+      "$ref": "#/definitions/service",
+      "description": "Link shortener service configuration"
+    },
+    "palomar": {
+      "$ref": "#/definitions/service",
+      "description": "Palomar search indexing service configuration"
+    },
+    "ozone": {
+      "$ref": "#/definitions/service",
+      "description": "Ozone moderation service configuration"
+    },
+    "redis": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Redis cache configuration",
+          "properties": {
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    },
+    "opensearch": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "OpenSearch configuration",
+          "properties": {
+            "javaOpts": {
+              "type": "string",
+              "description": "Java options (heap size, etc.)",
+              "default": "-Xms512m -Xmx512m"
+            },
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": ["global", "fqdns"],
+  "definitions": {
+    "service": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable this service",
+          "default": true
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of pod replicas",
+          "minimum": 0,
+          "default": 1
+        },
+        "image": {
+          "type": "string",
+          "description": "Container image name (without registry)"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Container image tag"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Service port",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "secrets": {
+          "$ref": "#/definitions/secrets"
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "description": "Persistent storage configuration",
+      "properties": {
+        "size": {
+          "type": "string",
+          "description": "Storage size (e.g., 10Gi, 100Gi)",
+          "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+        },
+        "storageClass": {
+          "type": "string",
+          "description": "Kubernetes storage class name"
+        }
+      },
+      "required": ["size"]
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Kubernetes secret reference",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Use Kubernetes secrets for sensitive data",
+          "default": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Kubernetes secret"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Container resource requests and limits",
+      "additionalProperties": false,
+      "properties": {
+        "limits": {
+          "type": "object",
+          "description": "Maximum resources the container can use",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": ["string", "number"],
+              "description": "CPU limit (e.g., '2', '500m')"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Memory limit (e.g., '2Gi', '512Mi')",
+              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "description": "Minimum resources the container needs",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": ["string", "number"],
+              "description": "CPU request (e.g., '1', '250m')"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Memory request (e.g., '1Gi', '256Mi')",
+              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

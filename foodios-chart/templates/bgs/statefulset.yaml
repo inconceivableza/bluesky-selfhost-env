@@ -10,6 +10,8 @@ metadata:
 spec:
   serviceName: bgs
   replicas: {{ .Values.bgs.replicas | default 1 }}
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: bgs
@@ -18,6 +20,7 @@ spec:
       labels:
         app: bgs
     spec:
+      {{- include "foodios.hostAliases" . | nindent 6 }}
       initContainers:
       - name: wait-for-database
         image: busybox:latest
@@ -26,6 +29,13 @@ spec:
       - name: bgs
         image: {{ .Values.global.imageRegistry }}/{{ .Values.bgs.image }}:{{ .Values.bgs.tag }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        {{- if .Values.global.developmentMode }}
+        {{- if .Values.pds.debugMode }}
+        command: ['sh', '-c', 'cp /tmp/ca-cert/ca.crt /usr/local/share/ca-certificates/ca.crt && update-ca-certificates && exec /bigsky --crawl-insecure-ws']
+        {{- else }}
+        command: ['sh', '-c', 'cp /tmp/ca-cert/ca.crt /usr/local/share/ca-certificates/ca.crt && update-ca-certificates && exec /bigsky']
+        {{- end }}
+        {{- end }}
         ports:
         - containerPort: {{ .Values.bgs.port }}
           name: http
@@ -66,6 +76,11 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /data/bigsky
+        {{- if .Values.global.developmentMode }}
+        - name: ca-cert
+          mountPath: /tmp/ca-cert
+          readOnly: true
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /xrpc/_health
@@ -86,6 +101,12 @@ spec:
         resources:
           {{- toYaml .Values.bgs.resources | nindent 10 }}
         {{- end }}
+      {{- if .Values.global.developmentMode }}
+      volumes:
+      - name: ca-cert
+        configMap:
+          name: local-ca-cert
+      {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: data

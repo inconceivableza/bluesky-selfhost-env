@@ -3,7 +3,8 @@ set -e
 # TODO use env variables
 DOMAIN1="mysky.local.app"
 DOMAIN2="mysky.local.social"
-CERT_DIR="./foodios-chart/certs"
+BASE_DIR=$(git rev-parse --show-toplevel)
+CERT_DIR=$BASE_DIR/foodios-chart/certs
 
 mkdir -p "$CERT_DIR"
 

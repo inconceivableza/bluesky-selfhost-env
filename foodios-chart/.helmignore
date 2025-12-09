@@ -16,4 +16,6 @@
 .idea/
 *.tmproj
 .vscode/
-certs/
+certs/*.key
+certs/*.csr
+certs/openssl.cnf

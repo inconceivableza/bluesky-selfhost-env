@@ -10,6 +10,8 @@ metadata:
 spec:
   serviceName: opensearch
   replicas: {{ .Values.opensearch.replicas | default 1 }}
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: opensearch
@@ -35,7 +37,7 @@ spec:
         - name: OPENSEARCH_JAVA_OPTS
           value: {{ .Values.opensearch.javaOpts | default "-Xms512m -Xmx512m" | quote }}
         - name: bootstrap.memory_lock
-          value: "true"
+          value: "true" # this might be problematic
         - name: cluster.name
           value: "docker-cluster"
         - name: discovery.type
