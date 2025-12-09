@@ -25,3 +25,4 @@ ios-builds
 tmp-builds
 build-logs
 foodios-chart/certs
+foodios-chart/values/local.yaml

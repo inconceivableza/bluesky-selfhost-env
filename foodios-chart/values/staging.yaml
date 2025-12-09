@@ -1,0 +1,269 @@
+# Production values - override values.yaml
+global:
+  namespace: foodios
+  domain: yourdomain.com  # Your actual production domain
+  imageRegistry: yournamespace  # Your Docker Hub namespace
+  imagePullPolicy: IfNotPresent
+
+  # TLS/Certificate configuration
+  tls:
+    enabled: true
+    certIssuer: letsencrypt-prod
+    createSecret: false  # cert-manager will create secrets automatically
+
+  # Environment
+  environment: staging
+  developmentMode: false
+
+  # TLS settings for production
+  goInsecure: ""
+  nodeTlsRejectUnauthorized: "1"
+  logLevel: info
+  socialAppName: "Foodios"  # Your social app name
+
+# Ingress configuration
+ingress:
+  className: traefik
+  annotations: {}
+
+# Service FQDNs - production domains
+fqdns:
+  api: api.yourdomain.com
+  bgs: bgs.yourdomain.com
+  bsky: bsky.yourdomain.com
+  card: card.yourdomain.com
+  embed: embed.yourdomain.com
+  feedgen: feedgen.yourdomain.com
+  ip: ip.yourdomain.com
+  jetstream: jetstream.yourdomain.com
+  link: link.yourdomain.com
+  logs: logs.yourdomain.com
+  ozone: ozone.yourdomain.com
+  palomar: palomar.yourdomain.com
+  pds: pds.yourdomain.com
+  plc: plc.yourdomain.com
+  publicApi: public-api.yourdomain.com
+  socialapp: app.yourdomain.com
+
+# PostgreSQL database
+database:
+  enabled: true
+  image: postgres
+  tag: 16-trixie
+  replicas: 1
+  port: 5432
+  user: pg
+  storage:
+    size: 100Gi  # Larger for production
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: db-secrets
+  livenessProbe: true
+  readinessProbe: true
+
+# PDS (Personal Data Server)
+pds:
+  enabled: true
+  debugMode: false
+  replicas: 2  # Multiple replicas for HA
+  image: foodios-atproto-pds
+  tag: latest  # Will be overridden by workflow
+  port: 2583
+  storage:
+    size: 100Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: pds-secrets
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+
+# Bsky (App View)
+bsky:
+  enabled: true
+  debugMode: false
+  replicas: 2  # Multiple replicas for HA
+  image: foodios-atproto-bsky
+  tag: latest  # Will be overridden by workflow
+  port: 2584
+  storage:
+    enabled: true
+    size: 20Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: bsky-secrets
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+
+# PLC (DID service)
+plc:
+  enabled: true
+  replicas: 2
+  image: foodios-did-method-plc
+  tag: latest  # Will be overridden by workflow
+  port: 2582
+  secrets:
+    enabled: true
+    name: plc-secrets
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      memory: 512Mi
+
+# BGS (Big Graph Service / Relay)
+bgs:
+  enabled: true
+  replicas: 2
+  image: foodios-indigo-bgs
+  tag: latest  # Will be overridden by workflow
+  port: 2470
+  storage:
+    size: 100Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: bgs-secrets
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+
+# Social App (Web UI)
+socialApp:
+  enabled: true
+  replicas: 2
+  image: foodios-social-app
+  tag: latest  # Will be overridden by workflow
+  port: 8100
+  command: ["/bin/sh", "-c"]
+  args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      memory: 512Mi
+
+# Social Card (OG Card service)
+socialCard:
+  enabled: true
+  replicas: 2
+  image: foodios-social-card
+  tag: latest  # Will be overridden by workflow
+  port: 3003
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      memory: 256Mi
+
+# Social Embed
+socialEmbed:
+  enabled: true
+  replicas: 2
+  image: foodios-social-embed
+  tag: latest  # Will be overridden by workflow
+  port: 8101
+  command: ['sh', '-c']
+  args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      memory: 256Mi
+
+# Social Link
+socialLink:
+  enabled: true
+  replicas: 2
+  image: foodios-social-link
+  tag: latest  # Will be overridden by workflow
+  port: 3004
+  secrets:
+    enabled: true
+    name: social-link-secrets
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      memory: 256Mi
+
+# Palomar (Search service)
+palomar:
+  enabled: true
+  replicas: 2
+  image: foodios-indigo-palomar
+  tag: latest  # Will be overridden by workflow
+  port: 3999
+  secrets:
+    enabled: true
+    name: palomar-secrets
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: "500m"
+      memory: 1Gi
+
+# Ozone (Moderation service)
+ozone:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: foodios-atproto-ozone
+  tag: latest
+  port: 3006
+  secrets:
+    enabled: true
+    name: ozone-secrets
+
+# Redis
+redis:
+  enabled: true
+  image: redis
+  tag: 8-bookworm
+  replicas: 1
+  port: 6379
+  storage:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      memory: 512Mi
+
+# OpenSearch
+opensearch:
+  enabled: true
+  image: foodios-indigo-opensearch
+  tag: latest  # Will be overridden by workflow
+  replicas: 1
+  port: 9200
+  javaOpts: "-Xms1g -Xmx1g"  # Larger heap for production
+  storage:
+    size: 100Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: opensearch-secrets
+  resources:
+    limits:
+      memory: 2Gi
+    requests:
+      memory: 1Gi
