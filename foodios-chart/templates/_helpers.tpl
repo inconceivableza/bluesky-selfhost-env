@@ -63,7 +63,7 @@ metadata:
     {{- include "foodios.labels" .root | nindent 4 }}
   annotations:
     {{- if and .root.Values.global.tls.enabled .root.Values.global.tls.certIssuer }}
-    cert-manager.io/cluster-issuer: {{ .root.Values.global.tls.certIssuer }}
+    cert-manager.io/issuer: {{ .root.Values.global.tls.certIssuer }}
     {{- end }}
     {{- if .root.Values.global.developmentMode }}
     {{- with .root.Values.ingress.annotations }}
