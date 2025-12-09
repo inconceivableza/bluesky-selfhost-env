@@ -48,7 +48,7 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 # derived configuration for caddy
 
 config/caddy-dynamic.env: .env
-ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
+ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(ozoneDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
 else
 	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
@@ -58,6 +58,9 @@ ifeq ($(bgsDEBUG), true)
 endif
 ifeq ($(bskyDEBUG), true)
 	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
+endif
+ifeq ($(ozoneDEBUG), true)
+	@echo "ozonePROXY=http://host.docker.internal:$(shell yq -r .services.ozone.env_override.OZONE_PORT ./debug-services.yaml)" >> $@
 endif
 ifeq ($(pdsDEBUG), true)
 	@echo "pdsPROXY=http://host.docker.internal:$(shell yq -r .services.pds.env_override.PDS_PORT ./debug-services.yaml)" >> $@

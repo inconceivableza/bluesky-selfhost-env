@@ -155,4 +155,25 @@ services:
       LINK_PORT: 30040
       NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
 
+  ozone:
+    working_dir: './repos/ozone'
+    build:
+      - 'corepack enable'
+      - 'yarn atproto:install'
+      - 'yarn atproto:build'
+      - 'yarn install'
+    run:
+      - 'set | grep "^[A-Z].*="'
+      - 'yarn dev'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+    env_subst:
+      - 's/@database/@localhost/'
+    env_override:
+      PORT: 30050 # only used by dev mode
+      OZONE_PORT: 30050
+      NODE_EXTRA_CA_CERTS: '$script_dir/certs/ca-certificates.crt'
 

@@ -251,7 +251,7 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	reverse_proxy http://ozone:3005
+	reverse_proxy {$ozonePROXY:http://ozone:3005}
 }
 
 {$palomarFQDN} {
