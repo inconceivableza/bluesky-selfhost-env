@@ -1,4 +1,4 @@
-{{- if and .Values.global.tls.enabled .Values.global.tls.certIssuer }}
+{{- if and .Values.global.tls.enabled .Values.global.tls.certIssuer .Values.global.tls.cloudflare.apiToken }}
 ---
 apiVersion: v1
 kind: Secret
@@ -7,7 +7,7 @@ metadata:
   namespace: cert-manager
 type: Opaque
 stringData:
-  api-token: {{ .Values.global.tls.cloudflare.apiToken | required "global.tls.cloudflare.apiToken is required when using Cloudflare DNS" }}
+  api-token: {{ .Values.global.tls.cloudflare.apiToken }}
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -17,7 +17,7 @@ spec:
   acme:
     # Let's Encrypt staging server for testing
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: {{ .Values.global.tls.email | required "global.tls.email is required" }}
+    email: {{ .Values.global.tls.email }}
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:
@@ -36,7 +36,7 @@ spec:
   acme:
     # Let's Encrypt production server
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: {{ .Values.global.tls.email | required "global.tls.email is required" }}
+    email: {{ .Values.global.tls.email }}
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
