@@ -297,8 +297,6 @@ jobs:
               --create-namespace \
               -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
               -f ./helm-values-override.yaml \
-              --wait \
-              --timeout 5m \
               --atomic
 
             echo ""
