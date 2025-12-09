@@ -1,0 +1,19 @@
+{{- if and .Values.bsky.enabled .Values.bsky.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bsky-cache
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: bsky
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.bsky.storage.storageClass }}
+  storageClassName: {{ .Values.bsky.storage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.bsky.storage.size | default "10Gi" }}
+{{- end }}
