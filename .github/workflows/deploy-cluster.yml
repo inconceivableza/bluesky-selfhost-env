@@ -156,6 +156,84 @@ jobs:
           scp helm-values-override.yaml \
             ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
 
+      - name: Check and create Kubernetes secrets
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔐 Checking Kubernetes secrets"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            NAMESPACE="foodios-${{ inputs.environment }}"
+
+            # Create namespace if it doesn't exist
+            kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+            # Function to create or update secret
+            create_or_update_secret() {
+              local secret_name=$1
+              shift
+              local secret_data=("$@")
+
+              if kubectl get secret $secret_name -n $NAMESPACE &> /dev/null; then
+                echo "  ℹ️  Secret '$secret_name' already exists"
+              else
+                echo "  🔐 Creating secret '$secret_name'..."
+                kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}"
+                echo "  ✅ Created secret '$secret_name'"
+              fi
+            }
+
+            # Database secrets
+            create_or_update_secret "db-secrets" \
+              --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}'
+
+            # BGS secrets
+            create_or_update_secret "bgs-secrets" \
+              --from-literal=BGS_ADMIN_KEY='${{ secrets.BGS_ADMIN_KEY }}' \
+              --from-literal=DATABASE_URL='${{ secrets.BGS_DATABASE_URL }}'
+
+            # PDS secrets
+            create_or_update_secret "pds-secrets" \
+              --from-literal=PDS_JWT_SECRET='${{ secrets.PDS_JWT_SECRET }}' \
+              --from-literal=PDS_ADMIN_PASSWORD='${{ secrets.PDS_ADMIN_PASSWORD }}' \
+              --from-literal=PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX='${{ secrets.PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX }}'
+
+            # Bsky secrets
+            create_or_update_secret "bsky-secrets" \
+              --from-literal=BSKY_DB_POSTGRES_URL='${{ secrets.BSKY_DB_POSTGRES_URL }}' \
+              --from-literal=BSKY_SERVICE_SIGNING_KEY='${{ secrets.BSKY_SERVICE_SIGNING_KEY }}'
+
+            # PLC secrets
+            create_or_update_secret "plc-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}'
+
+            # Ozone secrets (if enabled)
+            if [ "${{ secrets.OZONE_DB_POSTGRES_URL }}" != "" ]; then
+              create_or_update_secret "ozone-secrets" \
+                --from-literal=DATABASE_URL='${{ secrets.OZONE_DB_POSTGRES_URL }}' \
+                --from-literal=OZONE_ADMIN_PASSWORD='${{ secrets.OZONE_ADMIN_PASSWORD }}' \
+                --from-literal=OZONE_SIGNING_KEY_HEX='${{ secrets.OZONE_SIGNING_KEY_HEX }}'
+            fi
+
+            # Palomar secrets
+            create_or_update_secret "palomar-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}'
+
+            # Social Link secrets
+            create_or_update_secret "social-link-secrets" \
+              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}'
+
+            # OpenSearch secrets
+            create_or_update_secret "opensearch-secrets" \
+              --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+
+            echo ""
+            echo "✅ All secrets verified/created"
+            echo ""
+            echo "Secrets in namespace:"
+            kubectl get secrets -n $NAMESPACE
+          ENDSSH
+
       - name: Lint Helm chart
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
