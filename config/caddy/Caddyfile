@@ -251,15 +251,6 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
-	#	reverse_proxy http://ozone:3006
-	reverse_proxy http://ozone-standalone:3005
-}
-ozone-standalone.{$DOMAIN} {
-	import cors
-	import tracing ozone-standalone
-	tls {$EMAIL4CERTS} {
-		on_demand
-	}
 	reverse_proxy http://ozone-standalone:3005
 }
 
