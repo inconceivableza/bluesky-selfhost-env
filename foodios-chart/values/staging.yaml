@@ -66,7 +66,7 @@ database:
 pds:
   enabled: true
   debugMode: false
-  replicas: 2  # Multiple replicas for HA
+  replicas: 1
   image: foodios-atproto-pds
   tag: latest  # Will be overridden by workflow
   port: 2583
@@ -88,7 +88,7 @@ pds:
 bsky:
   enabled: true
   debugMode: false
-  replicas: 2  # Multiple replicas for HA
+  replicas: 1
   image: foodios-atproto-bsky
   tag: latest  # Will be overridden by workflow
   port: 2584
@@ -110,7 +110,7 @@ bsky:
 # PLC (DID service)
 plc:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-did-method-plc
   tag: latest  # Will be overridden by workflow
   port: 2582
@@ -126,7 +126,7 @@ plc:
 # BGS (Big Graph Service / Relay)
 bgs:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-indigo-bgs
   tag: latest  # Will be overridden by workflow
   port: 2470
@@ -147,7 +147,7 @@ bgs:
 # Social App (Web UI)
 socialApp:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-app
   tag: latest  # Will be overridden by workflow
   port: 8100
@@ -162,7 +162,7 @@ socialApp:
 # Social Card (OG Card service)
 socialCard:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-card
   tag: latest  # Will be overridden by workflow
   port: 3003
@@ -175,7 +175,7 @@ socialCard:
 # Social Embed
 socialEmbed:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-embed
   tag: latest  # Will be overridden by workflow
   port: 8101
@@ -190,7 +190,7 @@ socialEmbed:
 # Social Link
 socialLink:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-link
   tag: latest  # Will be overridden by workflow
   port: 3004
@@ -206,7 +206,7 @@ socialLink:
 # Palomar (Search service)
 palomar:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-indigo-palomar
   tag: latest  # Will be overridden by workflow
   port: 3999
