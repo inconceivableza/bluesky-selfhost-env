@@ -212,8 +212,8 @@ jobs:
 
             # PLC secrets
             create_or_update_secret "plc-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}'
-              --from-literal=DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}'
+              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}' \
+              --from-literal=DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}' \
               --from-literal=DB_MIGRATE_CREDS_JSON='${{ secrets.DB_MIGRATE_CREDS_JSON }}'
 
             # Ozone secrets (if enabled)
@@ -226,13 +226,13 @@ jobs:
 
             # Palomar secrets
             create_or_update_secret "palomar-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}'
-              --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}' \
+              --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}' \
               --from-literal=ES_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
 
             # Social Link secrets
             create_or_update_secret "social-link-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}'
+              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}' \
               --from-literal=LINK_DB_POSTGRES_URL='${{ secrets.LINK_DB_POSTGRES_MIGRATION_URL }}'
 
             # OpenSearch secrets
