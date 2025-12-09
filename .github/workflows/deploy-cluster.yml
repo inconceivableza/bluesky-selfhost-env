@@ -88,6 +88,7 @@ jobs:
 
           # Global overrides
           global:
+            namespace: "foodios-${{ inputs.environment }}"
             domain: "${{ vars.DOMAIN }}"
             imageRegistry: "${{ vars.BRANDED_NAMESPACE }}"
 
@@ -159,6 +160,8 @@ jobs:
       - name: Check and create Kubernetes secrets
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🔐 Checking Kubernetes secrets"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -237,6 +240,7 @@ jobs:
       - name: Lint Helm chart
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -254,6 +258,7 @@ jobs:
         if: inputs.dry_run == true
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -276,6 +281,7 @@ jobs:
         if: inputs.dry_run == false
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
