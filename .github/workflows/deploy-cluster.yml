@@ -153,9 +153,9 @@ jobs:
 
       - name: Copy files to server
         run: |
-          # Copy Helm chart
-          scp -r foodios-chart \
-            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+          # Clean and copy Helm chart (removes old files)
+          rsync -avz --delete foodios-chart/ \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/foodios-chart/
 
           # Copy values override
           scp helm-values-override.yaml \
