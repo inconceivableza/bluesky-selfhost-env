@@ -93,8 +93,7 @@ jobs:
             imageRegistry: "${{ vars.BRANDED_NAMESPACE }}"
             tls:
               email: "${{ vars.EMAIL4CERTS }}"
-              cloudflare:
-                apiToken: "${{ secrets.CADDY_DNS_API_TOKEN }}"
+              # Note: Cloudflare API token is stored as K8s secret, not in values
 
           # FQDNs (override from GitHub variables)
           fqdns:
@@ -238,6 +237,16 @@ jobs:
             # OpenSearch secrets
             create_or_update_secret "opensearch-secrets" \
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+
+            # Cloudflare credentials for Traefik ACME (in kube-system namespace)
+            if kubectl get secret cloudflare-credentials -n kube-system &> /dev/null; then
+              echo "  ℹ️  Secret 'cloudflare-credentials' already exists in kube-system"
+            else
+              echo "  🔐 Creating secret 'cloudflare-credentials' in kube-system..."
+              kubectl create secret generic cloudflare-credentials -n kube-system \
+                --from-literal=CF_DNS_API_TOKEN='${{ secrets.CADDY_DNS_API_TOKEN }}'
+              echo "  ✅ Created secret 'cloudflare-credentials' in kube-system"
+            fi
 
             echo ""
             echo "✅ All secrets verified/created"

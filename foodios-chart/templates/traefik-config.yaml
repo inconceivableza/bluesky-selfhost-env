@@ -1,16 +1,7 @@
 {{- if .Values.global.tls.enabled }}
 ---
-# Cloudflare credentials for Traefik ACME DNS challenge
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudflare-credentials
-  namespace: kube-system
-type: Opaque
-stringData:
-  {{- if .Values.global.tls.cloudflare.apiToken }}
-  CF_DNS_API_TOKEN: {{ .Values.global.tls.cloudflare.apiToken | quote }}
-  {{- end }}
+# Note: cloudflare-credentials secret is created by the deployment workflow
+# for security reasons (not stored in Helm values)
 ---
 # Configure Traefik for Let's Encrypt with Cloudflare DNS
 apiVersion: helm.cattle.io/v1
