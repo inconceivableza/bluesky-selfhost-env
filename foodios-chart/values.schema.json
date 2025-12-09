@@ -60,6 +60,27 @@
             "keyFile": {
               "type": "string",
               "description": "Path to private key file (relative to chart root)"
+            },
+            "email": {
+              "type": "string",
+              "description": "Email for Let's Encrypt notifications",
+              "format": "email"
+            },
+            "cloudflare": {
+              "type": "object",
+              "description": "Cloudflare DNS configuration for cert-manager",
+              "additionalProperties": false,
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "description": "Cloudflare account email",
+                  "format": "email"
+                },
+                "apiToken": {
+                  "type": "string",
+                  "description": "Cloudflare API token for DNS challenge"
+                }
+              }
             }
           }
         },
@@ -241,6 +262,9 @@
         },
         "secrets": {
           "$ref": "#/definitions/secrets"
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
         },
         "livenessProbe": {
           "type": "boolean",
@@ -518,7 +542,7 @@
             "memory": {
               "type": "string",
               "description": "Memory limit (e.g., '2Gi', '512Mi')",
-              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+              "pattern": "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
             }
           }
         },
