@@ -1,4 +1,4 @@
-{{- if .Values.bsky.enabled }}
+{{- if and .Values.bsky.enabled (not .Values.bsky.debugMode) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +26,7 @@ spec:
       - name: bsky
         image: {{ .Values.global.imageRegistry }}/{{ .Values.bsky.image }}:{{ .Values.bsky.tag }}
         {{- if .Values.global.developmentMode }}
-        command: ['sh', '-c', 'node --inspect=0.0.0.0:9229 --enable-source-maps api.js']
+        command: ['sh', '-c', 'node --enable-source-maps api.js']
         {{- else }}
         command: ['sh', '-c', 'node --inspect=0.0.0.0:9229 --enable-source-maps api.js']
         {{- end }}
