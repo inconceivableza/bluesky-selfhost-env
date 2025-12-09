@@ -1,0 +1,135 @@
+{{- if and .Values.pds.enabled (not .Values.pds.debugMode) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pds
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+  # annotations:
+  #   checksum/config: {{ include (print $.Template.BasePath "/configmap-ca-cert.yaml") . | sha256sum }}
+spec:
+  serviceName: pds
+  replicas: {{ .Values.pds.replicas }}
+  updateStrategy:
+    type: RollingUpdate # hopefully this results in pds restarting on config changes
+  selector:
+    matchLabels:
+      app: pds
+  template:
+    metadata:
+      labels:
+        app: pds
+    spec:
+      {{- include "foodios.hostAliases" . | nindent 6 }}
+      containers:
+      - name: pds
+        image: {{ include "foodios.image" (dict "image" .Values.pds.image "tag" .Values.pds.tag "registry" .Values.global.imageRegistry) }}
+        {{- if .Values.global.developmentMode }}
+        command: ['sh', '-c', 'node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --inspect=0.0.0.0:9229 index.js']
+        {{- else }}
+        command: ['sh', '-c', 'node --heapsnapshot-signal=SIGUSR2 --enable-source-maps --require=./tracer.js index.js']
+        {{- end }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.pds.port }}
+          protocol: TCP
+        - name: debug
+          containerPort: 9229
+          protocol: TCP
+        env:
+        - name: DEBUG_MODE
+          value: "1"
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | default "development" | quote }}
+        {{- if .Values.global.developmentMode }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: /tmp/ca-cert/ca.crt
+        {{- end }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: PDS_HOSTNAME
+          value: {{ .Values.fqdns.pds }}
+        - name: PDS_PORT
+          value: {{ .Values.pds.port | quote }}
+        - name: PDS_SERVICE_DID
+          value: "did:web:{{ .Values.fqdns.pds }}"
+        - name: PDS_BSKY_APP_VIEW_URL
+          value: "https://{{ .Values.fqdns.bsky }}"
+        - name: PDS_BSKY_APP_VIEW_DID
+          value: "did:web:{{ .Values.fqdns.bsky }}"
+        - name: PDS_DID_PLC_URL
+          value: "https://{{ .Values.fqdns.plc }}"
+        - name: PDS_CRAWLERS
+          value: "https://{{ .Values.fqdns.bgs }}"
+        - name: PDS_BLOBSTORE_DISK_LOCATION
+          value: /pds/blobs
+        - name: PDS_DATA_DIRECTORY
+          value: /pds
+        - name: PDS_ENABLE_DID_DOC_WITH_SESSION
+          value: "true"
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4318"
+        {{- if .Values.global.developmentMode }}
+        - name: PDS_DEV_MODE
+          value: "true"
+        - name: PDS_DISABLE_SSRF_PROTECTION
+          value: "true"
+        - name: PDS_INVITE_REQUIRED
+          value: "false"
+        {{- end }}
+
+        # Add more env vars as needed from your swarm config
+        envFrom:
+        - secretRef:
+            name: pds-secrets
+        resources:
+          {{- toYaml .Values.pds.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: {{ .Values.pds.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: {{ .Values.pds.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: pds-data
+          mountPath: /pds
+        {{- if .Values.global.developmentMode }}
+        - name: ca-cert
+          mountPath: /tmp/ca-cert
+          readOnly: true
+        {{- end }}
+      {{- if .Values.global.developmentMode }}
+      volumes:
+      - name: ca-cert
+        configMap:
+          name: local-ca-cert
+      {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: pds-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.pds.storage.storageClass }}
+      storageClassName: {{ .Values.pds.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.pds.storage.size | default "50Gi" }}
+{{- end }}

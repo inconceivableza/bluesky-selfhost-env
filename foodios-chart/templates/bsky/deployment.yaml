@@ -17,6 +17,7 @@ spec:
       labels:
         app: bsky
     spec:
+      {{- include "foodios.hostAliases" . | nindent 6 }}
       initContainers:
       - name: wait-for-dependencies
         image: busybox:latest
@@ -24,6 +25,11 @@ spec:
       containers:
       - name: bsky
         image: {{ .Values.global.imageRegistry }}/{{ .Values.bsky.image }}:{{ .Values.bsky.tag }}
+        {{- if .Values.global.developmentMode }}
+        command: ['sh', '-c', 'node --enable-source-maps api.js']
+        {{- else }}
+        command: ['sh', '-c', 'node --inspect=0.0.0.0:9229 --enable-source-maps api.js']
+        {{- end }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         ports:
         - containerPort: {{ .Values.bsky.port }}
@@ -50,21 +56,21 @@ spec:
         - name: BSKY_DB_POSTGRES_SCHEMA
           value: "bsky"
         - name: BSKY_DID_PLC_URL
-          value: "http://plc:{{ .Values.plc.port }}"
+          value: "https://{{ .Values.fqdns.plc }}"
         - name: BSKY_PORT
           value: {{ .Values.bsky.port | quote }}
         - name: BSKY_PUBLIC_URL
           value: "https://{{ .Values.fqdns.bsky }}"
         - name: BSKY_REPO_PROVIDER
-          value: "ws://bgs:{{ .Values.bgs.port }}"
+          value: "wss://{{ .Values.fqdns.bgs }}"
         - name: BSKY_SEARCH_URL
-          value: "http://palomar:{{ .Values.palomar.port }}"
+          value: "https://{{ .Values.fqdns.palomar }}"
         - name: BSKY_SERVER_DID
           value: "did:web:{{ .Values.fqdns.bsky }}"
         - name: DEBUG_MODE
           value: "1"
         - name: DID_PLC_URL
-          value: "http://plc:{{ .Values.plc.port }}"
+          value: "https://{{ .Values.fqdns.plc }}"
         - name: ENABLE_MIGRATIONS
           value: "false"
         - name: GOINSECURE
@@ -79,8 +85,10 @@ spec:
           value: "did:web:{{ .Values.fqdns.ozone }}"
         - name: NODE_ENV
           value: {{ .Values.global.environment | quote }}
+        {{- if .Values.global.developmentMode }}
         - name: NODE_EXTRA_CA_CERTS
-          value: "/etc/ssl/certs/ca-certificates.crt"
+          value: "/tmp/ca-cert/ca.crt"
+        {{- end }}
         - name: NODE_TLS_REJECT_UNAUTHORIZED
           value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
         - name: REDIS_HOST
@@ -99,6 +107,11 @@ spec:
         volumeMounts:
         - name: cache
           mountPath: /cache/
+        {{- if .Values.global.developmentMode }}
+        - name: ca-cert
+          mountPath: /tmp/ca-cert
+          readOnly: true
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /
@@ -127,4 +140,9 @@ spec:
         {{- else }}
         emptyDir: {}  # Ephemeral cache
         {{- end }}
+      {{- if .Values.global.developmentMode }}
+      - name: ca-cert
+        configMap:
+          name: local-ca-cert
+      {{- end }}
 {{- end }}

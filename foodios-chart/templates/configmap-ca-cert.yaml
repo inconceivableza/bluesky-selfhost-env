@@ -1,0 +1,12 @@
+{{- if .Values.global.developmentMode }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-ca-cert
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "foodios.labels" . | nindent 4 }}
+data:
+  ca.crt: |
+{{ .Files.Get .Values.global.tls.certFile | indent 4 }}
+{{- end }}

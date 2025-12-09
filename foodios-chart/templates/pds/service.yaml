@@ -1,4 +1,4 @@
-{{- if .Values.pds.enabled }}
+{{- if and .Values.pds.enabled (not .Values.pds.debugMode) }}
 apiVersion: v1
 kind: Service
 metadata:

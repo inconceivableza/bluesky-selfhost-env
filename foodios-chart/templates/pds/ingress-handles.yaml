@@ -1,0 +1,38 @@
+{{- if .Values.pds.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pds-handles
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: pds
+    {{- include "foodios.labels" . | nindent 4 }}
+  annotations:
+    {{- if and .Values.global.tls.enabled .Values.global.tls.certIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.tls.certIssuer }}
+    {{- end }}
+    {{- if .Values.global.developmentMode }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.global.tls.enabled }}
+  tls:
+  - hosts:
+    - "*.{{ .Values.fqdns.pds }}"
+    secretName: {{ .Values.global.tls.secretName | default "pds-handles-tls" }}
+  {{- end }}
+  rules:
+  - host: "*.{{ .Values.fqdns.pds }}"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pds
+            port:
+              number: {{ .Values.pds.port }}
+{{- end }}
