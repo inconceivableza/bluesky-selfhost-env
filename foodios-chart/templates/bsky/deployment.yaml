@@ -1,4 +1,4 @@
-{{- if and .Values.bsky.enabled (not .Values.bsky.debugMode) }}
+{{- if .Values.bsky.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
