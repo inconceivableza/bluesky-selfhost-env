@@ -36,6 +36,7 @@ fqdns:
   embed: embed.yourdomain.com
   feedgen: feedgen.yourdomain.com
   ip: ip.yourdomain.com
+  jaeger: jaeger.yourdomain.com
   jetstream: jetstream.yourdomain.com
   link: link.yourdomain.com
   logs: logs.yourdomain.com
@@ -362,6 +363,10 @@ jaeger:
   image: jaeger
   tag: latest
   uiPort: 16686
+  ingress:
+    enabled: true
+    allowedIPs:
+      - ""  # Injected from env
   resources:
     limits:
       cpu: "300m"
