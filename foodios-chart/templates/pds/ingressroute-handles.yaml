@@ -11,7 +11,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-  - match: HostRegexp(`{subdomain:[a-z0-9-]+}.{{ .Values.fqdns.pds }}`)
+  - match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
     kind: Rule
     services:
     - name: pds
@@ -35,7 +35,7 @@ spec:
   entryPoints:
     - web
   routes:
-  - match: HostRegexp(`{subdomain:[a-z0-9-]+}.{{ .Values.fqdns.pds }}`)
+  - match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
     kind: Rule
     services:
     - name: pds
