@@ -44,10 +44,6 @@ spec:
           value: "1"
         - name: NODE_ENV
           value: {{ .Values.global.environment | default "development" | quote }}
-        {{- if .Values.global.developmentMode }}
-        - name: NODE_EXTRA_CA_CERTS
-          value: /tmp/ca-cert/ca.crt
-        {{- end }}
         - name: NODE_TLS_REJECT_UNAUTHORIZED
           value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
         - name: PDS_HOSTNAME
@@ -80,16 +76,17 @@ spec:
           value: "true"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: "http://otel-collector:4318"
+        - name: PDS_INVITE_REQUIRED
+          value: {{ .Values.pds.inviteRequired | quote }}
         {{- if .Values.global.developmentMode }}
         - name: PDS_DEV_MODE
           value: "true"
         - name: PDS_DISABLE_SSRF_PROTECTION
           value: "true"
-        - name: PDS_INVITE_REQUIRED
-          value: "false"
+        - name: NODE_EXTRA_CA_CERTS
+          value: /tmp/ca-cert/ca.crt
         {{- end }}
 
-        # Add more env vars as needed from your swarm config
         envFrom:
         - secretRef:
             name: pds-secrets
