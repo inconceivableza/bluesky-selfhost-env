@@ -437,6 +437,174 @@
           }
         }
       ]
+    },
+    "ipcc": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "IP location service configuration",
+          "properties": {
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent storage"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "feedGenerator": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Feed generator service configuration",
+          "properties": {
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent storage"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "prometheus": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Prometheus monitoring service configuration",
+          "properties": {
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent storage"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "jaeger": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Jaeger distributed tracing configuration",
+          "properties": {
+            "uiPort": {
+              "type": "integer",
+              "description": "Jaeger UI port",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      ]
+    },
+    "otelCollector": {
+      "$ref": "#/definitions/service",
+      "description": "OpenTelemetry Collector configuration"
+    },
+    "backup": {
+      "type": "object",
+      "description": "Backup service (Resticprofile) configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable backup service",
+          "default": false
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of pod replicas",
+          "minimum": 0,
+          "default": 1
+        },
+        "image": {
+          "type": "string",
+          "description": "Container image name"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Container image tag"
+        },
+        "staging": {
+          "type": "object",
+          "description": "Staging volume configuration",
+          "properties": {
+            "size": {
+              "type": "string",
+              "description": "Storage size",
+              "pattern": "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "Storage class name"
+            }
+          }
+        },
+        "repo": {
+          "type": "object",
+          "description": "Repository volume configuration",
+          "properties": {
+            "size": {
+              "type": "string",
+              "description": "Storage size",
+              "pattern": "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)$"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "Storage class name"
+            }
+          }
+        },
+        "restic": {
+          "type": "object",
+          "description": "Restic configuration",
+          "properties": {
+            "autoRemote": {
+              "type": "string",
+              "description": "Auto remote configuration"
+            },
+            "remoteRepo1": {
+              "type": "string",
+              "description": "Remote repository 1"
+            }
+          }
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        }
+      }
     }
   },
   "required": ["global", "fqdns"],
