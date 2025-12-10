@@ -58,7 +58,7 @@ jobs:
             "foodios-social-card"
             "foodios-social-embed"
             "foodios-social-link"
-            "ip-location-service-bsky",
+            "ip-location-service-bsky"
             "otel-collector"
           )
 
