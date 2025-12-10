@@ -159,6 +159,11 @@
           "description": "IP location service domain",
           "format": "hostname"
         },
+        "jaeger": {
+          "type": "string",
+          "description": "Jetstream service domain",
+          "format": "hostname"
+        },
         "jetstream": {
           "type": "string",
           "description": "Jetstream service domain",
