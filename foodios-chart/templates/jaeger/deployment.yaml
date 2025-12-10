@@ -43,22 +43,20 @@ spec:
           name: datadog
         - containerPort: 8888
           name: metrics
-        - containerPort: 13133
-          name: health
         volumeMounts:
         - name: config
           mountPath: /etc/jaeger
           readOnly: true
         livenessProbe:
           httpGet:
-            path: /
-            port: health
+            path: /metrics
+            port: metrics
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
-            port: health
+            path: /metrics
+            port: metrics
           initialDelaySeconds: 10
           periodSeconds: 5
         {{- if .Values.jaeger.resources }}

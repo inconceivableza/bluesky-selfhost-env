@@ -35,8 +35,6 @@ spec:
           name: metrics
         - containerPort: 8889
           name: prom-export
-        - containerPort: 13133
-          name: health
         - containerPort: 55679
           name: zpages
         volumeMounts:
@@ -45,14 +43,14 @@ spec:
           readOnly: true
         livenessProbe:
           httpGet:
-            path: /
-            port: health
+            path: /metrics
+            port: metrics
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
-            port: health
+            path: /metrics
+            port: metrics
           initialDelaySeconds: 10
           periodSeconds: 5
         {{- if .Values.otelCollector.resources }}
