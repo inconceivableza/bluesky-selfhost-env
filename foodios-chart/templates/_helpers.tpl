@@ -101,3 +101,27 @@ Usage: {{ include "foodios.image" (dict "image" .Values.pds.image "tag" .Values.
 {{- define "foodios.image" -}}
 {{- printf "%s/%s:%s" .registry .image .tag }}
 {{- end }}
+
+{{/*
+Create a standard service template
+Usage: {{- include "foodios.service" (dict "name" "prometheus" "port" .Values.prometheus.port "root" .) }}
+*/}}
+{{- define "foodios.service" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  namespace: {{ .root.Values.global.namespace }}
+  labels:
+    app: {{ .name }}
+    {{- include "foodios.labels" .root | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .name }}
+  ports:
+  - name: http
+    port: {{ .port }}
+    targetPort: {{ .port }}
+    protocol: TCP
+{{- end }}
