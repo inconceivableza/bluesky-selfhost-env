@@ -363,10 +363,6 @@ jaeger:
   image: jaeger
   tag: latest
   uiPort: 16686
-  ingress:
-    enabled: true
-    allowedIPs:
-      - ""  # Injected from env
   resources:
     limits:
       cpu: "300m"

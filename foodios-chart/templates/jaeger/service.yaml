@@ -8,7 +8,7 @@ metadata:
     app: jaeger
     {{- include "foodios.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: jaeger
   ports:
@@ -19,6 +19,7 @@ spec:
   - name: ui
     port: {{ .Values.jaeger.uiPort }}
     targetPort: {{ .Values.jaeger.uiPort }}
+    nodePort: 30686
     protocol: TCP
   - name: zpages
     port: 55679
