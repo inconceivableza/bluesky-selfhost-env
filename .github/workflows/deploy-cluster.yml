@@ -106,6 +106,7 @@ jobs:
             embed: "${{ vars.EMBEDFQDN }}"
             feedgen: "${{ vars.FEEDGENFQDN }}"
             ip: "${{ vars.IPFQDN }}"
+            jaeger: jaeger.${{ vars.DOMAIN }}
             jetstream: "${{ vars.JETSTREAMFQDN }}"
             link: "${{ vars.LINKFQDN }}"
             ozone: "${{ vars.OZONEFQDN }}"
@@ -152,6 +153,11 @@ jobs:
 
           otelCollector: 
             tag: ${{ env.OTEL_COLLECTOR_IMAGE_TAG }}
+
+          jaeger:
+            ingress:
+              allowedIPs:
+                - ${{ vars.VPN_IP_RANGE }}
 
           backup:
             restic:
