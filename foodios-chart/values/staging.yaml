@@ -300,7 +300,7 @@ opensearch:
 
 # IP Location Service
 ipcc:
-  enabled: false  # Enable if needed
+  enabled: true
   replicas: 1
   image: ip-location-service-bsky
   tag: latest
@@ -319,7 +319,7 @@ ipcc:
 
 # Feed Generator
 feedGenerator:
-  enabled: false  # Enable if needed
+  enabled: true
   replicas: 1
   image: foodios-bluesky-feed-generator
   tag: latest
@@ -338,7 +338,7 @@ feedGenerator:
 
 # Prometheus (Monitoring)
 prometheus:
-  enabled: false  # Enable if needed
+  enabled: true
   replicas: 1
   image: prom/prometheus
   tag: latest
@@ -357,7 +357,7 @@ prometheus:
 
 # Jaeger (Distributed Tracing)
 jaeger:
-  enabled: false  # Enable if needed
+  enabled: true
   replicas: 1
   image: jaegertracing/jaeger
   tag: latest
@@ -372,7 +372,7 @@ jaeger:
 
 # OpenTelemetry Collector
 otelCollector:
-  enabled: false  # Enable if needed
+  enabled: true
   replicas: 1
   image: otel-collector
   tag: latest
@@ -386,7 +386,7 @@ otelCollector:
 
 # Backup Service (Resticprofile)
 backup:
-  enabled: false  # Enable if needed - requires additional setup
+  enabled: true  
   replicas: 1
   image: creativeprojects/resticprofile
   tag: 0.32.0

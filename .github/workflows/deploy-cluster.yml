@@ -58,6 +58,8 @@ jobs:
             "foodios-social-card"
             "foodios-social-embed"
             "foodios-social-link"
+            "ip-location-service-bsky",
+            "otel-collector"
           )
 
           for REPO in "${SERVICES[@]}"; do
@@ -144,6 +146,12 @@ jobs:
 
           opensearch:
             tag: "${{ env.FOODIOS_INDIGO_OPENSEARCH_IMAGE_TAG }}"
+
+          ipcc:
+            tag: "${{ env.IP_LOCATION_SERVICE_BSKY_IMAGE_TAG }}"
+
+          otelCollector: 
+            tag: ${{ env.OTEL_COLLECTOR_IMAGE_TAG }}
 
           backup:
             restic:
