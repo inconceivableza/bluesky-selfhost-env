@@ -1,0 +1,68 @@
+{{- if .Values.jaeger.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: jaeger
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.jaeger.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+      - name: jaeger
+        image: {{ include "foodios.image" (dict "image" .Values.jaeger.image "tag" .Values.jaeger.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        env:
+        - name: COLLECTOR_OTLP_ENABLED
+          value: "true"
+        - name: METRICS_STORAGE_TYPE
+          value: "prometheus"
+        - name: PROMETHEUS_SERVER_URL
+          value: "http://prometheus:9090"
+        ports:
+        - containerPort: 14269
+          name: admin
+        - containerPort: {{ .Values.jaeger.uiPort }}
+          name: ui
+        - containerPort: 55679
+          name: zpages
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        - containerPort: 8126
+          name: datadog
+        volumeMounts:
+        - name: config
+          mountPath: /etc/jaeger
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: admin
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: admin
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.jaeger.resources }}
+        resources:
+          {{- toYaml .Values.jaeger.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: jaeger-config
+{{- end }}

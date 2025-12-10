@@ -1,0 +1,66 @@
+{{- if .Values.otelCollector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: otel-collector
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.otelCollector.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+      - name: otel-collector
+        image: {{ include "foodios.image" (dict "image" .Values.otelCollector.image "tag" .Values.otelCollector.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        args:
+        - "--config=/etc/otelcol/otel-collector.yml"
+        - "--feature-gates=receiver.datadogreceiver.Enable128BitTraceID"
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        - containerPort: 8126
+          name: datadog
+        - containerPort: 8888
+          name: metrics
+        - containerPort: 8889
+          name: prom-export
+        - containerPort: 13133
+          name: health
+        - containerPort: 55679
+          name: zpages
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otelcol
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.otelCollector.resources }}
+        resources:
+          {{- toYaml .Values.otelCollector.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+{{- end }}

@@ -1,0 +1,63 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: prometheus
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.prometheus.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: {{ include "foodios.image" (dict "image" .Values.prometheus.image "tag" .Values.prometheus.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.prometheus.port }}
+          name: http
+        args:
+        - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--storage.tsdb.retention.time=200h"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+          readOnly: true
+        {{- if .Values.prometheus.storage.enabled }}
+        - name: data
+          mountPath: /prometheus
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.prometheus.resources }}
+        resources:
+          {{- toYaml .Values.prometheus.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+      {{- if .Values.prometheus.storage.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: prometheus-data
+      {{- end }}
+{{- end }}

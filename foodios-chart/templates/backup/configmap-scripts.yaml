@@ -1,0 +1,99 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: backup
+    {{- include "foodios.labels" . | nindent 4 }}
+data:
+  # NOTE: These scripts should be customized based on your backup requirements
+  # Source scripts from: selfhost_scripts/backup-scripts/
+  entrypoint.sh: |
+    #!/bin/sh
+    set -e
+
+    # Install required packages
+    apk add --no-cache sqlite tzdata postgresql16-client python3 py3-psycopg-c
+
+    # ensure local repository is initialized
+    /scripts/restic-init.sh
+
+  restic-init.sh: |
+    #!/bin/sh
+
+    creds_dir=/resticprofile/credentials
+
+    save_passwd() {
+      [[ "$1" != "" && ! -f "$2" ]] && {
+        echo writing password to "$2"
+        touch "$2"
+        chmod 0600 "$2"
+        echo "$1" > "$2"
+      }
+    }
+
+    mkdir -m 0700 -p $creds_dir
+    save_passwd "$RESTIC_PASSWORD" "$RESTIC_PASSWORD_FILE"
+    save_passwd "$RESTIC_REMOTE_PASSWORD1" "$creds_dir/remote-repo1-password"
+    save_passwd "$RESTIC_REMOTE_PASSWORD2" "$creds_dir/remote-repo2-password"
+    save_passwd "$RESTIC_REMOTE_PASSWORD3" "$creds_dir/remote-repo3-password"
+
+    restic cat config 2>/dev/null || {
+      echo Initializing restic repository at ${RESTIC_REPOSITORY}
+      restic init
+    }
+
+    if [[ "$RESTIC_REMOTE_REPO1" != "" ]]
+      then
+        restic -r $RESTIC_REMOTE_REPO1 init  --from-repo $RESTIC_REPOSITORY --copy-chunker-params --from-password-file=$RESTIC_PASSWORD_FILE --password-file=$creds_dir/remote-repo1-password
+      fi
+
+    if [[ "$RESTIC_REMOTE_REPO2" != "" ]]
+      then
+        restic -r $RESTIC_REMOTE_REPO2 init  --from-repo $RESTIC_REPOSITORY --copy-chunker-params --from-password-file=$RESTIC_PASSWORD_FILE --password-file=$creds_dir/remote-repo2-password
+      fi
+
+    if [[ "$RESTIC_REMOTE_REPO3" != "" ]]
+      then
+        restic -r $RESTIC_REMOTE_REPO3 init  --from-repo $RESTIC_REPOSITORY --copy-chunker-params --from-password-file=$RESTIC_PASSWORD_FILE --password-file=$creds_dir/remote-repo3-password
+      fi
+
+  sqlite-tree-tar.sh: |
+    #!/bin/sh
+    SQLITE_NAME="$1"
+    SQLITE_TREE="$2"
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    staging_dir="/staging/${timestamp}"
+    sqlite_staging_dir=${staging_dir}/$SQLITE_NAME
+    echo searching for databases matching "$SQLITE_TREE//*.sqlite" with target $sqlite_staging_dir >&2
+    for db in $(find "$SQLITE_TREE" -name "*.sqlite"); do (
+        db_name="$(basename "$db")"
+        db_dir="$(dirname "$db")"
+        staging_db_dir="$sqlite_staging_dir/$db_dir"
+        mkdir -p "$staging_db_dir"
+        if [ -f "$db_dir/key" ]
+          then
+            # these encrypted databases are written safely for backup
+            echo "Backing up encrypted database: $db"
+            cp "$db" "$db_dir/key" "$staging_db_dir"
+          else
+            echo "Backing up database: $db"
+            sqlite3 "$db" ".backup '$staging_db_dir/$db_name'"
+          fi
+    ) >&2
+    done
+    echo "Backing up sqlite databases in $SQLITE_TREE to tar archive under $SQLITE_NAME" >&2
+    tar -cf - -C "${sqlite_staging_dir}" data/
+    rm -rf "$sqlite_staging_dir"
+
+  # Add other scripts from selfhost_scripts/backup-scripts/ as needed:
+  # - backup-all.sh
+  # - clean.sh
+  # - manual-backup.sh
+  # - manual-restore.sh
+  # - restore-all.sh
+  # - accounts-health-check.sh
+  # - execute_patch_scripts.py
+{{- end }}

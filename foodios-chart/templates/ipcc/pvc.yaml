@@ -1,0 +1,19 @@
+{{- if and .Values.ipcc.enabled .Values.ipcc.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ipcc-data
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ipcc
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.ipcc.storage.storageClass }}
+  storageClassName: {{ .Values.ipcc.storage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ipcc.storage.size | default "1Gi" }}
+{{- end }}
