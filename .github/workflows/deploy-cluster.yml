@@ -183,77 +183,74 @@ jobs:
             kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
 
             # Function to create or update secret
-            create_secret() {
+            create_or_update_secret() {
               local secret_name=$1
               shift
               local secret_data=("$@")
 
-              if kubectl get secret $secret_name -n $NAMESPACE &> /dev/null; then
-                echo "  ℹ️  Secret '$secret_name' already exists"
-              else
-                echo "  🔐 Creating secret '$secret_name'..."
-                kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}"
-                echo "  ✅ Created secret '$secret_name'"
-              fi
+              echo "  🔐 Creating/updating secret '$secret_name'..."
+              kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "  ✅ Applied secret '$secret_name'"
             }
 
             # Database secrets
-            create_secret "db-secrets" \
+            create_or_update_secret "db-secrets" \
               --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}'
 
             # BGS secrets
-            create_secret "bgs-secrets" \
+            create_or_update_secret "bgs-secrets" \
               --from-literal=BGS_ADMIN_KEY='${{ secrets.BGS_ADMIN_KEY }}' \
               --from-literal=DATABASE_URL='${{ secrets.BGS_DATABASE_URL }}'
 
             # PDS secrets
-            create_secret "pds-secrets" \
+            create_or_update_secret "pds-secrets" \
               --from-literal=PDS_JWT_SECRET='${{ secrets.PDS_JWT_SECRET }}' \
               --from-literal=PDS_ADMIN_PASSWORD='${{ secrets.PDS_ADMIN_PASSWORD }}' \
               --from-literal=PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX='${{ secrets.PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX }}'
 
             # Bsky secrets
-            create_secret "bsky-secrets" \
+            create_or_update_secret "bsky-secrets" \
               --from-literal=BSKY_DB_POSTGRES_URL='${{ secrets.BSKY_DB_POSTGRES_URL }}' \
               --from-literal=BSKY_SERVICE_SIGNING_KEY='${{ secrets.BSKY_SERVICE_SIGNING_KEY }}'
 
             # PLC secrets
-            create_secret "plc-secrets" \
+            create_or_update_secret "plc-secrets" \
               --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}' \
               --from-literal=DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}' \
               --from-literal=DB_MIGRATE_CREDS_JSON='${{ secrets.DB_MIGRATE_CREDS_JSON }}'
 
             # Ozone secrets 
-              create_secret "ozone-secrets" \
+              create_or_update_secret "ozone-secrets" \
                 --from-literal=DATABASE_URL='${{ secrets.OZONE_DB_POSTGRES_URL }}' \
                 --from-literal=OZONE_ADMIN_PASSWORD='${{ secrets.OZONE_ADMIN_PASSWORD }}' \
                 --from-literal=OZONE_SIGNING_KEY_HEX='${{ secrets.OZONE_SIGNING_KEY_HEX }}'
             
             # Palomar secrets
-            create_secret "palomar-secrets" \
+            create_or_update_secret "palomar-secrets" \
               --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}' \
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}' \
               --from-literal=ES_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
 
             # Social Link secrets
-            create_secret "social-link-secrets" \
+            create_or_update_secret "social-link-secrets" \
               --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}' \
               --from-literal=LINK_DB_POSTGRES_URL='${{ secrets.LINK_DB_POSTGRES_MIGRATION_URL }}'
 
             # OpenSearch secrets
-            create_secret "opensearch-secrets" \
+            create_or_update_secret "opensearch-secrets" \
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
 
             # Backup secrets
-            create_secret "backup-secrets" \
-              --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}'
-              --from-literal=PGPASSWORD='${{ secrets.POSTGRES_PASSWORD }}'
-              --from-literal=POSTGRES_USER='${{ secrets.POSTGRES_USER }}'
-              --from-literal=RESTIC_PASSWORD='${{ secrets.RESTIC_PASSWORD }}'
-              --from-literal=RESTIC_REMOTE_PASSWORD1='${{ secrets.RESTIC_REMOTE_PASSWORD1 }}'
-              --from-literal=RESTIC_REMOTE_PASSWORD2='${{ secrets.RESTIC_REMOTE_PASSWORD2 }}'
-              --from-literal=RESTIC_REMOTE_PASSWORD3='${{ secrets.RESTIC_REMOTE_PASSWORD3 }}'
-              --from-literal=RESTIC_AWS_SECRET_ACCESS_KEY='${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}'
+            create_or_update_secret "backup-secrets" \
+              --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+              --from-literal=PGPASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+              --from-literal=POSTGRES_USER='${{ secrets.POSTGRES_USER }}' \
+              --from-literal=RESTIC_PASSWORD='${{ secrets.RESTIC_PASSWORD }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD1='${{ secrets.RESTIC_REMOTE_PASSWORD1 }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD2='${{ secrets.RESTIC_REMOTE_PASSWORD2 }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD3='${{ secrets.RESTIC_REMOTE_PASSWORD3 }}' \
+              --from-literal=RESTIC_AWS_SECRET_ACCESS_KEY='${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}' \
               --from-literal=AWS_SECRET_ACCESS_KEY='${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}'
 
             # Cloudflare credentials for Traefik ACME (in kube-system namespace)
