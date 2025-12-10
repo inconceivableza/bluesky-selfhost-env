@@ -8,7 +8,7 @@ global:
   # TLS/Certificate configuration
   tls:
     enabled: true
-    certIssuer: letsencrypt-staging
+    certIssuer: letsencrypt-prod # Can use letsencrypt-staging but this won't be trusted by browsers (see traefik-config.yaml)
     createSecret: false  # cert-manager will create secrets automatically
     email: your-email@example.com  # Let's Encrypt notification email
 
@@ -245,10 +245,17 @@ ozone:
   replicas: 1
   image: foodios-atproto-ozone
   tag: latest
-  port: 3006
+  port: 3005
   secrets:
     enabled: true
     name: ozone-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
 
 # Redis
 redis:
@@ -289,3 +296,122 @@ opensearch:
     requests:
       cpu: "200m"
       memory: 512Mi
+
+# IP Location Service
+ipcc:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: ip-location-service-bsky
+  tag: latest
+  port: 8080
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "100m"
+      memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
+
+# Feed Generator
+feedGenerator:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: foodios-bluesky-feed-generator
+  tag: latest
+  port: 3008
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Prometheus (Monitoring)
+prometheus:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: prom/prometheus
+  tag: latest
+  port: 9090
+  storage:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Jaeger (Distributed Tracing)
+jaeger:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: jaegertracing/jaeger
+  tag: latest
+  uiPort: 16686
+  resources:
+    limits:
+      cpu: "300m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# OpenTelemetry Collector
+otelCollector:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: otel-collector
+  tag: latest
+  resources:
+    limits:
+      cpu: "300m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Backup Service (Resticprofile)
+backup:
+  enabled: false  # Enable if needed - requires additional setup
+  replicas: 1
+  image: creativeprojects/resticprofile
+  tag: 0.32.0
+  staging:
+    size: 20Gi
+    storageClass: local-path
+  repo:
+    size: 100Gi
+    storageClass: local-path
+  restic:
+    autoRemote: ""
+    remoteRepo1: ""
+    remoteRepo2: ""
+    remoteRepo3: ""
+    awsAccessKeyId: ""
+    googleProjectId: ""
+  secrets:
+    enabled: true
+    name: backup-secrets
+  credentials:
+    enabled: false  # Set to true when backup credentials secret is created
+    secretName: backup-credentials
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
