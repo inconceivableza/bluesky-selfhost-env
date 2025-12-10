@@ -73,6 +73,7 @@ database:
 # PDS (Personal Data Server)
 pds:
   enabled: true
+  inviteRequired: false
   debugMode: false
   replicas: 1
   image: foodios-atproto-pds

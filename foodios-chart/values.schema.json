@@ -269,6 +269,10 @@
           "type": "object",
           "description": "PDS (Personal Data Server) configuration",
           "properties": {
+            "inviteRequired": {
+              "type": "boolean",
+              "description": "Whether new users need an invite code"
+            },
             "debugMode": {
               "type": "boolean",
               "description": "Enable debug mode (connect to host-based PDS)",
