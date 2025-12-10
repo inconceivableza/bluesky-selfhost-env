@@ -143,7 +143,7 @@ spec:
       {{- if .Values.pds.enabled }}
       - name: pds-data
         persistentVolumeClaim:
-          claimName: pds-data
+          claimName: pds-data-pds-0
       {{- end }}
       {{- if .Values.feedGenerator.enabled }}
       - name: feed-generator-data
@@ -153,12 +153,12 @@ spec:
       {{- if .Values.opensearch.enabled }}
       - name: opensearch-data
         persistentVolumeClaim:
-          claimName: opensearch-data
+          claimName: data-opensearch-0
       {{- end }}
       {{- if .Values.bgs.enabled }}
       - name: bgs-data
         persistentVolumeClaim:
-          claimName: bgs-data
+          claimName: data-bgs-0
       {{- end }}
       {{- if .Values.bsky.enabled }}
       - name: bsky-data
