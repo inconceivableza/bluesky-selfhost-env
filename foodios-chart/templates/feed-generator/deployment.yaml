@@ -24,6 +24,8 @@ spec:
         ports:
         - containerPort: {{ .Values.feedGenerator.port }}
           name: http
+        - containerPort: 3000
+          name: health
         env:
         - name: FEEDGEN_HOSTNAME
           value: {{ .Values.fqdns.feedgen }}
@@ -59,13 +61,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /xrpc/_health
-            port: http
+            port: health
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /xrpc/_health
-            port: http
+            port: health
           initialDelaySeconds: 10
           periodSeconds: 5
         {{- if .Values.feedGenerator.resources }}

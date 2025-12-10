@@ -104,6 +104,24 @@ spec:
           mountPath: /data/bsky
           readOnly: false
         {{- end }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - which psql && resticprofile all.status
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - which psql && resticprofile all.status
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
         {{- if .Values.backup.resources }}
         resources:
           {{- toYaml .Values.backup.resources | nindent 10 }}

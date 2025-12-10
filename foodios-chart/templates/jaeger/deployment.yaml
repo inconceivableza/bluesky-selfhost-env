@@ -41,6 +41,10 @@ spec:
           name: otlp-http
         - containerPort: 8126
           name: datadog
+        - containerPort: 8888
+          name: metrics
+        - containerPort: 13133
+          name: health
         volumeMounts:
         - name: config
           mountPath: /etc/jaeger
@@ -48,13 +52,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: admin
+            port: health
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /
-            port: admin
+            port: health
           initialDelaySeconds: 10
           periodSeconds: 5
         {{- if .Values.jaeger.resources }}
