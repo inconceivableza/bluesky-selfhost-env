@@ -239,14 +239,11 @@ jobs:
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
 
             # Cloudflare credentials for Traefik ACME (in kube-system namespace)
-            if kubectl get secret cloudflare-credentials -n kube-system &> /dev/null; then
-              echo "  ℹ️  Secret 'cloudflare-credentials' already exists in kube-system"
-            else
-              echo "  🔐 Creating secret 'cloudflare-credentials' in kube-system..."
-              kubectl create secret generic cloudflare-credentials -n kube-system \
-                --from-literal=CF_DNS_API_TOKEN='${{ secrets.CADDY_DNS_API_TOKEN }}'
-              echo "  ✅ Created secret 'cloudflare-credentials' in kube-system"
-            fi
+            echo "  🔐 Creating/updating secret 'cloudflare-credentials' in kube-system..."
+            kubectl create secret generic cloudflare-credentials -n kube-system \
+              --from-literal=CF_DNS_API_TOKEN='${{ secrets.CADDY_DNS_API_TOKEN }}' \
+              --dry-run=client -o yaml | kubectl apply -f -
+            echo "  ✅ Applied secret 'cloudflare-credentials'"
 
             echo ""
             echo "✅ All secrets verified/created"
