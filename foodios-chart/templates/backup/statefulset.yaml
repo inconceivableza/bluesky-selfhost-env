@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: backup
-        image: {{ include "foodios.image" (dict "image" .Values.backup.image "tag" .Values.backup.tag "registry" .Values.global.imageRegistry) }}
+        image: {{ include "foodios.image" (dict "image" .Values.backup.image "tag" .Values.backup.tag "registry" "creativeprojects") }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         command: ["/bin/sh"]
         args: ["-c", "/scripts/entrypoint.sh && resticprofile schedule --all && crond -f"]

@@ -321,7 +321,7 @@ ipcc:
 feedGenerator:
   enabled: true
   replicas: 1
-  image: foodios-bluesky-feed-generator
+  image: bluesky-feed-generator
   tag: latest
   port: 3008
   storage:
@@ -340,7 +340,7 @@ feedGenerator:
 prometheus:
   enabled: true
   replicas: 1
-  image: prom/prometheus
+  image: prometheus
   tag: latest
   port: 9090
   storage:
@@ -359,7 +359,7 @@ prometheus:
 jaeger:
   enabled: true
   replicas: 1
-  image: jaegertracing/jaeger
+  image: jaeger
   tag: latest
   uiPort: 16686
   resources:
@@ -388,7 +388,7 @@ otelCollector:
 backup:
   enabled: true  
   replicas: 1
-  image: creativeprojects/resticprofile
+  image: resticprofile
   tag: 0.32.0
   staging:
     size: 20Gi

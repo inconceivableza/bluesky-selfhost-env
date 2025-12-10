@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: prometheus
-        image: {{ include "foodios.image" (dict "image" .Values.prometheus.image "tag" .Values.prometheus.tag "registry" .Values.global.imageRegistry) }}
+        image: {{ include "foodios.image" (dict "image" .Values.prometheus.image "tag" .Values.prometheus.tag "registry" "prom") }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         ports:
         - containerPort: {{ .Values.prometheus.port }}

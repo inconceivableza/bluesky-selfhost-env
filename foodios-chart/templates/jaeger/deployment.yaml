@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: jaeger
-        image: {{ include "foodios.image" (dict "image" .Values.jaeger.image "tag" .Values.jaeger.tag "registry" .Values.global.imageRegistry) }}
+        image: {{ include "foodios.image" (dict "image" .Values.jaeger.image "tag" .Values.jaeger.tag "registry" "jaegertracing") }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         env:
         - name: COLLECTOR_OTLP_ENABLED
