@@ -326,17 +326,49 @@ jobs:
             echo "🚀 Deploying Helm chart to ${{ inputs.environment }}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
+            # Deploy with timeout and atomic rollback on failure
+            if helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
               --namespace foodios-${{ inputs.environment }} \
               --create-namespace \
               -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
               -f ./helm-values-override.yaml \
               --wait \
-              --timeout 5m \
-              --atomic
+              --timeout 3m \
+              --atomic; then
 
-            echo ""
-            echo "✅ Helm deployment completed"
+              echo ""
+              echo "✅ Helm deployment completed successfully"
+            else
+              echo ""
+              echo "❌ Deployment failed or timed out"
+              echo ""
+              echo "📋 Pod Status:"
+              kubectl get pods -n foodios-${{ inputs.environment }} -o wide
+
+              echo ""
+              echo "🔍 Failed/Pending Pods:"
+              kubectl get pods -n foodios-${{ inputs.environment }} \
+                --field-selector=status.phase!=Running,status.phase!=Succeeded \
+                -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,RESTARTS:.status.containerStatuses[0].restartCount 2>/dev/null || echo "No failed pods found"
+
+              echo ""
+              echo "📄 Recent Events:"
+              kubectl get events -n foodios-${{ inputs.environment }} \
+                --sort-by='.lastTimestamp' | tail -20
+
+              echo ""
+              echo "💬 Logs from Failed Pods:"
+              for pod in $(kubectl get pods -n foodios-${{ inputs.environment }} \
+                --field-selector=status.phase!=Running,status.phase!=Succeeded \
+                -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+                echo ""
+                echo "=== Logs for $pod ==="
+                kubectl logs -n foodios-${{ inputs.environment }} $pod \
+                  --tail=50 --all-containers=true 2>&1 || echo "Could not fetch logs"
+              done
+
+              exit 1
+            fi
           ENDSSH
 
       - name: Verify deployment
