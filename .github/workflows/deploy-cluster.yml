@@ -58,6 +58,8 @@ jobs:
             "foodios-social-card"
             "foodios-social-embed"
             "foodios-social-link"
+            "ip-location-service-bsky"
+            "otel-collector"
           )
 
           for REPO in "${SERVICES[@]}"; do
@@ -104,6 +106,7 @@ jobs:
             embed: "${{ vars.EMBEDFQDN }}"
             feedgen: "${{ vars.FEEDGENFQDN }}"
             ip: "${{ vars.IPFQDN }}"
+            jaeger: jaeger.${{ vars.DOMAIN }}
             jetstream: "${{ vars.JETSTREAMFQDN }}"
             link: "${{ vars.LINKFQDN }}"
             ozone: "${{ vars.OZONEFQDN }}"
@@ -144,7 +147,26 @@ jobs:
 
           opensearch:
             tag: "${{ env.FOODIOS_INDIGO_OPENSEARCH_IMAGE_TAG }}"
-          EOF
+
+          ipcc:
+            tag: "${{ env.IP_LOCATION_SERVICE_BSKY_IMAGE_TAG }}"
+
+          otelCollector: 
+            tag: ${{ env.OTEL_COLLECTOR_IMAGE_TAG }}
+
+          jaeger:
+            ingress:
+              allowedIPs:
+                - ${{ vars.VPN_IP_RANGE }}
+
+          backup:
+            restic:
+              autoRemote: "${{ vars.RESTIC_AUTO_REMOTE }}"
+              remoteRepo1: "${{ vars.RESTIC_REMOTE_REPO1 }}"
+              remoteRepo2: "${{ vars.RESTIC_REMOTE_REPO2 }}"
+              remoteRepo3: "${{ vars.RESTIC_REMOTE_REPO3 }}"
+              awsAccessKeyId: "${{ vars.RESTIC_AWS_ACCESS_KEY_ID }}"
+              googleProjectId: "${{ vars.RESTIC_GOOGLE_PROJECT_ID }}"
 
       - name: Create deployment directory on server
         run: |
@@ -159,6 +181,24 @@ jobs:
           # Copy values override
           scp helm-values-override.yaml \
             ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+
+      - name: Setup upgrade_release.sh script
+        run: |
+          # Copy script and populate environment-specific variables
+          sed -e "s|__NAMESPACE__|foodios-${{ inputs.environment }}|g" \
+              -e "s|__RELEASE_NAME__|foodios-${{ inputs.environment }}|g" \
+              -e "s|__VALUES_FILE__|./foodios-chart/values/${{ inputs.environment }}.yaml|g" \
+              selfhost_scripts/k3s/upgrade-release.sh > upgrade-release-${{ inputs.environment }}.sh
+
+          # Copy to server and make executable
+          scp upgrade-release-${{ inputs.environment }}.sh \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/upgrade-release.sh
+
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} \
+            "chmod +x ~/helm-deploy/${{ inputs.environment }}/upgrade-release.sh"
+
+          # Clean up temp file
+          rm upgrade-release-${{ inputs.environment }}.sh
 
       - name: Check and create Kubernetes secrets
         run: |
@@ -180,13 +220,10 @@ jobs:
               shift
               local secret_data=("$@")
 
-              if kubectl get secret $secret_name -n $NAMESPACE &> /dev/null; then
-                echo "  ℹ️  Secret '$secret_name' already exists"
-              else
-                echo "  🔐 Creating secret '$secret_name'..."
-                kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}"
-                echo "  ✅ Created secret '$secret_name'"
-              fi
+              echo "  🔐 Creating/updating secret '$secret_name'..."
+              kubectl create secret generic $secret_name -n $NAMESPACE "${secret_data[@]}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "  ✅ Applied secret '$secret_name'"
             }
 
             # Database secrets
@@ -215,14 +252,12 @@ jobs:
               --from-literal=DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}' \
               --from-literal=DB_MIGRATE_CREDS_JSON='${{ secrets.DB_MIGRATE_CREDS_JSON }}'
 
-            # Ozone secrets (if enabled)
-            if [ "${{ secrets.OZONE_DB_POSTGRES_URL }}" != "" ]; then
+            # Ozone secrets 
               create_or_update_secret "ozone-secrets" \
                 --from-literal=DATABASE_URL='${{ secrets.OZONE_DB_POSTGRES_URL }}' \
                 --from-literal=OZONE_ADMIN_PASSWORD='${{ secrets.OZONE_ADMIN_PASSWORD }}' \
                 --from-literal=OZONE_SIGNING_KEY_HEX='${{ secrets.OZONE_SIGNING_KEY_HEX }}'
-            fi
-
+            
             # Palomar secrets
             create_or_update_secret "palomar-secrets" \
               --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}' \
@@ -237,6 +272,18 @@ jobs:
             # OpenSearch secrets
             create_or_update_secret "opensearch-secrets" \
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+
+            # Backup secrets
+            create_or_update_secret "backup-secrets" \
+              --from-literal=POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+              --from-literal=PGPASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+              --from-literal=POSTGRES_USER='${{ secrets.POSTGRES_USER }}' \
+              --from-literal=RESTIC_PASSWORD='${{ secrets.RESTIC_PASSWORD }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD1='${{ secrets.RESTIC_REMOTE_PASSWORD1 }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD2='${{ secrets.RESTIC_REMOTE_PASSWORD2 }}' \
+              --from-literal=RESTIC_REMOTE_PASSWORD3='${{ secrets.RESTIC_REMOTE_PASSWORD3 }}' \
+              --from-literal=RESTIC_AWS_SECRET_ACCESS_KEY='${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}' \
+              --from-literal=AWS_SECRET_ACCESS_KEY='${{ secrets.RESTIC_AWS_SECRET_ACCESS_KEY }}'
 
             # Cloudflare credentials for Traefik ACME (in kube-system namespace)
             echo "  🔐 Creating/updating secret 'cloudflare-credentials' in kube-system..."
@@ -303,17 +350,49 @@ jobs:
             echo "🚀 Deploying Helm chart to ${{ inputs.environment }}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
+            # Deploy with timeout and atomic rollback on failure
+            if helm upgrade --install foodios-${{ inputs.environment }} ./foodios-chart \
               --namespace foodios-${{ inputs.environment }} \
               --create-namespace \
               -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
               -f ./helm-values-override.yaml \
               --wait \
-              --timeout 5m \
-              --atomic
+              --timeout 3m \
+              --atomic; then
 
-            echo ""
-            echo "✅ Helm deployment completed"
+              echo ""
+              echo "✅ Helm deployment completed successfully"
+            else
+              echo ""
+              echo "❌ Deployment failed or timed out"
+              echo ""
+              echo "📋 Pod Status:"
+              kubectl get pods -n foodios-${{ inputs.environment }} -o wide
+
+              echo ""
+              echo "🔍 Failed/Pending Pods:"
+              kubectl get pods -n foodios-${{ inputs.environment }} \
+                --field-selector=status.phase!=Running,status.phase!=Succeeded \
+                -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,RESTARTS:.status.containerStatuses[0].restartCount 2>/dev/null || echo "No failed pods found"
+
+              echo ""
+              echo "📄 Recent Events:"
+              kubectl get events -n foodios-${{ inputs.environment }} \
+                --sort-by='.lastTimestamp' | tail -20
+
+              echo ""
+              echo "💬 Logs from Failed Pods:"
+              for pod in $(kubectl get pods -n foodios-${{ inputs.environment }} \
+                --field-selector=status.phase!=Running,status.phase!=Succeeded \
+                -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+                echo ""
+                echo "=== Logs for $pod ==="
+                kubectl logs -n foodios-${{ inputs.environment }} $pod \
+                  --tail=50 --all-containers=true 2>&1 || echo "Could not fetch logs"
+              done
+
+              exit 1
+            fi
           ENDSSH
 
       - name: Verify deployment

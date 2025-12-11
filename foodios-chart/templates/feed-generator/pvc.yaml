@@ -1,0 +1,19 @@
+{{- if and .Values.feedGenerator.enabled .Values.feedGenerator.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: feed-generator-data
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: feed-generator
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.feedGenerator.storage.storageClass }}
+  storageClassName: {{ .Values.feedGenerator.storage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.feedGenerator.storage.size | default "5Gi" }}
+{{- end }}

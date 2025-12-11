@@ -1,0 +1,3 @@
+{{- if .Values.ozone.enabled }}
+{{- include "foodios.service" (dict "name" "ozone" "port" .Values.ozone.port "root" .) }}
+{{- end }}

@@ -1,0 +1,196 @@
+{{- if .Values.backup.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: backup
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: backup
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  serviceName: backup
+  replicas: {{ .Values.backup.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: backup
+  template:
+    metadata:
+      labels:
+        app: backup
+    spec:
+      containers:
+      - name: backup
+        image: {{ include "foodios.image" (dict "image" .Values.backup.image "tag" .Values.backup.tag "registry" "creativeprojects") }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        command: ["/bin/sh"]
+        args: ["-c", "/scripts/entrypoint.sh && resticprofile schedule --all && crond -f"]
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: BACKUP_PATHS
+          value: "/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/"
+        - name: SQLITE_PATHS
+          value: "sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite"
+        - name: PGHOST
+          value: "database"
+        - name: PGPORT
+          value: "5432"
+        - name: PGUSER
+          value: {{ .Values.database.user | quote }}
+        - name: RESTIC_REPOSITORY
+          value: "/restic-repo"
+        - name: RESTIC_PASSWORD_FILE
+          value: "/resticprofile/credentials/local-password"
+        - name: RESTIC_AUTO_REMOTE
+          value: {{ .Values.backup.restic.autoRemote | default "" | quote }}
+        - name: RESTIC_REMOTE_REPO1
+          value: {{ .Values.backup.restic.remoteRepo1 | default "" | quote }}
+        - name: RESTIC_REMOTE_REPO2
+          value: {{ .Values.backup.restic.remoteRepo2 | default "" | quote }}
+        - name: RESTIC_REMOTE_REPO3
+          value: {{ .Values.backup.restic.remoteRepo3 | default "" | quote }}
+        - name: RESTIC_LOGDIR
+          value: "/var/log"
+        - name: AWS_ACCESS_KEY_ID
+          value: {{ .Values.backup.restic.awsAccessKeyId | default "" | quote }}
+        - name: GOOGLE_PROJECT_ID
+          value: {{ .Values.backup.restic.googleProjectId | default "" | quote }}
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/resticprofile/credentials/remote/restic_google_creds.json"
+        {{- if .Values.backup.secrets.enabled }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.backup.secrets.name | default "backup-secrets" }}
+        {{- end }}
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+        - name: config
+          mountPath: /etc/resticprofile
+          readOnly: true
+        {{- if .Values.backup.credentials.enabled }}
+        - name: credentials
+          mountPath: /resticprofile/credentials/remote
+          readOnly: true
+        {{- end }}
+        - name: backup-staging
+          mountPath: /staging
+        - name: backup-repo
+          mountPath: /restic-repo
+        # Mount data volumes from other services (read-only)
+        {{- if .Values.pds.enabled }}
+        - name: pds-data
+          mountPath: /data/pds
+          readOnly: false
+        {{- end }}
+        {{- if .Values.feedGenerator.enabled }}
+        - name: feed-generator-data
+          mountPath: /data/feed-generator
+          readOnly: false
+        {{- end }}
+        {{- if .Values.opensearch.enabled }}
+        - name: opensearch-data
+          mountPath: /data/opensearch
+          readOnly: false
+        {{- end }}
+        {{- if .Values.bgs.enabled }}
+        - name: bgs-data
+          mountPath: /data/bgs
+          readOnly: false
+        {{- end }}
+        {{- if .Values.bsky.enabled }}
+        - name: bsky-data
+          mountPath: /data/bsky
+          readOnly: false
+        {{- end }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - which psql && resticprofile all.status
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - which psql && resticprofile all.status
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+        {{- if .Values.backup.resources }}
+        resources:
+          {{- toYaml .Values.backup.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: scripts
+        configMap:
+          name: backup-scripts
+          defaultMode: 0755
+      - name: config
+        configMap:
+          name: backup-config
+      {{- if .Values.backup.credentials.enabled }}
+      - name: credentials
+        secret:
+          secretName: {{ .Values.backup.credentials.secretName | default "backup-credentials" }}
+      {{- end }}
+      # Reference PVCs from other services
+      {{- if .Values.pds.enabled }}
+      - name: pds-data
+        persistentVolumeClaim:
+          claimName: pds-data-pds-0
+      {{- end }}
+      {{- if .Values.feedGenerator.enabled }}
+      - name: feed-generator-data
+        persistentVolumeClaim:
+          claimName: feed-generator-data
+      {{- end }}
+      {{- if .Values.opensearch.enabled }}
+      - name: opensearch-data
+        persistentVolumeClaim:
+          claimName: data-opensearch-0
+      {{- end }}
+      {{- if .Values.bgs.enabled }}
+      - name: bgs-data
+        persistentVolumeClaim:
+          claimName: data-bgs-0
+      {{- end }}
+      {{- if .Values.bsky.enabled }}
+      - name: bsky-data
+        persistentVolumeClaim:
+          claimName: bsky-cache
+      {{- end }}
+  # StatefulSet automatically creates PVCs for each pod
+  volumeClaimTemplates:
+  - metadata:
+      name: backup-staging
+      labels:
+        app: backup
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      {{- if .Values.backup.staging.storageClass }}
+      storageClassName: {{ .Values.backup.staging.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.backup.staging.size | default "20Gi" }}
+  - metadata:
+      name: backup-repo
+      labels:
+        app: backup
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      {{- if .Values.backup.repo.storageClass }}
+      storageClassName: {{ .Values.backup.repo.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.backup.repo.size | default "100Gi" }}
+{{- end }}

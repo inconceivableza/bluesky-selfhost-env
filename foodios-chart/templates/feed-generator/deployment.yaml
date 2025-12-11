@@ -1,0 +1,85 @@
+{{- if .Values.feedGenerator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feed-generator
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: feed-generator
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.feedGenerator.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: feed-generator
+  template:
+    metadata:
+      labels:
+        app: feed-generator
+    spec:
+      containers:
+      - name: feed-generator
+        image: {{ include "foodios.image" (dict "image" .Values.feedGenerator.image "tag" .Values.feedGenerator.tag "registry" "itaru2622") }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.feedGenerator.port }}
+          name: http
+        - containerPort: 3000
+          name: health
+        env:
+        - name: FEEDGEN_HOSTNAME
+          value: {{ .Values.fqdns.feedgen }}
+        - name: FEEDGEN_LISTENHOST
+          value: "0.0.0.0"
+        - name: FEEDGEN_PORT
+          value: {{ .Values.feedGenerator.port | quote }}
+        - name: FEEDGEN_PUBLISHER_DID
+          value: {{ .Values.feedGenerator.publisherDid | default "" | quote }}
+        - name: FEEDGEN_SERVICE_DID
+          value: "did:web:{{ .Values.fqdns.feedgen }}"
+        - name: FEEDGEN_SQLITE_LOCATION
+          value: "/data/db.sqlite"
+        - name: FEEDGEN_PLC_URL
+          value: "https://{{ .Values.fqdns.plc }}"
+        - name: FEEDGEN_SUBSCRIPTION_ENDPOINT
+          value: "wss://{{ .Values.fqdns.bgs }}"
+        - name: FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY
+          value: "3000"
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        {{- if .Values.global.developmentMode }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/tmp/ca-cert/ca.crt"
+        {{- end }}
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.feedGenerator.resources }}
+        resources:
+          {{- toYaml .Values.feedGenerator.resources | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: data
+        {{- if .Values.feedGenerator.storage.enabled }}
+        persistentVolumeClaim:
+          claimName: feed-generator-data
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+{{- end }}

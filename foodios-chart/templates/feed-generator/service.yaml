@@ -1,0 +1,3 @@
+{{- if .Values.feedGenerator.enabled }}
+{{- include "foodios.service" (dict "name" "feed-generator" "port" .Values.feedGenerator.port "root" .) }}
+{{- end }}

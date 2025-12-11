@@ -1,0 +1,321 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: backup
+    {{- include "foodios.labels" . | nindent 4 }}
+data:
+  profiles.yaml: |
+    version: 2
+
+    # assume env vars RESTIC_REPOSITORY and RESTIC_PASSWORD come through
+
+    global:
+      scheduler: crond
+      default-command: snapshots
+      initialize: true
+      priority: low
+      restic-lock-retry-after: 1m
+      restic-stale-lock-age: 1h
+      lock: "/resticprofile/profile-global.lock"
+      schedule-lock-mode: 'default'
+      schedule-lock-wait: 30m
+
+    mixins:
+      schedule-defaults:
+        force-inactive-lock: true
+        backup:
+          schedule-permission: system
+          schedule-priority: background
+          schedule-log: $RESTIC_LOGDIR/restic-{{ "{{" }} .Profile.Name {{ "}}" }}.log
+          schedule-lock-wait: 15m
+    {{ "{{" }} if .Env.RESTIC_AUTO_REMOTE {{ "}}" }}
+          run-finally: 'resticprofile {{ "{{" }} .Env.RESTIC_AUTO_REMOTE {{ "}}" }}.copy'
+    {{ "{{" }} else {{ "}}" }}
+    {{ "{{" }} end {{ "}}" }}
+        retention:
+          prune: true
+          after-backup: true
+
+      postgres:
+        default-vars:
+          DB: {{ "{{" }} .Profile.Name | replace "postgres-" "" {{ "}}" }}
+        backup:
+          stdin: true
+          stdin-filename: "/data/postgres/$DB.pgdump"
+          # host, port, user, password are passed as PG* environment variables
+          stdin-command: 'pg_dump $POSTGRES_EXTRA_OPTS -Fc "$DB"'
+          tag...: ["postgres"]
+
+      sqlite-tree:
+        lock: /resticprofile/sqlite-{{ "{{" }} .Profile.Name {{ "}}" }}.lock
+        default-vars:
+          NAME: {{ "{{" }} .Profile.Name {{ "}}" }}
+          SRC_TREE: /data/{{ "{{" }} .Profile.Name | replace "sqlite-" "" {{ "}}" }}/
+        backup:
+          stdin: true
+          stdin-filename: /data/sqlite/${NAME}.tar
+          stdin-command: /scripts/sqlite-tree-tar.sh ${NAME} ${SRC_TREE}
+          tag...: ["sqlite-tree"]
+
+      source-data:
+        status-file: /run/local-status.json
+        retention:
+          keep-within-hourly: "7d"
+          keep-within-daily: "30d"
+        backup:
+          schedule:
+            - hourly
+            - "*-*-* 0,4,8,12,16,20:00:00"
+            - daily
+          tag...: ["source-data"]
+        check:
+          schedule:
+            - daily
+        use:
+          - name: schedule-defaults
+
+      derived-data:
+        status-file: /run/local-status.json
+        retention:
+          keep-within-hourly: "7d"
+          keep-within-daily: "30d"
+        backup:
+          schedule:
+            - "*-*-* 0,3,6,9,12,15,18,21:00:00"
+            - daily
+          tag...: ["derived-data"]
+        check:
+          schedule:
+            - daily
+        use:
+          - name: schedule-defaults
+
+      runtime-data:
+        status-file: /run/local-status.json
+        retention:
+          keep-within-hourly: "7d"
+        backup:
+          schedule:
+            - hourly
+          tag...: ["runtime-data"]
+        check:
+          schedule:
+            - daily
+        use:
+          - name: schedule-defaults
+
+      server-config:
+        status-file: /run/local-status.json
+        retention:
+          keep-within-daily: "30d"
+        backup:
+          schedule:
+            - daily
+          tag...: ["server-config"]
+        check:
+          schedule:
+            - daily
+        use:
+          - name: schedule-defaults
+
+      remote-copy:
+        # status-file: /run/remote-status.json # This would exacerbate remote access
+        default-vars:
+          src_repo: $RESTIC_REPOSITORY
+          target_repo: ""
+          target_password: ""
+        initialize: true
+        repository: "$src_repo"
+        # unlike other commands, this requires a password-file, and can't use $RESTIC_PASSWORD or --password
+        password-file: "/resticprofile/credentials/local-password"
+        lock: "/resticprofile/profile-{{ "{{" }} .Profile.Name {{ "}}" }}.lock"
+        force-inactive-lock: true
+        copy:
+          initialize: true
+          initialize-copy-chunker-params: true
+          repository: "$target_repo"
+          password-file: "$target_password_file"
+          # run this daily as a backup, but it should run normally after every other run
+          schedule:
+            - daily
+          schedule-log: $RESTIC_LOGDIR/restic-copy-{{ "{{" }} .Profile.Name {{ "}}" }}.log
+        # check:
+        #   schedule:
+        #     - daily
+
+    profiles:
+      postgres-bgs:
+        use:
+          - name: postgres
+          - name: source-data
+
+      bgs:
+        status-file: /run/local-status.json
+        backup:
+          source:
+            - "/data/bgs"
+        use:
+          - name: derived-data
+
+      postgres-bsky:
+        use:
+          - name: postgres
+          - name: derived-data
+
+      bsky:
+        backup:
+          source:
+            - "/data/bsky"
+        use:
+          - name: derived-data
+
+      postgres-carstore:
+        use:
+          - name: postgres
+          - name: derived-data
+
+      postgres-ozone:
+        use:
+          - name: postgres
+          - name: source-data
+
+      postgres-palomar:
+        use:
+          - name: postgres
+          - name: runtime-data
+
+      postgres-plc:
+        use:
+          - name: postgres
+          - name: source-data
+
+      sqlite-pds:
+        use:
+          - name: sqlite-tree
+          - name: source-data
+
+      pds-blobs:
+        backup:
+          source:
+            - "/data/pds/blobs"
+        use:
+          - name: source-data
+
+      sqlite-feed-generator:
+        use:
+          - name: sqlite-tree
+          - name: source-data
+
+      opensearch:
+        backup:
+          source:
+            - "/data/opensearch"
+        use:
+          - name: derived-data
+
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO1 {{ "}}" }}
+      remote-repo1:
+        use:
+          - name: remote-copy
+            target_repo: "$RESTIC_REMOTE_REPO1"
+            target_password_file: "/resticprofile/credentials/remote-repo1-password"
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO2 {{ "}}" }}
+      remote-repo2:
+        use:
+          - name: remote-copy
+            target_repo: "$RESTIC_REMOTE_REPO2"
+            target_password_file: "/resticprofile/credentials/remote-repo2-password"
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO3 {{ "}}" }}
+      remote-repo3:
+        use:
+          - name: remote-copy
+            target_repo: "$RESTIC_REMOTE_REPO3"
+            target_password_file: "/resticprofile/credentials/remote-repo3-password"
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} define "profiles-source-data" {{ "}}" }}
+          - postgres-bgs
+          - postgres-ozone
+          - postgres-plc
+          - sqlite-pds
+          - pds-blobs
+          - sqlite-feed-generator
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} define "profiles-derived-data" {{ "}}" }}
+          - bgs
+          - postgres-bsky
+          - bsky
+          - postgres-carstore
+          - opensearch
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} define "profiles-runtime-data" {{ "}}" }}
+          - postgres-palomar
+    {{ "{{" }} end {{ "}}" }}
+
+    {{ "{{" }} define "profiles-remote" {{ "}}" }}
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO1 {{ "}}" }}
+          - remote-repo1
+    {{ "{{" }} end {{ "}}" }}
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO2 {{ "}}" }}
+          - remote-repo2
+    {{ "{{" }} end {{ "}}" }}
+    {{ "{{" }} if .Env.RESTIC_REMOTE_REPO3 {{ "}}" }}
+          - remote-repo3
+    {{ "{{" }} end {{ "}}" }}
+    {{ "{{" }} end {{ "}}" }}
+
+    groups:
+      source-data-local:
+        profiles:
+    {{ "{{" }} template "profiles-source-data" . {{ "}}" }}
+
+      derived-data-local:
+        profiles:
+    {{ "{{" }} template "profiles-derived-data" . {{ "}}" }}
+
+      runtime-data-local:
+        profiles:
+    {{ "{{" }} template "profiles-runtime-data" . {{ "}}" }}
+
+      all-local:
+        profiles:
+    {{ "{{" }} template "profiles-source-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-derived-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-runtime-data" . {{ "}}" }}
+
+      all-remote:
+        profiles:
+    {{ "{{" }} template "profiles-remote" . {{ "}}" }}
+
+      source-data:
+        profiles:
+    {{ "{{" }} template "profiles-source-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-remote" . {{ "}}" }}
+
+      runtime-data:
+        profiles:
+    {{ "{{" }} template "profiles-runtime-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-remote" . {{ "}}" }}
+
+      derived-data:
+        profiles:
+    {{ "{{" }} template "profiles-derived-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-remote" . {{ "}}" }}
+
+      all:
+        profiles:
+    {{ "{{" }} template "profiles-source-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-derived-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-runtime-data" . {{ "}}" }}
+    {{ "{{" }} template "profiles-remote" . {{ "}}" }}
+{{- end }}

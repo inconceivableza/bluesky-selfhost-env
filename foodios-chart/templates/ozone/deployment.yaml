@@ -1,0 +1,70 @@
+{{- if .Values.ozone.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ozone
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ozone
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ozone.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: ozone
+  template:
+    metadata:
+      labels:
+        app: ozone
+    spec:
+      containers:
+      - name: ozone
+        image: {{ include "foodios.image" (dict "image" .Values.ozone.image "tag" .Values.ozone.tag "registry" .Values.global.imageRegistry) }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        command: ['node', './service']
+        ports:
+        - containerPort: {{ .Values.ozone.port }}
+          name: http
+        env:
+        - name: LOG_ENABLED
+          value: "1"
+        - name: DEBUG_MODE
+          value: "1"
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_LEVEL
+          value: {{ .Values.global.logLevel | default "info" | quote }}
+        - name: NODE_ENV
+          value: {{ .Values.global.environment | quote }}
+        - name: NODE_EXTRA_CA_CERTS
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: {{ .Values.global.nodeTlsRejectUnauthorized | quote }}
+        - name: GOINSECURE
+          value: {{ .Values.global.goInsecure | quote }}
+        - name: OZONE_DEV_MODE
+          value: "true"
+        - name: OZONE_PORT
+          value: {{ .Values.ozone.port | quote }}
+        envFrom:
+        {{- if .Values.ozone.secrets.enabled }}
+        - secretRef:
+            name: {{ .Values.ozone.secrets.name | default "ozone-secrets" }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.ozone.resources }}
+        resources:
+          {{- toYaml .Values.ozone.resources | nindent 10 }}
+        {{- end }}
+{{- end }}
