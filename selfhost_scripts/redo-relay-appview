@@ -8,35 +8,41 @@ source_env
 [ "$1" != "" ] && restore_dir="$1"
 [ -d "$restore_dir" ] || { show_error "Syntax $0 [restore_dir]" "but restore_dir given ($restore_dir) is not directory" ; exit 1 ; }
 
-show_heading "Taking down relay and appview" "bgs, bsky and backup in order to drop bgs volume and bgs, carstore and bsky database and reindex"
-docker compose down bgs bsky backup
-show_info --oneline "Dropping database" "bgs"
-docker compose exec database sh -c 'dropdb -U pg bgs'
-show_info --oneline "Dropping database" "carstore"
-docker compose exec database sh -c 'dropdb -U pg carstore'
+RELAY_SECRETS_FILE="$script_dir/config/relay-secrets.env"
+make $RELAY_SECRETS_FILE
+. $RELAY_SECRETS_FILE
+
+[ "$relayFQDN" == "" ] && { show_warning "Couldn't find relay domain" "from relayFQDN environment; please check $params_file" >&2 ; exit 1 ; }
+[ "$RELAY_ADMIN_KEY" == "" ] && { show_warning "Couldn't find relay admin key" "from environment or secrets file; please check RELAY_ADMIN_KEY in $params_file and $script_dir/config/secrets-passwords.env" >&2 ; exit 1 ; }
+
+function get_relay_auth() {
+  python3 -c "import base64, os ; pw = os.getenv('RELAY_ADMIN_KEY') ; print(base64.b64encode(f'admin:${RELAY_ADMIN_KEY}'.encode('UTF-8')).decode('UTF-8'))"
+}
+
+RELAY_ADMIN_AUTH=$(get_relay_auth)
+
+show_heading "Taking down relay and appview" "relay, bsky and backup in order to drop relay and bsky volume and relay and bsky database and reindex"
+docker compose down relay bsky backup
+show_info --oneline "Dropping database" "relay"
+docker compose exec database sh -c 'dropdb -U pg relay'
 show_info --oneline "Dropping database" "bsky"
 docker compose exec database sh -c 'dropdb -U pg bsky'
-show_info --oneline "Downing bgs" "and its volume"
-docker compose down -v bgs
+show_info --oneline "Downing relay" "and its volume"
+docker compose down -v relay
 
-show_info "Checking volume deletion" "for bgs"
-docker compose volumes bgs | grep bgs >/dev/null && {
-  show_error "Error dropping volume" "bgs - please investigate and adjust manually"
+show_info "Checking volume deletion" "for relay"
+docker compose volumes relay | grep relay >/dev/null && {
+  show_error "Error dropping volume" "relay - please investigate and adjust manually"
   exit 1
 }
 
-show_info "Recreating volumes" "bgs and bsky"
-docker compose create bgs bsky
+show_info "Recreating volumes" "relay and bsky"
+docker compose create relay bsky
 
-show_info "Recreating databases" "bgs, carstore and bsky"
+show_info "Recreating databases" "relay and bsky"
 
-docker compose exec database sh -c 'createdb -U pg bgs ; psql -U pg healthcheck -c "grant all privileges on database bgs to pg"' || {
-  show_error "Error creating database" "bgs - please investigate and adjust manually"
-  exit 1
-}
-
-docker compose exec database sh -c 'createdb -U pg carstore ; psql -U pg healthcheck -c "grant all privileges on database carstore to pg"' || {
-  show_error "Error creating database" "carstore - please investigate and adjust manually"
+docker compose exec database sh -c 'createdb -U pg relay ; psql -U pg healthcheck -c "grant all privileges on database relay to pg"' || {
+  show_error "Error creating database" "relay - please investigate and adjust manually"
   exit 1
 }
 
@@ -53,34 +59,35 @@ wait_for_container backup
   show_heading "Restoring data" "including filesystem and databases"
   target_dir="$(docker compose exec backup sh -c "mktemp -dt restore-XXXXXX")"
   docker compose cp "$restore_dir/." backup:"$target_dir/."
-  docker compose exec backup sh -c "cp -a $target_dir/data/bgs/. /data/bgs/"
+  docker compose exec backup sh -c "cp -a $target_dir/data/relay/. /data/relay/"
   docker compose exec backup sh -c "cp -a $target_dir/data/bsky/. /data/bsky/"
-  docker compose exec backup sh -c "pg_restore -U pg -d bgs $target_dir/data/postgres/bgs.pgdump"
-  docker compose exec backup sh -c "pg_restore -U pg -d carstore $target_dir/data/postgres/carstore.pgdump"
+  docker compose exec backup sh -c "pg_restore -U pg -d relay $target_dir/data/postgres/relay.pgdump"
   docker compose exec backup sh -c "pg_restore -U pg -d bsky $target_dir/data/postgres/bsky.pgdump"
 }
 
-show_heading "Restarting bgs" "and waiting for it to be ready"
-docker compose up -d bgs
-wait_for_container bgs
+show_heading "Restarting relay" "and waiting for it to be ready"
+docker compose up -d relay
+wait_for_container relay
 
-show_heading "Recrawling pds" "from bgs and adjusting limits"
+show_heading "Recrawling pds" "from relay and adjusting limits"
 
-make $script_dir/config/bgs-secrets.env
+make $script_dir/config/relay-secrets.env
 
-show_info --oneline "Requesting crawl" "from bgs before adjusting limits"
+show_info --oneline "Requesting crawl" "from relay before adjusting limits"
 (
-  . $script_dir/config/bgs-secrets.env
-  wget -qO- --method=POST --body-data="{\"hostname\": \"$pdsFQDN\"}" --header="Content-Type: application/json" --header="Authorization: Bearer ${BGS_ADMIN_KEY}" "https://$bgsFQDN/admin/pds/requestCrawl"
+  . $script_dir/config/relay-secrets.env
+  wget -qO- --method=POST --body-data="{\"hostname\": \"$pdsFQDN\"}" --header="Content-Type: application/json" --header="Authorization: Basic ${RELAY_ADMIN_AUTH}" "https://$relayFQDN/admin/pds/requestCrawl"
 )
 
-show_info --oneline "Adjusting pds limits" "on bgs"
+# TODO: set cursor to 0
 
-./selfhost_scripts/adjust-bgs-limits.sh
+show_info --oneline "Adjusting pds limits" "on relay"
 
-show_info --oneline "Triggering full sync" "from pds on bgs"
+./selfhost_scripts/adjust-relay-limits.sh
 
-./selfhost_scripts/request-bgs-sync.sh
+show_info --oneline "Triggering full sync" "from pds on relay"
+
+./selfhost_scripts/request-relay-sync.sh
 
 show_info --oneline "Restarting bsky" "and waiting for it to be ready"
 docker compose up -d bsky

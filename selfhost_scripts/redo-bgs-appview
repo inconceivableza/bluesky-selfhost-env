@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+script_path="`realpath "$0"`"
+script_dir="$(cd `dirname "$script_path"`/.. ; pwd)"
+. "$script_dir/utils.sh"
+source_env
+
+[ "$1" != "" ] && restore_dir="$1"
+[ -d "$restore_dir" ] || { show_error "Syntax $0 [restore_dir]" "but restore_dir given ($restore_dir) is not directory" ; exit 1 ; }
+
+show_heading "Taking down relay and appview" "bgs, bsky and backup in order to drop bgs volume and bgs, carstore and bsky database and reindex"
+docker compose down bgs bsky backup
+show_info --oneline "Dropping database" "bgs"
+docker compose exec database sh -c 'dropdb -U pg bgs'
+show_info --oneline "Dropping database" "carstore"
+docker compose exec database sh -c 'dropdb -U pg carstore'
+show_info --oneline "Dropping database" "bsky"
+docker compose exec database sh -c 'dropdb -U pg bsky'
+show_info --oneline "Downing bgs" "and its volume"
+docker compose down -v bgs
+
+show_info "Checking volume deletion" "for bgs"
+docker compose volumes bgs | grep bgs >/dev/null && {
+  show_error "Error dropping volume" "bgs - please investigate and adjust manually"
+  exit 1
+}
+
+show_info "Recreating volumes" "bgs and bsky"
+docker compose create bgs bsky
+
+show_info "Recreating databases" "bgs, carstore and bsky"
+
+docker compose exec database sh -c 'createdb -U pg bgs ; psql -U pg healthcheck -c "grant all privileges on database bgs to pg"' || {
+  show_error "Error creating database" "bgs - please investigate and adjust manually"
+  exit 1
+}
+
+docker compose exec database sh -c 'createdb -U pg carstore ; psql -U pg healthcheck -c "grant all privileges on database carstore to pg"' || {
+  show_error "Error creating database" "carstore - please investigate and adjust manually"
+  exit 1
+}
+
+docker compose exec database sh -c 'createdb -U pg bsky ; psql -U pg healthcheck -c "grant all privileges on database bsky to pg"' || {
+  show_error "Error creating database" "bsky - please investigate and adjust manually"
+  exit 1
+}
+
+show_info --oneline "Restarting backup" "and waiting for it to be ready"
+docker compose up -d backup
+wait_for_container backup
+
+[ "$restore_dir" != "" ] && {
+  show_heading "Restoring data" "including filesystem and databases"
+  target_dir="$(docker compose exec backup sh -c "mktemp -dt restore-XXXXXX")"
+  docker compose cp "$restore_dir/." backup:"$target_dir/."
+  docker compose exec backup sh -c "cp -a $target_dir/data/bgs/. /data/bgs/"
+  docker compose exec backup sh -c "cp -a $target_dir/data/bsky/. /data/bsky/"
+  docker compose exec backup sh -c "pg_restore -U pg -d bgs $target_dir/data/postgres/bgs.pgdump"
+  docker compose exec backup sh -c "pg_restore -U pg -d carstore $target_dir/data/postgres/carstore.pgdump"
+  docker compose exec backup sh -c "pg_restore -U pg -d bsky $target_dir/data/postgres/bsky.pgdump"
+}
+
+show_heading "Restarting bgs" "and waiting for it to be ready"
+docker compose up -d bgs
+wait_for_container bgs
+
+show_heading "Recrawling pds" "from bgs and adjusting limits"
+
+make $script_dir/config/bgs-secrets.env
+
+show_info --oneline "Requesting crawl" "from bgs before adjusting limits"
+(
+  . $script_dir/config/bgs-secrets.env
+  wget -qO- --method=POST --body-data="{\"hostname\": \"$pdsFQDN\"}" --header="Content-Type: application/json" --header="Authorization: Bearer ${BGS_ADMIN_KEY}" "https://$bgsFQDN/admin/pds/requestCrawl"
+)
+
+show_info --oneline "Adjusting pds limits" "on bgs"
+
+./selfhost_scripts/adjust-bgs-limits.sh
+
+show_info --oneline "Triggering full sync" "from pds on bgs"
+
+./selfhost_scripts/request-bgs-sync.sh
+
+show_info --oneline "Restarting bsky" "and waiting for it to be ready"
+docker compose up -d bsky
+wait_for_container bsky
+
+show_info "Relay and appview containers restarted" "but backfill indexing still needs to be triggered"
+
