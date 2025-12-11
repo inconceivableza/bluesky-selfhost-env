@@ -195,10 +195,10 @@ jobs:
             ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/upgrade-release.sh
 
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} \
-            "chmod +x ~/helm-deploy/${{ inputs.environment }}/fix-statefulsets.sh"
+            "chmod +x ~/helm-deploy/${{ inputs.environment }}/upgrade-release.sh"
 
           # Clean up temp file
-          rm fix-statefulsets-${{ inputs.environment }}.sh
+          rm upgrade-release-${{ inputs.environment }}.sh
 
       - name: Check and create Kubernetes secrets
         run: |
