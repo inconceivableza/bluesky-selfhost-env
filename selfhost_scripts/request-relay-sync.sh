@@ -39,29 +39,36 @@ function status_sync() {
   }
   show_info --oneline "PDS Sync Status:"
   echo "$status" | jq
-  return $return_code
+  status_value="$(echo "$status" | jq -r .status)"
+  [ "$status_value" == "active" ] && return 0
+  return 1
 }
 
 function jq_pds_repos() {
   echo "$pds_repo_json" | jq -r "$@" || { show_error "error in jq request" "$@" ; }
 }
 
-function request_account_pulls() {
+function check_account_status() {
   # this doesn't actually do anything useful; it returns 404s if the relay doesn't know the account
   show_info "Requesting accounts" "from PDS $pdsFQDN"
+  account_count=0
+  known_count=0
   pds_repo_json="$(wget -qO- https://$pdsFQDN/xrpc/com.atproto.sync.listRepos)"
   for did in $(jq_pds_repos '.repos[].did'); do
+    account_count=$((account_count+1))
     echo -n "querying status for $did..."
     repo_status="$(wget -qO- https://$relayFQDN/xrpc/com.atproto.sync.getRepoStatus?did=$did)"
-    echo $repo_status
+    if [ "$repo_status" != "" ]; then
+      echo $repo_status
+      known_count=$((known_count+1))
+    else
+      echo "no status returned - repo probably doesn't know account"
+    fi
   done
+  show_info --oneline "Account status check complete" "$known_count of $account_count accounts known to relay"
 }
 
 request_crawl
-request_account_pulls
-
-
-exit 1
 
 interrupted=
 
@@ -80,7 +87,7 @@ log_pid=$!
 while [ "$interrupted" != "true" ] ; do
   status_sync
   return_code="$?"
-  [ "$return_code" == 16 ] && { show_info --oneline "Sync complete" "so stopping monitoring" ; break ; }
+  [ "$return_code" == 0 ] && { show_info --oneline "PDS active" "so stopping monitoring" ; break ; }
   sleep 2
 done
 
@@ -89,4 +96,6 @@ kill -SIGINT $log_pid
 sleep 1
 kill -SIGTERM $log_pid
 wait "$log_pid"
+
+check_account_status
 
