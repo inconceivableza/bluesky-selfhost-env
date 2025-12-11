@@ -88,8 +88,12 @@ jobs:
 
           # Global overrides
           global:
+            namespace: "foodios-${{ inputs.environment }}"
             domain: "${{ vars.DOMAIN }}"
             imageRegistry: "${{ vars.BRANDED_NAMESPACE }}"
+            tls:
+              email: "${{ vars.EMAIL4CERTS }}"
+              # Note: Cloudflare API token is stored as K8s secret, not in values
 
           # FQDNs (override from GitHub variables)
           fqdns:
@@ -148,9 +152,9 @@ jobs:
 
       - name: Copy files to server
         run: |
-          # Copy Helm chart
-          scp -r foodios-chart \
-            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+          # Clean and copy Helm chart (removes old files)
+          rsync -avz --delete foodios-chart/ \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/foodios-chart/
 
           # Copy values override
           scp helm-values-override.yaml \
@@ -159,6 +163,8 @@ jobs:
       - name: Check and create Kubernetes secrets
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
+
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "🔐 Checking Kubernetes secrets"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -205,7 +211,9 @@ jobs:
 
             # PLC secrets
             create_or_update_secret "plc-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}'
+              --from-literal=DATABASE_URL='${{ secrets.PLC_DATABASE_URL }}' \
+              --from-literal=DB_CREDS_JSON='${{ secrets.DB_CREDS_JSON }}' \
+              --from-literal=DB_MIGRATE_CREDS_JSON='${{ secrets.DB_MIGRATE_CREDS_JSON }}'
 
             # Ozone secrets (if enabled)
             if [ "${{ secrets.OZONE_DB_POSTGRES_URL }}" != "" ]; then
@@ -217,15 +225,25 @@ jobs:
 
             # Palomar secrets
             create_or_update_secret "palomar-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}'
+              --from-literal=DATABASE_URL='${{ secrets.PALOMAR_DATABASE_URL }}' \
+              --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}' \
+              --from-literal=ES_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
 
             # Social Link secrets
             create_or_update_secret "social-link-secrets" \
-              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}'
+              --from-literal=DATABASE_URL='${{ secrets.LINK_DB_POSTGRES_URL }}' \
+              --from-literal=LINK_DB_POSTGRES_URL='${{ secrets.LINK_DB_POSTGRES_MIGRATION_URL }}'
 
             # OpenSearch secrets
             create_or_update_secret "opensearch-secrets" \
               --from-literal=OPENSEARCH_INITIAL_ADMIN_PASSWORD='${{ secrets.OPENSEARCH_INITIAL_ADMIN_PASSWORD }}'
+
+            # Cloudflare credentials for Traefik ACME (in kube-system namespace)
+            echo "  🔐 Creating/updating secret 'cloudflare-credentials' in kube-system..."
+            kubectl create secret generic cloudflare-credentials -n kube-system \
+              --from-literal=CF_DNS_API_TOKEN='${{ secrets.CADDY_DNS_API_TOKEN }}' \
+              --dry-run=client -o yaml | kubectl apply -f -
+            echo "  ✅ Applied secret 'cloudflare-credentials'"
 
             echo ""
             echo "✅ All secrets verified/created"
@@ -237,6 +255,7 @@ jobs:
       - name: Lint Helm chart
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -254,6 +273,7 @@ jobs:
         if: inputs.dry_run == true
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -276,6 +296,7 @@ jobs:
         if: inputs.dry_run == false
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
             cd ~/helm-deploy/${{ inputs.environment }}
 
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -288,7 +309,7 @@ jobs:
               -f ./foodios-chart/values/${{ inputs.environment }}.yaml \
               -f ./helm-values-override.yaml \
               --wait \
-              --timeout 10m \
+              --timeout 5m \
               --atomic
 
             echo ""

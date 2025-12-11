@@ -1,0 +1,30 @@
+{{- if .Values.global.tls.enabled }}
+---
+# Note: cloudflare-credentials secret is created by the deployment workflow
+# for security reasons (not stored in Helm values)
+---
+# Configure Traefik for Let's Encrypt with Cloudflare DNS
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--certificatesresolvers.letsencrypt.acme.email={{ .Values.global.tls.email }}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53"
+      {{- if eq .Values.global.tls.certIssuer "letsencrypt-staging" }}
+      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      {{- end }}
+    envFrom:
+      - secretRef:
+          name: cloudflare-credentials
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 128Mi
+{{- end }}

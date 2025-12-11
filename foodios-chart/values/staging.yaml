@@ -1,6 +1,6 @@
-# Production values - override values.yaml
+# Staging values - optimized for 4 vCPU, 8GB RAM, 160GB storage
 global:
-  namespace: foodios
+  namespace: foodios-staging
   domain: yourdomain.com  # Your actual production domain
   imageRegistry: yournamespace  # Your Docker Hub namespace
   imagePullPolicy: IfNotPresent
@@ -8,8 +8,9 @@ global:
   # TLS/Certificate configuration
   tls:
     enabled: true
-    certIssuer: letsencrypt-prod
+    certIssuer: letsencrypt-prod # Can use letsencrypt-staging but this won't be trusted by browsers (see traefik-config.yaml)
     createSecret: false  # cert-manager will create secrets automatically
+    email: your-email@example.com  # Let's Encrypt notification email
 
   # Environment
   environment: staging
@@ -54,63 +55,71 @@ database:
   port: 5432
   user: pg
   storage:
-    size: 100Gi  # Larger for production
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: db-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 1Gi
+    requests:
+      cpu: "200m"
+      memory: 512Mi
   livenessProbe: true
   readinessProbe: true
 
 # PDS (Personal Data Server)
 pds:
   enabled: true
+  inviteRequired: false
   debugMode: false
-  replicas: 2  # Multiple replicas for HA
+  replicas: 1
   image: foodios-atproto-pds
   tag: latest  # Will be overridden by workflow
   port: 2583
   storage:
-    size: 100Gi
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: pds-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
-    requests:
       cpu: "1"
-      memory: 2Gi
+      memory: 1.5Gi
+    requests:
+      cpu: "500m"
+      memory: 1Gi
 
 # Bsky (App View)
 bsky:
   enabled: true
   debugMode: false
-  replicas: 2  # Multiple replicas for HA
+  replicas: 1
   image: foodios-atproto-bsky
   tag: latest  # Will be overridden by workflow
   port: 2584
   storage:
     enabled: true
-    size: 20Gi
+    size: 10Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: bsky-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
-    requests:
       cpu: "1"
-      memory: 2Gi
+      memory: 1.5Gi
+    requests:
+      cpu: "500m"
+      memory: 1Gi
 
 # PLC (DID service)
 plc:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-did-method-plc
   tag: latest  # Will be overridden by workflow
   port: 2582
@@ -119,35 +128,37 @@ plc:
     name: plc-secrets
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # BGS (Big Graph Service / Relay)
 bgs:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-indigo-bgs
   tag: latest  # Will be overridden by workflow
   port: 2470
   storage:
-    size: 100Gi
+    size: 40Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: bgs-secrets
   resources:
     limits:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "500m"
+      memory: 1Gi
     requests:
-      cpu: "1"
-      memory: 2Gi
+      cpu: "300m"
+      memory: 512Mi
 
 # Social App (Web UI)
 socialApp:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-app
   tag: latest  # Will be overridden by workflow
   port: 8100
@@ -155,27 +166,31 @@ socialApp:
   args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # Social Card (OG Card service)
 socialCard:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-card
   tag: latest  # Will be overridden by workflow
   port: 3003
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Social Embed
 socialEmbed:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-embed
   tag: latest  # Will be overridden by workflow
   port: 8101
@@ -183,14 +198,16 @@ socialEmbed:
   args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Social Link
 socialLink:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-social-link
   tag: latest  # Will be overridden by workflow
   port: 3004
@@ -199,14 +216,16 @@ socialLink:
     name: social-link-secrets
   resources:
     limits:
-      memory: 512Mi
-    requests:
+      cpu: "200m"
       memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
 
 # Palomar (Search service)
 palomar:
   enabled: true
-  replicas: 2
+  replicas: 1
   image: foodios-indigo-palomar
   tag: latest  # Will be overridden by workflow
   port: 3999
@@ -215,11 +234,11 @@ palomar:
     name: palomar-secrets
   resources:
     limits:
-      cpu: "1"
-      memory: 2Gi
-    requests:
       cpu: "500m"
-      memory: 1Gi
+      memory: 512Mi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
 
 # Ozone (Moderation service)
 ozone:
@@ -227,10 +246,17 @@ ozone:
   replicas: 1
   image: foodios-atproto-ozone
   tag: latest
-  port: 3006
+  port: 3005
   secrets:
     enabled: true
     name: ozone-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
 
 # Redis
 redis:
@@ -240,13 +266,15 @@ redis:
   replicas: 1
   port: 6379
   storage:
-    size: 10Gi
+    size: 5Gi  # Reduced for staging
     storageClass: local-path
   resources:
     limits:
-      memory: 1Gi
-    requests:
+      cpu: "200m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # OpenSearch
 opensearch:
@@ -255,15 +283,136 @@ opensearch:
   tag: latest  # Will be overridden by workflow
   replicas: 1
   port: 9200
-  javaOpts: "-Xms1g -Xmx1g"  # Larger heap for production
+  javaOpts: "-Xms512m -Xmx512m"  # Reduced heap for staging
   storage:
-    size: 100Gi
+    size: 30Gi  # Reduced for staging
     storageClass: local-path
   secrets:
     enabled: true
     name: opensearch-secrets
   resources:
     limits:
-      memory: 2Gi
-    requests:
+      cpu: "500m"
       memory: 1Gi
+    requests:
+      cpu: "200m"
+      memory: 512Mi
+
+# IP Location Service
+ipcc:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: ip-location-service-bsky
+  tag: latest
+  port: 8080
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "100m"
+      memory: 256Mi
+    requests:
+      cpu: "50m"
+      memory: 128Mi
+
+# Feed Generator
+feedGenerator:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: foodios-bluesky-feed-generator
+  tag: latest
+  port: 3008
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Prometheus (Monitoring)
+prometheus:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: prom/prometheus
+  tag: latest
+  port: 9090
+  storage:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Jaeger (Distributed Tracing)
+jaeger:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: jaegertracing/jaeger
+  tag: latest
+  uiPort: 16686
+  resources:
+    limits:
+      cpu: "300m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# OpenTelemetry Collector
+otelCollector:
+  enabled: false  # Enable if needed
+  replicas: 1
+  image: otel-collector
+  tag: latest
+  resources:
+    limits:
+      cpu: "300m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Backup Service (Resticprofile)
+backup:
+  enabled: false  # Enable if needed - requires additional setup
+  replicas: 1
+  image: creativeprojects/resticprofile
+  tag: 0.32.0
+  staging:
+    size: 20Gi
+    storageClass: local-path
+  repo:
+    size: 100Gi
+    storageClass: local-path
+  restic:
+    autoRemote: ""
+    remoteRepo1: ""
+    remoteRepo2: ""
+    remoteRepo3: ""
+    awsAccessKeyId: ""
+    googleProjectId: ""
+  secrets:
+    enabled: true
+    name: backup-secrets
+  credentials:
+    enabled: false  # Set to true when backup credentials secret is created
+    secretName: backup-credentials
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
