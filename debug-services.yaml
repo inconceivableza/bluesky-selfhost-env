@@ -21,6 +21,28 @@ services:
       # NB: hardcoded paths are stored in the carstore database
       DATA_DIR: '$local_service_tmp_dir/bigsky'
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318'
+  relay:
+    working_dir: './repos/indigo/'
+    build:
+      - go mod tidy
+      - go mod vendor
+      - make build-relay-admin-ui
+    run:
+      - 'docker compose cp relay:/data/relay $local_service_tmp_dir/relay'
+      - 'go run ./cmd/relay serve --enable-db-tracing --enable-otel-tracing'
+    env_exclude:
+      - 'HOME'
+      - 'HOSTNAME'
+      - 'PATH'
+      - 'PWD'
+    env_subst:
+      - 's/@database/@localhost/'
+    env_override:
+      RELAY_LOG_LEVEL: 'debug'
+      RELAY_API_LISTEN: ':24720' # this doesn't actually set the port; that's done by the commandline above and they should match
+      RELAY_METRICS_LISTEN: 'localhost:24730'
+      RELAY_PERSIST_DIR: '$local_service_tmp_dir/relay/events'
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318'
   bsky:
     working_dir: './repos/social-app/submodules/atproto/services/bsky/'
     build:

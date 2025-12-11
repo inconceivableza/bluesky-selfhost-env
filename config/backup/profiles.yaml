@@ -150,6 +150,19 @@ profiles:
     use:
       - name: derived-data
 
+  postgres-relay:
+    use:
+      - name: postgres
+      - name: source-data
+
+  relay:
+    status-file: /run/local-status.json
+    backup:
+      source:
+        - "/data/relay"
+    use:
+      - name: derived-data
+
   postgres-bsky:
     use:
       - name: postgres

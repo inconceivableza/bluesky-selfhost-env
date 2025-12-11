@@ -47,8 +47,8 @@ DERIVED_ENV_FILES := config/caddy-dynamic.env
 
 # derived configuration for caddy
 
-config/caddy-dynamic.env: .env
-ifeq ($(findstring true,$(bskyDEBUG)$(pdsDEBUG)$(ozoneDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
+config/caddy-dynamic.env: .env Makefile
+ifeq ($(findstring true,$(bskyDEBUG)$(ozoneDEBUG)$(pdsDEBUG)$(relayDEBUG)$(socialappDEBUG)$(socialappYARN)$(socialembedDEBUG)$(sociallinkDEBUG)),)
 	@echo "# no debug configuration present; caddy will direct to normal docker ports" > $@
 else
 	@echo "# optional configuration to redirect some caddy ports to local debug instances" > $@
@@ -64,6 +64,9 @@ ifeq ($(ozoneDEBUG), true)
 endif
 ifeq ($(pdsDEBUG), true)
 	@echo "pdsPROXY=http://host.docker.internal:$(shell yq -r .services.pds.env_override.PDS_PORT ./debug-services.yaml)" >> $@
+endif
+ifeq ($(relayDEBUG), true)
+	@echo "relayPROXY=http://host.docker.internal:$(shell yq -r .services.relay.env_override.RELAY_API_LISTEN ./debug-services.yaml | sed 's/^.*://')" >> $@
 endif
 ifeq ($(sociallinkDEBUG), true)
 	@echo "sociallinkPROXY=http://host.docker.internal:$(shell yq -r .services.social-link.env_override.LINK_PORT ./debug-services.yaml)" >> $@
@@ -84,7 +87,7 @@ clean-derived-envs:
 	rm -f $(DERIVED_ENV_FILES)
 
 # List of all secret env files that can be generated
-SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env config/social-link-secrets.env
+SECRET_ENV_FILES := config/backup-secrets.env config/bgs-secrets.env config/relay-secrets.env config/bsky-secrets.env config/db-secrets.env config/opensearch-secrets.env config/ozone-secrets.env config/palomar-secrets.env config/pds-secrets.env config/plc-secrets.env config/social-link-secrets.env
 
 # derived secrets files that limit the scope of secrets
 
@@ -104,6 +107,11 @@ config/bgs-secrets.env: ${passfile} config/db-secrets.env
 	@cat config/db-secrets.env >> $@
 	@echo 'CARSTORE_DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/carstore' >> $@
 	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/bgs' >> $@
+
+config/relay-secrets.env: ${passfile} config/db-secrets.env
+	@grep -h '^RELAY_ADMIN_KEY=' $^ > $@
+	@cat config/db-secrets.env >> $@
+	@echo 'DATABASE_URL=postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@database/relay' >> $@
 
 config/bsky-secrets.env: ${passfile} config/db-secrets.env
 	@grep -h '^\(BSKY_ADMIN_PASSWORDS\|BSKY_SERVICE_SIGNING_KEY\|BSKY_STATSIG_KEY\)=' $^ > $@
@@ -175,7 +183,7 @@ origin_repo_did_prefix  ?=${gh}did-method-plc/
 #    # no plc in Sdep, comparing below line.
 #
 Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
-Sbsky ?=plc pds bgs bsky social-app social-card social-embed social-link palomar
+Sbsky ?=plc pds bgs relay bsky social-app social-card social-embed social-link palomar
 Sfeed ?=feed-generator
 Sozone ?=ozone
 Sjetstream ?=jetstream
@@ -341,6 +349,7 @@ echo:
 	@echo "branded_asof:  ${branded_asof}"
 	@echo ""
 	@echo "bgsFQDN       ${bgsFQDN}"
+	@echo "relayFQDN     ${relayFQDN}"
 	@echo "bskyFQDN      ${bskyFQDN}"
 	@echo "feedgenFQDN   ${feedgenFQDN}"
 	@echo "jetstreamFQDN ${jetstreamFQDN}"

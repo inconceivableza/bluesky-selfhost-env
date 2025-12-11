@@ -14,6 +14,8 @@ volumes:
     name: opensearch
   bgs:
     name: bgs
+  relay:
+    name: relay
   bsky:
     name: bsky
   feed-generator:
@@ -80,6 +82,7 @@ services:
       - EMAIL4CERTS=${EMAIL4CERTS}
       - apiFQDN=${apiFQDN}
       - bgsFQDN=${bgsFQDN}
+      - relayFQDN=${relayFQDN}
       - bskyFQDN=${bskyFQDN}
       - cardFQDN=${cardFQDN}
       - embedFQDN=${embedFQDN}
@@ -443,6 +446,64 @@ services:
       - config/bgs-secrets.env # Contains BGS_ADMIN_KEY and database URLs
     volumes:
       - bgs:/data/bigsky
+      # CA certificates for connecting to self-signed, or a dummy directory if not used
+      - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
+      - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
+      - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      - database
+      - caddy
+
+  relay:
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-relay:${RELAY_IMAGE_TAG:-${branded_asof:-latest}}
+    profiles: ['', 'indigo']
+    build:
+      context: ./repos/indigo/
+      dockerfile: cmd/relay/Dockerfile
+      args:
+       - http_proxy=${http_proxy-}
+       - https_proxy=${https_proxy-}
+       - no_proxy=${no_proxy-}
+       - JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS-}
+      labels:
+        org.opencontainers.image.source: "https://github.com/inconceivableza/indigo"
+        org.opencontainers.image.description: "${REBRANDING_NAME} ATP Relay"
+    ports:
+      - target: 2472
+        published: 2472
+        mode: host
+      - target: 2473
+        published: 2473
+        mode: host
+    command: "sh -c '${UPDATE_CERTS_CMD:-true}; /relay serve --enable-db-tracing --enable-otel-tracing'"
+    environment:
+      - ATP_PLC_HOST=https://${plcFQDN}
+      - DATA_DIR=/data/relay
+      - DEBUG_MODE=1
+      - GOINSECURE=${GOINSECURE}
+      - GOLOG_LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - LOG_DESTINATION=1
+      - LOG_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL_DEFAULT:-info}
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - RELAY_DEFAULT_REPO_LIMIT=100000
+      - RELAY_NEW_HOSTS_PER_DAY_LIMIT=500
+      - RELAY_PERSIST_DIR=/data/relay/events
+      - RELAY_REPLAY_WINDOW=87600h
+      - RELAY_TRUSTED_DOMAINS=*.${DOMAIN} ${pdsFQDN}
+      - RELAY_API_LISTEN=:2472
+      - RELAY_METRICS_LISTEN=:2473
+    env_file:
+      - config/relay-secrets.env # Contains RELAY_ADMIN_KEY and database URLs
+    volumes:
+      - relay:/data/relay
       # CA certificates for connecting to self-signed, or a dummy directory if not used
       - ./certs/root.crt:${CUSTOM_CERTS_DIR}/root.crt:ro
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
@@ -969,12 +1030,13 @@ services:
       - feed-generator:/data/feed-generator:rw
       - opensearch:/data/opensearch:rw
       - bgs:/data/bgs:rw
+      - relay:/data/relay:rw
       - bsky:/data/bsky:rw
       - backup-staging:/staging
       - backup-repo:/restic-repo
     environment:
       - TZ=Etc/UTC
-      - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/
+      - BACKUP_PATHS=/data/pds/blobs/ /data/bgs/ /data/relay/ /data/bsky/ /data/opensearch/
       # Glob pattern for SQLite files to backup
       - SQLITE_PATHS=sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite
       - PGHOST=database

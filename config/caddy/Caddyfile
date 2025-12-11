@@ -177,6 +177,15 @@ http://test-ws.{$DOMAIN} {
 	reverse_proxy {$bgsPROXY:http://bgs:2470}
 }
 
+{$relayFQDN} {
+	import cors
+	import tracing relay
+	tls {$EMAIL4CERTS} {
+		on_demand
+	}
+	reverse_proxy {$relayPROXY:http://relay:2472}
+}
+
 {$apiFQDN}, {$publicApiFQDN}, {$bskyFQDN} {
 	import cors
 	import tracing bsky
