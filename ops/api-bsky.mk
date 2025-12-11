@@ -4,7 +4,7 @@ resp ?=/dev/null
 
 # component urls for default:
 pdsURL   ?=https://${pdsFQDN}
-bgsURL   ?=https://${bsgFQDN}
+bgsURL   ?=https://${bgsFQDN}
 relayURL ?=https://${relayFQDN}
 ozoneURL ?=https://${ozoneFQDN}
 
