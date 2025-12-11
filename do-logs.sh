@@ -6,10 +6,10 @@ script_dir="`dirname "$script_path"`"
 
 show_heading "Running docker logs" "$@"
 
-{ docker compose logs "$@" ; DL_PID=$? ; } | { "$script_dir/selfhost_scripts/log_formatter.py" ; LF_PID=$? ; } &
+docker compose logs "$@" | "$script_dir/selfhost_scripts/log_formatter.py" &
 
+pids="$(jobs -p) $!"
 # send interrupts to both parts of the pipe
-trap "kill -INT $DL_PID $LF_PID 2>/dev/null; exit" SIGINT SIGTERM
+trap "kill -INT $pids 2>/dev/null; exit" SIGINT SIGTERM
 
-wait $DL_PID $LF_PID
-
+wait $pids

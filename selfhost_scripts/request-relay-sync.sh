@@ -87,6 +87,6 @@ done
 show_info --oneline "Stopping logging"
 kill -SIGINT $log_pid
 sleep 1
-kill $log_pid
+kill -SIGTERM $log_pid
 wait "$log_pid"
 
