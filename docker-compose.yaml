@@ -354,7 +354,7 @@ services:
       - PDS_BLOBSTORE_DISK_LOCATION=/pds/blobs
       - PDS_BSKY_APP_VIEW_DID=did:web:${bskyFQDN}
       - PDS_BSKY_APP_VIEW_URL=https://${bskyFQDN}
-      - PDS_CRAWLERS=https://${bgsFQDN}
+      - PDS_CRAWLERS=https://${relayFQDN}
       - PDS_DATA_DIRECTORY=/pds
       - PDS_DEV_MODE=true
 #     - PDS_BLOBSTORE_DISK_TMP_LOCATION=/pds/image/tmp
@@ -568,7 +568,7 @@ services:
       - BSKY_LABELS_FROM_ISSUER_DIDS=${BSKY_LABELS_FROM_ISSUER_DIDS}
       - BSKY_PORT=2584
       - BSKY_PUBLIC_URL=https://${bskyFQDN}
-      - BSKY_REPO_PROVIDER=wss://${bgsFQDN}
+      - BSKY_REPO_PROVIDER=wss://${relayFQDN}
       - BSKY_SEARCH_URL=https://${palomarFQDN}
       - BSKY_SERVER_DID=did:web:${bskyFQDN}
       - BSKY_STATSIG_ENV=${BSKY_STATSIG_ENV-}
@@ -849,7 +849,7 @@ services:
       # port 3998 is the default metrics port
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
-      - ATP_BGS_HOST=ws://bgs:2470
+      - ATP_BGS_HOST=ws://relay:2470
       - ATP_PLC_HOST=http://pds:2583
       # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
@@ -896,7 +896,7 @@ services:
       - ./certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       # supporting self-signed certificates, easiest way <<<<
     environment:
-      - JETSTREAM_WS_URL=wss://${bgsFQDN}/xrpc/com.atproto.sync.subscribeRepos
+      - JETSTREAM_WS_URL=wss://${relayFQDN}/xrpc/com.atproto.sync.subscribeRepos
       - JETSTREAM_DATA_DIR=/data
       - JETSTREAM_LISTEN_ADDR=:6008
       - JETSTREAM_METRICS_LISTEN_ADDR=:6009
@@ -984,7 +984,7 @@ services:
       - FEEDGEN_SERVICE_DID=did:web:${feedgenFQDN}
       - FEEDGEN_SQLITE_LOCATION=/data/db.sqlite
       - FEEDGEN_PLC_URL=https://${plcFQDN}
-      - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${bgsFQDN}
+      - FEEDGEN_SUBSCRIPTION_ENDPOINT=wss://${relayFQDN}
       - FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY=3000
       - GOINSECURE=${GOINSECURE}
       - NODE_ENV=${NODE_ENV}
