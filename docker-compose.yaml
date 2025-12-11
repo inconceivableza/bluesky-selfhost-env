@@ -912,7 +912,7 @@ services:
 
   ozone:
     # moderation-api:
-    image: ${BRANDED_NAMESPACE}/bluesky-ozone:${branded_asof:-latest}
+    image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-ozone:${branded_asof:-latest}
     profiles: ['', 'ozone']
     build:
       context: ./repos/ozone/
