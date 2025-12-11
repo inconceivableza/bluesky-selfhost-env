@@ -144,15 +144,15 @@ if [ "$do_check_certs" == 1 ]; then
     done
 fi
 
-show_heading "Deploy bluesky containers" "(plc, bgs, appview, pds, ozone, ...)"
+show_heading "Deploy bluesky containers" "(plc, relay, appview, pds, ozone, ...)"
 make docker-start-bsky || { show_error "BlueSky Containers failed:" "Please see error above" ; exit 1 ; }
 
 show_info --oneline "Adjusting relay settings" "to allow PDS crawling"
-wait_for_container bgs
-"$script_dir/selfhost_scripts/adjust-bgs-limits.sh" || { show_warning "Error adjusting relay settings" "this could prevent the PDS from being crawled; check..." ; }
+wait_for_container relay
+"$script_dir/selfhost_scripts/adjust-relay-limits.sh" || { show_warning "Error adjusting relay settings" "this could prevent the PDS from being crawled; check..." ; }
 
 show_heading "Wait for startup" "of social app"
-# could also wait for Sbsky ?=pds bgs bsky social-app palomar
+# could also wait for Sbsky ?=pds relay bsky social-app palomar
 # this requires a health check to be defined on the container
 wait_for_container social-app
 

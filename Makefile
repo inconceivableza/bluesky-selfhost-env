@@ -183,7 +183,7 @@ origin_repo_did_prefix  ?=${gh}did-method-plc/
 #    # no plc in Sdep, comparing below line.
 #
 Sdep  ?=caddy caddy-sidecar database redis opensearch test-wss test-ws test-indigo pgadmin backup ipcc otel-collector jaeger prometheus
-Sbsky ?=plc pds bgs relay bsky social-app social-card social-embed social-link palomar
+Sbsky ?=plc pds relay bsky social-app social-card social-embed social-link palomar
 Sfeed ?=feed-generator
 Sozone ?=ozone
 Sjetstream ?=jetstream

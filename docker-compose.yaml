@@ -408,7 +408,7 @@ services:
 
   bgs:
     image: ${BRANDED_NAMESPACE}/${REBRANDING_NAME:-bluesky}-indigo-bgs:${BGS_IMAGE_TAG:-${branded_asof:-latest}}
-    profiles: ['', 'indigo']
+    profiles: ['disabled', 'indigo']
     build:
       context: ./repos/indigo/
       dockerfile: cmd/bigsky/Dockerfile
