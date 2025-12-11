@@ -367,6 +367,11 @@ services:
       - PDS_INVITE_INTERVAL=${PDS_INVITE_INTERVAL-}
       - PDS_INVITE_REQUIRED=${PDS_INVITE_REQUIRED}
       - PDS_PORT=2583
+      # backfill settings
+      - PDS_REPO_BACKFILL_LIMIT_MS=307584000000 # 10 years
+      - PDS_MAX_SUBSCRIPTION_BUFFER=10000000 # 10 million records
+      - PDS_MAX_REPO_IMPORT_SIZE=1000000000 # don't know what this does. 1 billion.
+
 # starts: unset optional env for testing ozone >>>>>>>
 #     - PDS_MOD_SERVICE_DID=did:web:${ozoneFQDN}
 #     - PDS_MOD_SERVICE_URL=https://${ozoneFQDN}
