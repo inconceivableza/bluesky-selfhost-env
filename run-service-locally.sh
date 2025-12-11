@@ -67,7 +67,7 @@ show_heading "Running service $service" "$*"
 service_json="$(yq -oj .services.${service} $debug_config)"
 
 function jq_service() {
-  echo "$service_json" | jq -r "$@"
+  echo "$service_json" | jq -r "$@" || { show_error "error in jq request" "$@" ; }
 }
 
 function adopt_environment() {
@@ -91,7 +91,7 @@ cd $script_dir
 running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
 build_commands="$(jq_service '.build[]')"
 run_commands="$(jq_service '.run[]')"
-watch_commands="$(jq_service '.watchers[]')"
+watch_commands="$(jq_service '(.watchers // []) | .[]')"
 
 # build commands are run in the normal environment
 
