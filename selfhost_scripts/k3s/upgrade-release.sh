@@ -31,7 +31,7 @@ echo "📄 Values file: $VALUES_FILE"
 echo ""
 
 # Define unhealthy pod states
-UNHEALTHY_STATES="ImagePullBackOff|ErrImagePull|CrashLoopBackOff|Error"
+UNHEALTHY_STATES="ImagePullBackOff|ErrImagePull|CrashLoopBackOff|Error|Pending"
 
 if [ "$REMOVE_SS" = true ]; then
   echo "🔍 Checking for unhealthy StatefulSets in namespace: $NAMESPACE"
@@ -79,6 +79,45 @@ REASON:.status.containerStatuses[*].state.waiting.reason 2>/dev/null | head -5
     done
 
     echo "✅ StatefulSets deleted (PVCs preserved)"
+  fi
+
+  echo ""
+  echo "🔍 Checking for orphaned pods..."
+  echo ""
+
+  ORPHANED_PODS=$(kubectl get pods -n "$NAMESPACE" -o json | \
+    jq -r --arg states "$UNHEALTHY_STATES" '
+      .items[] |
+      select(
+        (.metadata.ownerReferences | length == 0 or . == null) and
+        (.status.containerStatuses[]?.state |
+         to_entries[] |
+         .value.reason? // "" |
+         test($states))
+      ) |
+      .metadata.name
+    ')
+
+  if [ -z "$ORPHANED_PODS" ]; then
+    echo "✅ No orphaned pods found!"
+  else
+    echo "⚠️  Found orphaned pods:"
+    for pod in $ORPHANED_PODS; do
+      # Get pod status
+      POD_STATUS=$(kubectl get pod "$pod" -n "$NAMESPACE" -o jsonpath='{.status.phase}')
+      POD_REASON=$(kubectl get pod "$pod" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "N/A")
+      echo "  - $pod (Status: $POD_STATUS, Reason: $POD_REASON)"
+    done
+
+    echo ""
+    echo "🗑️  Deleting orphaned pods..."
+
+    for pod in $ORPHANED_PODS; do
+      echo "  Deleting pod: $pod"
+      kubectl delete pod "$pod" -n "$NAMESPACE" --force --grace-period=0
+    done
+
+    echo "✅ Orphaned pods deleted"
   fi
   echo ""
 fi
