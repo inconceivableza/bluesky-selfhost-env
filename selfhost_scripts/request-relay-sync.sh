@@ -9,7 +9,7 @@ make $script_dir/config/relay-secrets.env
 
 function get_relay_auth() {
   . $script_dir/config/relay-secrets.env
-  python3 -c "import base64, os ; pw = os.getenv('RELAY_ADMIN_KEY') ; print(base64.b64encode(f'admin:${RELAY_ADMIN_KEY}'.encode('UTF-8')).decode('UTF-8'))"
+  echo -n "admin:${RELAY_ADMIN_KEY}" | base64
 }
 
 function request_crawl() {

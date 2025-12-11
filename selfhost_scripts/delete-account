@@ -17,7 +17,7 @@ if [ "${handle/$pdsFQDN/}" != "" ]
     handle="$(echo $handle | sed "s/[.]${pdsFQDN}//")"
   fi
 
-auth_header=`python -c "import base64 ; print(base64.b64encode(b'admin:${PDS_ADMIN_PASSWORD}').decode('ascii'))"`
+auth_header="$(echo -n "admin:${PDS_ADMIN_PASSWORD}" | base64)"
 did=`curl -s https://${handle}.${pdsFQDN}/.well-known/atproto-did`
 echo going to delete $did for $handle
 curl -X POST https://${pdsFQDN}/xrpc/com.atproto.admin.deleteAccount -H "Authorization: Basic ${auth_header}" -H 'Content-Type: application/json' -d "{\"did\": \"${did}\"}"
