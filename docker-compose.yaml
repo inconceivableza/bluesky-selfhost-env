@@ -505,6 +505,7 @@ services:
       - RELAY_TRUSTED_DOMAINS="*.${DOMAIN} ${pdsFQDN}"
       - RELAY_API_LISTEN=:2472
       - RELAY_METRICS_LISTEN=:2473
+      - RELAY_DISABLE_REQUEST_CRAWL=true
     env_file:
       - config/relay-secrets.env # Contains RELAY_ADMIN_KEY and database URLs
     volumes:
