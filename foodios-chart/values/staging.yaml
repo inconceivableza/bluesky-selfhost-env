@@ -1,8 +1,9 @@
 # Staging values - optimized for 4 vCPU, 8GB RAM, 160GB storage
+# Note - commented out fields are injected during deployment
 global:
   namespace: foodios-staging
-  domain: yourdomain.com  # Your actual production domain
-  imageRegistry: yournamespace  # Your Docker Hub namespace
+  # domain: yourdomain.com  # Your actual production domain
+  # imageRegistry: yournamespace  # Your Docker Hub namespace
   imagePullPolicy: IfNotPresent
 
   # TLS/Certificate configuration
@@ -10,7 +11,7 @@ global:
     enabled: true
     certIssuer: letsencrypt-prod # Can use letsencrypt-staging but this won't be trusted by browsers (see traefik-config.yaml)
     createSecret: false  # cert-manager will create secrets automatically
-    email: your-email@example.com  # Let's Encrypt notification email
+    # email: your-email@example.com  # Let's Encrypt notification email
 
   # Environment
   environment: staging
@@ -28,24 +29,24 @@ ingress:
   annotations: {}
 
 # Service FQDNs - production domains
-fqdns:
-  api: api.yourdomain.com
-  bgs: bgs.yourdomain.com
-  bsky: bsky.yourdomain.com
-  card: card.yourdomain.com
-  embed: embed.yourdomain.com
-  feedgen: feedgen.yourdomain.com
-  ip: ip.yourdomain.com
-  jaeger: jaeger.yourdomain.com
-  jetstream: jetstream.yourdomain.com
-  link: link.yourdomain.com
-  logs: logs.yourdomain.com
-  ozone: ozone.yourdomain.com
-  palomar: palomar.yourdomain.com
-  pds: pds.yourdomain.com
-  plc: plc.yourdomain.com
-  publicApi: public-api.yourdomain.com
-  socialapp: app.yourdomain.com
+# fqdns:
+#   api: api.yourdomain.com
+#   bgs: bgs.yourdomain.com
+#   bsky: bsky.yourdomain.com
+#   card: card.yourdomain.com
+#   embed: embed.yourdomain.com
+#   feedgen: feedgen.yourdomain.com
+#   ip: ip.yourdomain.com
+#   jaeger: jaeger.yourdomain.com
+#   jetstream: jetstream.yourdomain.com
+#   link: link.yourdomain.com
+#   logs: logs.yourdomain.com
+#   ozone: ozone.yourdomain.com
+#   palomar: palomar.yourdomain.com
+#   pds: pds.yourdomain.com
+#   plc: plc.yourdomain.com
+#   publicApi: public-api.yourdomain.com
+#   socialapp: app.yourdomain.com
 
 # PostgreSQL database
 database:
@@ -397,13 +398,13 @@ backup:
   repo:
     size: 100Gi
     storageClass: local-path
-  restic:
-    autoRemote: ""
-    remoteRepo1: ""
-    remoteRepo2: ""
-    remoteRepo3: ""
-    awsAccessKeyId: ""
-    googleProjectId: ""
+  # restic:
+  #   autoRemote: ""
+  #   remoteRepo1: ""
+  #   remoteRepo2: ""
+  #   remoteRepo3: ""
+  #   awsAccessKeyId: ""
+  #   googleProjectId: ""
   secrets:
     enabled: true
     name: backup-secrets
