@@ -1,0 +1,167 @@
+name: Upgrade Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      service:
+        description: 'Service to upgrade'
+        required: true
+        type: choice
+        options:
+          - bgs
+          - bsky          
+          - ozone
+          - palomar
+          - pds
+          - plc
+          - socialApp
+          - socialCard
+          - socialEmbed
+          - socialLink
+      image_tag:
+        description: 'Image tag (e.g., latest, v1.2.3, abc123def)'
+        required: true
+        type: string
+
+jobs:
+  upgrade:
+    name: Upgrade ${{ inputs.service }} to ${{ inputs.image_tag }}
+    runs-on: ubuntu-22.04
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ vars.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create service upgrade override
+        run: |
+          cat > service-upgrade.yaml << EOF
+          # Service upgrade: ${{ inputs.service }} -> ${{ inputs.image_tag }}
+          # Environment: ${{ inputs.environment }}
+          # Generated at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ${{ inputs.service }}:
+            tag: "${{ inputs.image_tag }}"
+          EOF
+
+          echo "📦 Upgrade override created:"
+          cat service-upgrade.yaml
+
+      - name: Copy files to server
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} "mkdir -p ~/helm-deploy/${{ inputs.environment }}"
+
+          # Clean and copy Helm chart (removes old files)
+          rsync -avz --delete foodios-chart/ \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/foodios-chart/
+
+          scp service-upgrade.yaml \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
+
+      - name: Upgrade service
+        timeout-minutes: 10
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e
+            cd ~/helm-deploy/${{ inputs.environment }}
+
+            NAMESPACE="foodios-${{ inputs.environment }}"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "⬆️  Upgrading ${{ inputs.service }} to ${{ inputs.image_tag }}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # Get current release values
+            echo "📋 Current release info:"
+            helm list -n $NAMESPACE
+
+            echo ""
+            echo "🚀 Applying upgrade..."
+            helm upgrade foodios-${{ inputs.environment }} ./foodios-chart \
+              --namespace $NAMESPACE \
+              --reuse-values \
+              -f ./service-upgrade.yaml \
+              --wait \
+              --timeout 5m \
+              --atomic
+
+            echo ""
+            echo "✅ Upgrade completed successfully"
+          ENDSSH
+
+      - name: Verify upgrade
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            set -e
+
+            NAMESPACE="foodios-${{ inputs.environment }}"
+            SERVICE="${{ inputs.service }}"
+
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔍 Verifying $SERVICE upgrade"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # Find pods for this service
+            echo "Pods for $SERVICE:"
+            kubectl get pods -n $NAMESPACE -l app=$SERVICE -o wide
+
+            echo ""
+            echo "📊 Pod details:"
+            kubectl get pods -n $NAMESPACE -l app=$SERVICE \
+              -o custom-columns='NAME:.metadata.name,IMAGE:.spec.containers[0].image,STATUS:.status.phase,READY:.status.conditions[?(@.type=="Ready")].status'
+
+            echo ""
+            echo "📈 Checking pod readiness..."
+            kubectl wait --for=condition=ready pod \
+              -l app=$SERVICE \
+              -n $NAMESPACE \
+              --timeout=60s || echo "⚠️  Warning: Some pods not ready yet"
+          ENDSSH
+
+      - name: Show pod logs on failure
+        if: failure()
+        run: |
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
+            NAMESPACE="foodios-${{ inputs.environment }}"
+            SERVICE="${{ inputs.service }}"
+
+            echo "❌ Upgrade failed. Collecting logs..."
+
+            PODS=$(kubectl get pods -n $NAMESPACE -l app=$SERVICE -o jsonpath='{.items[*].metadata.name}')
+
+            for pod in $PODS; do
+              echo ""
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "📝 Logs for: $pod"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              kubectl logs $pod -n $NAMESPACE --tail=50 || echo "Could not get logs"
+
+              echo ""
+              echo "🔍 Pod events:"
+              kubectl describe pod $pod -n $NAMESPACE | grep -A 10 "Events:"
+            done
+          ENDSSH
+
+      - name: Cleanup local files
+        if: always()
+        run: |
+          rm -f service-upgrade.yaml
+          echo "🧹 Cleaned up local files"
