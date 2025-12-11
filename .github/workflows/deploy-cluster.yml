@@ -182,6 +182,24 @@ jobs:
           scp helm-values-override.yaml \
             ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/
 
+      - name: Setup upgrade_release.sh script
+        run: |
+          # Copy script and populate environment-specific variables
+          sed -e "s|__NAMESPACE__|foodios-${{ inputs.environment }}|g" \
+              -e "s|__RELEASE_NAME__|foodios-${{ inputs.environment }}|g" \
+              -e "s|__VALUES_FILE__|./foodios-chart/values/${{ inputs.environment }}.yaml|g" \
+              selfhost_scripts/k3s/upgrade-release.sh > upgrade-release-${{ inputs.environment }}.sh
+
+          # Copy to server and make executable
+          scp upgrade-release-${{ inputs.environment }}.sh \
+            ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:~/helm-deploy/${{ inputs.environment }}/upgrade-release.sh
+
+          ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} \
+            "chmod +x ~/helm-deploy/${{ inputs.environment }}/fix-statefulsets.sh"
+
+          # Clean up temp file
+          rm fix-statefulsets-${{ inputs.environment }}.sh
+
       - name: Check and create Kubernetes secrets
         run: |
           ssh ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }} << 'ENDSSH'
