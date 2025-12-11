@@ -502,7 +502,7 @@ services:
       - RELAY_NEW_HOSTS_PER_DAY_LIMIT=500
       - RELAY_PERSIST_DIR=/data/relay/events
       - RELAY_REPLAY_WINDOW=87600h
-      - RELAY_TRUSTED_DOMAINS=*.${DOMAIN} ${pdsFQDN}
+      - RELAY_TRUSTED_DOMAINS="*.${DOMAIN} ${pdsFQDN}"
       - RELAY_API_LISTEN=:2472
       - RELAY_METRICS_LISTEN=:2473
     env_file:
