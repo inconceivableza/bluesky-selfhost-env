@@ -1,0 +1,14 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: backup
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: backup
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  clusterIP: None  # Headless service for StatefulSet
+  selector:
+    app: backup
+{{- end }}

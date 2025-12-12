@@ -1,0 +1,18 @@
+{{- if .Values.ipcc.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ipcc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ipcc
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.ipcc.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: ipcc
+{{- end }}

@@ -1,0 +1,19 @@
+{{- if and .Values.prometheus.enabled .Values.prometheus.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: prometheus
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.prometheus.storage.storageClass }}
+  storageClassName: {{ .Values.prometheus.storage.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.storage.size | default "10Gi" }}
+{{- end }}

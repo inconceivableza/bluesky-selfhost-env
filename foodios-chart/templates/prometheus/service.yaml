@@ -1,0 +1,3 @@
+{{- if .Values.prometheus.enabled }}
+{{- include "foodios.service" (dict "name" "prometheus" "port" .Values.prometheus.port "root" .) }}
+{{- end }}
