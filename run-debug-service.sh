@@ -64,6 +64,23 @@ service_present="$(yq -oj -r ".services | has(\"${service}\")" $debug_config)"
 
 show_heading "Running service $service" "$*"
 
+(
+  . .env
+  debug_service_name=${service/-/}DEBUG
+  if [ "${!debug_service_name}" != "true" ]; then
+    show_warning --oneline "debugging $service" "but ${debug_service_name} not set to true in .env - check if caddy will route to this"
+  else
+    proxy_service_var=${service/-/}PROXY
+    proxy_service_value="$(docker compose exec caddy sh -c 'echo ${'"${proxy_service_var}"':-unset} 2>/dev/null')"
+    echo got $proxy_service_var and $proxy_service_value
+    if [ "$proxy_service_value" == "unset" ]; then
+      show_warning --oneline "debugging $service" "and ${debug_service_name} is set but caddy not running with $proxy_service_var - you need to restart caddy to use the debug service from the domain name"
+    elif [ "$proxy_service_value" == "" ]; then
+      show_warning --oneline "debugging $service" "and ${debug_service_name} is set but could not check if caddy running with $proxy_service_var - you may need to restart caddy to use the debug service from the domain name"
+    fi
+  fi
+)
+
 service_json="$(yq -oj .services.${service} $debug_config)"
 
 function jq_service() {
