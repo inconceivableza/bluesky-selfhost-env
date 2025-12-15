@@ -126,7 +126,9 @@ if [ "$skip_build" == 1 ]
  
 cd $script_dir
 cd "$working_dir"
-export local_service_tmp_dir="`mktemp -d -t localdebug-$service`"
+tmpsuffix=
+[ "$os" == "linux" ] && tmpsuffix=.XXXXXXXXXX
+export local_service_tmp_dir="`mktemp -d -t localdebug-$service$tmpsuffix`"
 
 # run and watch commands are run in the adopted environment
 adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.env"
