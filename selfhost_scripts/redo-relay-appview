@@ -5,8 +5,10 @@ script_dir="$(cd `dirname "$script_path"`/.. ; pwd)"
 . "$script_dir/utils.sh"
 source_env
 
-[ "$1" != "" ] && restore_dir="$1"
-[ -d "$restore_dir" ] || { show_error "Syntax $0 [restore_dir]" "but restore_dir given ($restore_dir) is not directory" ; exit 1 ; }
+[ "$1" != "" ] && {
+  restore_dir="$1"
+  [ -d "$restore_dir" ] || { show_error "Syntax $0 [restore_dir]" "but restore_dir given ($restore_dir) is not directory" ; exit 1 ; }
+}
 
 RELAY_SECRETS_FILE="$script_dir/config/relay-secrets.env"
 make $RELAY_SECRETS_FILE
@@ -21,20 +23,14 @@ function get_relay_auth() {
 
 RELAY_ADMIN_AUTH=$(get_relay_auth)
 
-show_heading "Taking down relay and appview" "relay, bsky and backup in order to drop relay and bsky volume and relay and bsky database and reindex"
-docker compose down relay bsky backup
+show_heading "Taking down relay and appview" "relay and bsky in order to clear relay and bsky volume and relay and bsky database and reindex"
+docker compose down relay bsky
 show_info --oneline "Dropping database" "relay"
 docker compose exec database sh -c 'dropdb -U pg relay'
 show_info --oneline "Dropping database" "bsky"
 docker compose exec database sh -c 'dropdb -U pg bsky'
-show_info --oneline "Downing relay" "and its volume"
-docker compose down -v relay
-
-show_info "Checking volume deletion" "for relay"
-docker compose volumes relay | grep relay >/dev/null && {
-  show_error "Error dropping volume" "relay - please investigate and adjust manually"
-  exit 1
-}
+show_info "Deleting relay and bsky volume data" "from backup"
+docker compose exec backup sh -c "rm -r /data/bsky/* /data/relay/*"
 
 show_info "Recreating volumes" "relay and bsky"
 docker compose create relay bsky
@@ -50,10 +46,6 @@ docker compose exec database sh -c 'createdb -U pg bsky ; psql -U pg healthcheck
   show_error "Error creating database" "bsky - please investigate and adjust manually"
   exit 1
 }
-
-show_info --oneline "Restarting backup" "and waiting for it to be ready"
-docker compose up -d backup
-wait_for_container backup
 
 [ "$restore_dir" != "" ] && {
   show_heading "Restoring data" "including filesystem and databases"
@@ -79,7 +71,8 @@ show_info --oneline "Requesting crawl" "from relay before adjusting limits"
   wget -qO- --method=POST --body-data="{\"hostname\": \"$pdsFQDN\"}" --header="Content-Type: application/json" --header="Authorization: Basic ${RELAY_ADMIN_AUTH}" "https://$relayFQDN/admin/pds/requestCrawl"
 )
 
-# TODO: set cursor to 0
+show_info --oneline "Setting relay cursor to 0" "for pds"
+docker compose exec backup psql relay -c "update host set last_seq=0 where hostname='$pdsFQDN'";
 
 show_info --oneline "Adjusting pds limits" "on relay"
 
