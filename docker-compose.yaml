@@ -515,7 +515,7 @@ services:
       - ./certs/intermediate.crt:${CUSTOM_CERTS_DIR}/intermediate.crt:ro
       - ./certs/ca-certificates.crt:${CUSTOM_CERTS_DIR}/ca-certificates.crt:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:2470/xrpc/_health | grep 'status.*ok' >/dev/null"]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2472/xrpc/_health | grep 'status.*ok' >/dev/null"]
       timeout: 10s
       interval: 10s
       retries: 5
@@ -855,7 +855,7 @@ services:
       # port 3998 is the default metrics port
     environment:
       # refer https://github.com/bluesky-social/indigo/tree/main/cmd/palomar
-      - ATP_BGS_HOST=ws://relay:2470
+      - ATP_BGS_HOST=ws://relay:2472
       - ATP_PLC_HOST=http://pds:2583
       # - ES_CERT_FILE=
       - ES_HOSTS=http://opensearch:9200
