@@ -29,6 +29,8 @@ services:
       - make build-relay-admin-ui
     run:
       - 'docker compose cp relay:/data/relay $local_service_tmp_dir/relay'
+      - 'mkdir -p $local_service_tmp_dir/relay/events'
+      - 'touch $local_service_tmp_dir/relay/events/evts-0'
       - 'go run ./cmd/relay serve --enable-db-tracing --enable-otel-tracing'
     env_exclude:
       - 'HOME'
