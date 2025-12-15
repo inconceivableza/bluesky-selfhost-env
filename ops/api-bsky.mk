@@ -11,7 +11,7 @@ ozoneURL ?=https://${ozoneFQDN}
 #HINT: make api_setPerDayLimit
 api_setPerDayLimit:
 	$(eval _key=$(shell cat ${passfile} | grep RELAY_ADMIN_KEY | awk -F= '{ print $$2}'))
-	$(eval _token=$(shell echo -n "admin:${_key}" | base64))
+	$(eval _token=$(shell echo -n "admin:${_key}" | base64 -w0))
 	curl -k -X POST -L "${relayURL}/admin/subs/setPerDayLimit?limit=10000" -H "Authorization: Basic ${_token}"
 	curl -k -X GET  -L "${relayURL}/admin/subs/perDayLimit" -H "Authorization: Basic ${_token}"
 

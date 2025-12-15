@@ -10,7 +10,7 @@ set +o allexport
 
 . $script_dir/config/secrets-passwords.env
 
-auth_header="$(echo -n "admin:${PDS_ADMIN_PASSWORD}" | base64)"
+auth_header="$(echo -n "admin:${PDS_ADMIN_PASSWORD}" | base64 -w0)"
 results=$(curl -s -X POST https://${pdsFQDN}/xrpc/com.atproto.server.createSession -H "Content-Type: application/json" -d "{\"identifier\": \"$FEEDGEN_PUBLISHER_HANDLE\", \"password\": \"$FEEDGEN_PUBLISHER_PASSWORD\"}")
 accessJwt=$(echo $results | jq -r .accessJwt)
 refreshJwt=$(echo $results | jq -r .refreshJwt)

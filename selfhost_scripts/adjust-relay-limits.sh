@@ -13,7 +13,7 @@ make $RELAY_SECRETS_FILE
 [ "$RELAY_ADMIN_KEY" == "" ] && { show_warning "Couldn't find relay admin key" "from environment or secrets file; please check RELAY_ADMIN_KEY in $params_file and $script_dir/config/secrets-passwords.env" >&2 ; exit 1 ; }
 
 function get_relay_auth() {
-  echo -n "admin:${RELAY_ADMIN_KEY}" | base64
+  echo -n "admin:${RELAY_ADMIN_KEY}" | base64 -w0
 }
 
 RELAY_ADMIN_AUTH=$(get_relay_auth)

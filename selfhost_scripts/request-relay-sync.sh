@@ -9,7 +9,7 @@ make $script_dir/config/relay-secrets.env
 
 function get_relay_auth() {
   . $script_dir/config/relay-secrets.env
-  echo -n "admin:${RELAY_ADMIN_KEY}" | base64
+  echo -n "admin:${RELAY_ADMIN_KEY}" | base64 -w0
 }
 
 function request_crawl() {
