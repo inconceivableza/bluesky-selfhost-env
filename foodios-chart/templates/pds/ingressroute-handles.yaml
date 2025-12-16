@@ -11,14 +11,18 @@ spec:
   entryPoints:
     - websecure
   routes:
-  - match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
-    kind: Rule
+  - kind: Rule
+    match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
     services:
     - name: pds
       port: {{ .Values.pds.port }}
   {{- if .Values.global.tls.enabled }}
   tls:
+    {{- if .Values.global.developmentMode }}
+    secretName: {{ .Values.global.tls.secretName }}
+    {{- else }}
     certResolver: letsencrypt
+    {{- end }}    
     domains:
     - main: "*.{{ .Values.fqdns.pds }}"
   {{- end }}
@@ -35,8 +39,8 @@ spec:
   entryPoints:
     - web
   routes:
-  - match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
-    kind: Rule
+  - kind: Rule
+    match: HostRegexp(`^[a-z0-9-]+\.{{ .Values.fqdns.pds | replace "." "\\." }}$`)
     services:
     - name: pds
       port: {{ .Values.pds.port }}
