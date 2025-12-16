@@ -40,4 +40,8 @@ data:
     -- link(social-app-link)
     CREATE DATABASE link;
     GRANT ALL PRIVILEGES ON DATABASE link TO pg;
+
+    -- relay
+    CREATE DATABASE relay;
+    GRANT ALL PRIVILEGES ON DATABASE relay TO pg;
 {{- end }}

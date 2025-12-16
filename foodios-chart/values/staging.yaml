@@ -47,6 +47,7 @@ ingress:
 #   pds: pds.yourdomain.com
 #   plc: plc.yourdomain.com
 #   publicApi: public-api.yourdomain.com
+#   relay: relay.yourdomain.com
 #   socialapp: app.yourdomain.com
 
 # PostgreSQL database
@@ -139,7 +140,7 @@ plc:
 
 # BGS (Big Graph Service / Relay)
 bgs:
-  enabled: true
+  enabled: false
   replicas: 1
   image: foodios-indigo-bgs
   tag: latest  # Will be overridden by workflow
@@ -150,6 +151,32 @@ bgs:
   secrets:
     enabled: true
     name: bgs-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 1Gi
+    requests:
+      cpu: "300m"
+      memory: 512Mi
+
+# Relay (ATP Event Stream Relay)
+relay:
+  enabled: true  # Disabled by default in staging
+  replicas: 1
+  image: foodios-indigo-relay
+  tag: latest  # Will be overridden by workflow
+  apiPort: 2472
+  metricsPort: 2473
+  defaultRepoLimit: 100000
+  newHostsPerDayLimit: 500
+  replayWindow: 87600h
+  disableRequestCrawl: "true"
+  storage:
+    size: 40Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: relay-secrets
   resources:
     limits:
       cpu: "500m"

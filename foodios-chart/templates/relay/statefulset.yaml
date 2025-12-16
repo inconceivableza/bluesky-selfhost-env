@@ -1,0 +1,114 @@
+{{- if .Values.relay.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: relay
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: relay
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  serviceName: relay
+  replicas: {{ .Values.relay.replicas }}
+  selector:
+    matchLabels:
+      app: relay
+  template:
+    metadata:
+      labels:
+        app: relay
+    spec:
+      {{- include "foodios.hostAliases" . | nindent 6 }}
+      initContainers:
+      - name: wait-for-db
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z database {{ .Values.database.port }}; do echo waiting for database; sleep 2; done;']
+      containers:
+      - name: relay
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.relay.image }}:{{ .Values.relay.tag }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.relay.apiPort }}
+          name: api
+          protocol: TCP
+        - containerPort: {{ .Values.relay.metricsPort }}
+          name: metrics
+          protocol: TCP
+        command: ["sh", "-c"]
+        args:
+        - |
+          /relay serve --enable-db-tracing --enable-otel-tracing
+        env:
+        - name: ATP_PLC_HOST
+          value: "https://{{ .Values.fqdns.plc }}"
+        - name: DATA_DIR
+          value: "/data/relay"
+        - name: DEBUG_MODE
+          value: "{{ if .Values.global.developmentMode }}1{{ else }}0{{ end }}"
+        - name: GOINSECURE
+          value: "{{ .Values.global.goInsecure }}"
+        - name: GOLOG_LOG_LEVEL
+          value: "{{ .Values.global.logLevel }}"
+        - name: LOG_DESTINATION
+          value: "1"
+        - name: LOG_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: "{{ .Values.global.logLevel }}"
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4318"
+        - name: RELAY_DEFAULT_REPO_LIMIT
+          value: "{{ .Values.relay.defaultRepoLimit }}"
+        - name: RELAY_NEW_HOSTS_PER_DAY_LIMIT
+          value: "{{ .Values.relay.newHostsPerDayLimit }}"
+        - name: RELAY_PERSIST_DIR
+          value: "/data/relay/events"
+        - name: RELAY_REPLAY_WINDOW
+          value: "{{ .Values.relay.replayWindow }}"
+        - name: RELAY_TRUSTED_DOMAINS
+          value: "*.{{ .Values.global.domain }} {{ .Values.fqdns.pds }}"
+        - name: RELAY_API_LISTEN
+          value: ":{{ .Values.relay.apiPort }}"
+        - name: RELAY_METRICS_LISTEN
+          value: ":{{ .Values.relay.metricsPort }}"
+        - name: RELAY_DISABLE_REQUEST_CRAWL
+          value: "{{ .Values.relay.disableRequestCrawl }}"
+        {{- if .Values.relay.secrets.enabled }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.relay.secrets.name }}
+        {{- end }}
+        volumeMounts:
+        - name: relay-data
+          mountPath: /data/relay
+        livenessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: api
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /xrpc/_health
+            port: api
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- if .Values.relay.resources }}
+        resources:
+          {{- toYaml .Values.relay.resources | nindent 10 }}
+        {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: relay-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.relay.storage.storageClass }}
+      storageClassName: {{ .Values.relay.storage.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.relay.storage.size }}
+{{- end }}

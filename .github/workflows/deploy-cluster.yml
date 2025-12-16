@@ -102,6 +102,7 @@ jobs:
           fqdns:
             api: "${{ vars.APIFQDN }}"
             bgs: "${{ vars.BGSFQDN }}"
+            relay: "${{ vars.RELAYFQDN }}"
             bsky: "${{ vars.BSKYFQDN }}"
             card: "${{ vars.CARDFQDN }}"
             embed: "${{ vars.EMBEDFQDN }}"
@@ -242,6 +243,11 @@ jobs:
             create_or_update_secret "bgs-secrets" \
               --from-literal=BGS_ADMIN_KEY='${{ secrets.BGS_ADMIN_KEY }}' \
               --from-literal=DATABASE_URL='${{ secrets.BGS_DATABASE_URL }}'
+            
+            # Relay secrets
+            create_or_update_secret "relay-secrets" \
+              --from-literal=RELAY_ADMIN_KEY='${{ secrets.RELAY_ADMIN_KEY }}' \
+              --from-literal=DATABASE_URL=postgres://'${{ secrets.POSTGRES_USER }}':'${{ secrets.POSTGRES_PASSWORD }}'@database/relay
 
             # PDS secrets
             create_or_update_secret "pds-secrets" \
