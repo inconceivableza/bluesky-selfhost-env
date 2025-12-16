@@ -81,7 +81,7 @@ pds:
   debugMode: false
   replicas: 1
   image: foodios-atproto-pds
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2583
   storage:
     size: 30Gi  # Reduced for staging
@@ -103,7 +103,7 @@ bsky:
   debugMode: false
   replicas: 1
   image: foodios-atproto-bsky
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2584
   storage:
     enabled: true
@@ -125,7 +125,7 @@ plc:
   enabled: true
   replicas: 1
   image: foodios-did-method-plc
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2582
   secrets:
     enabled: true
@@ -143,7 +143,7 @@ bgs:
   enabled: false
   replicas: 1
   image: foodios-indigo-bgs
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2470
   storage:
     size: 40Gi  # Reduced for staging
@@ -164,7 +164,7 @@ relay:
   enabled: true  # Disabled by default in staging
   replicas: 1
   image: foodios-indigo-relay
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   apiPort: 2472
   metricsPort: 2473
   defaultRepoLimit: 100000
@@ -190,7 +190,7 @@ socialApp:
   enabled: true
   replicas: 1
   image: foodios-social-app
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 8100
   command: ["/bin/sh", "-c"]
   args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
@@ -207,7 +207,7 @@ socialCard:
   enabled: true
   replicas: 1
   image: foodios-social-card
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3003
   resources:
     limits:
@@ -222,7 +222,7 @@ socialEmbed:
   enabled: true
   replicas: 1
   image: foodios-social-embed
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 8101
   command: ['sh', '-c']
   args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
@@ -239,7 +239,7 @@ socialLink:
   enabled: true
   replicas: 1
   image: foodios-social-link
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3004
   secrets:
     enabled: true
@@ -257,7 +257,7 @@ palomar:
   enabled: true
   replicas: 1
   image: foodios-indigo-palomar
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3999
   secrets:
     enabled: true
@@ -275,7 +275,7 @@ ozone:
   enabled: false  # Enable if needed
   replicas: 1
   image: foodios-atproto-ozone
-  tag: latest
+  # tag: latest
   port: 3005
   secrets:
     enabled: true
@@ -310,7 +310,7 @@ redis:
 opensearch:
   enabled: true
   image: foodios-indigo-opensearch
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   replicas: 1
   port: 9200
   javaOpts: "-Xms512m -Xmx512m"  # Reduced heap for staging
@@ -333,7 +333,7 @@ ipcc:
   enabled: true
   replicas: 1
   image: ip-location-service-bsky
-  tag: latest
+  # tag: latest
   port: 8080
   storage:
     enabled: true
@@ -352,7 +352,7 @@ feedGenerator:
   enabled: true
   replicas: 1
   image: foodios-feed-generator
-  tag: latest
+  # tag: latest
   port: 3008
   storage:
     enabled: true
