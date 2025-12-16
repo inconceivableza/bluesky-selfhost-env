@@ -102,22 +102,23 @@ jobs:
           fqdns:
             api: "${{ vars.APIFQDN }}"
             bgs: "${{ vars.BGSFQDN }}"
-            relay: "${{ vars.RELAYFQDN }}"
             bsky: "${{ vars.BSKYFQDN }}"
             card: "${{ vars.CARDFQDN }}"
             embed: "${{ vars.EMBEDFQDN }}"
             feedgen: "${{ vars.FEEDGENFQDN }}"
+            grafana: "${{ vars.GRAFANAFQDN }}"
             ip: "${{ vars.IPFQDN }}"
             jaeger: jaeger.${{ vars.DOMAIN }}
             jetstream: "${{ vars.JETSTREAMFQDN }}"
             link: "${{ vars.LINKFQDN }}"
+            logs: "${{ vars.LOGSFQDN }}"
             ozone: "${{ vars.OZONEFQDN }}"
             palomar: "${{ vars.PALOMARFQDN }}"
             pds: "${{ vars.PDSFQDN }}"
             plc: "${{ vars.PLCFQDN }}"
             publicApi: "${{ vars.PUBLICAPIFQDN }}"
+            relay: "${{ vars.RELAYFQDN }}"
             socialapp: "${{ vars.SOCIALAPPFQDN }}"
-            logs: "${{ vars.LOGSFQDN }}"
 
           # Image tags from Docker Hub
           pds:
