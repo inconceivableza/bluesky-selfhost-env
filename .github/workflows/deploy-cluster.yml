@@ -51,6 +51,7 @@ jobs:
             "foodios-atproto-bsky"
             "foodios-atproto-pds"
             "foodios-did-method-plc"
+            "foodios-feed-generator"
             "foodios-indigo-bgs"
             "foodios-indigo-palomar"
             "foodios-indigo-opensearch"
@@ -144,6 +145,9 @@ jobs:
 
           socialLink:
             tag: "${{ env.FOODIOS_SOCIAL_LINK_IMAGE_TAG }}"
+
+          feedGenerator:
+            tag: "${{ env.FOODIOS_FEED_GENERATOR_IMAGE_TAG }}"
 
           opensearch:
             tag: "${{ env.FOODIOS_INDIGO_OPENSEARCH_IMAGE_TAG }}"

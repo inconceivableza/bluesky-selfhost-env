@@ -324,7 +324,7 @@ ipcc:
 feedGenerator:
   enabled: true
   replicas: 1
-  image: bluesky-feed-generator
+  image: foodios-feed-generator
   tag: latest
   port: 3008
   storage:

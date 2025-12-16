@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: feed-generator
-        image: {{ include "foodios.image" (dict "image" .Values.feedGenerator.image "tag" .Values.feedGenerator.tag "registry" "itaru2622") }}
+        image: {{ .Values.global.imageRegistry }}/{{ .Values.feedGenerator.image }}:{{ .Values.feedGenerator.tag }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         ports:
         - containerPort: {{ .Values.feedGenerator.port }}
