@@ -208,6 +208,11 @@
           "type": "string",
           "description": "Social app web UI domain",
           "format": "hostname"
+        },
+        "grafana": {
+          "type": "string",
+          "description": "Grafana web UI domain",
+          "format": "hostname"
         }
       },
       "required": ["pds", "bsky", "plc"]
@@ -519,6 +524,47 @@
               ]
             }
           }
+        }
+      ]
+    },
+    "grafana": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Grafana visualization and dashboards configuration",
+          "properties": {
+            "adminUser": {
+              "type": "string",
+              "description": "Grafana admin username",
+              "default": "admin"
+            },
+            "adminPassword": {
+              "type": "string",
+              "description": "Grafana admin password (change in production!)",
+              "minLength": 5
+            },
+            "plugins": {
+              "type": "string",
+              "description": "Comma-separated list of Grafana plugins to install",
+              "default": ""
+            },
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent storage for dashboards and settings"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": ["adminUser", "adminPassword"]
         }
       ]
     },

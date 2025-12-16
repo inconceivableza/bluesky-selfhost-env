@@ -37,6 +37,7 @@ ingress:
 #   embed: embed.yourdomain.com
 #   feedgen: feedgen.yourdomain.com
 #   ip: ip.yourdomain.com
+#   grafana: grafana.yourdomain.com
 #   jaeger: jaeger.yourdomain.com
 #   jetstream: jetstream.yourdomain.com
 #   link: link.yourdomain.com
@@ -348,6 +349,27 @@ prometheus:
   storage:
     enabled: true
     size: 10Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
+# Grafana (Visualization & Dashboards)
+grafana:
+  enabled: true
+  replicas: 1
+  port: 3000
+  tag: "11.4.0"
+  # adminUser: 
+  # adminPassword:
+  plugins: ""  # Optional: comma-separated list of plugins to install
+  storage:
+    enabled: true
+    size: 5Gi
     storageClass: local-path
   resources:
     limits:

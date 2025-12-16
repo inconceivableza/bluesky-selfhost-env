@@ -159,6 +159,10 @@ jobs:
               allowedIPs:
                 - ${{ vars.VPN_IP_RANGE }}
 
+          grafana:
+            adminUser: "${{ secrets.GRAFANA_USER }}"
+            adminPassword: "${{ secrets.GRAFANA_PASSWORD }}"
+
           backup:
             restic:
               autoRemote: "${{ vars.RESTIC_AUTO_REMOTE }}"
