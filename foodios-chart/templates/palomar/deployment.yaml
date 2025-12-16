@@ -20,7 +20,7 @@ spec:
       initContainers:
       - name: wait-for-dependencies
         image: busybox:latest
-        command: ['sh', '-c', 'until nc -z opensearch 9200 && nc -z database 5432 && nc -z bgs 2470; do echo waiting for dependencies; sleep 2; done']
+        command: ['sh', '-c', 'until nc -z opensearch 9200 && nc -z database 5432 && nc -z relay {{ .Values.relay.apiPort }}; do echo waiting for dependencies; sleep 2; done']
       containers:
       - name: palomar
         image: {{ include "foodios.image" (dict "image" .Values.palomar.image "tag" .Values.palomar.tag "registry" .Values.global.imageRegistry) }}
