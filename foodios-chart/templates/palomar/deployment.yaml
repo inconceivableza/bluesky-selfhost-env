@@ -30,7 +30,7 @@ spec:
           name: http
         env:
         - name: ATP_BGS_HOST
-          value: "ws://bgs:{{ .Values.bgs.port }}"
+          value: "ws://relay:{{ .Values.relay.apiPort }}"
         - name: ATP_PLC_HOST
           value: "http://plc:{{ .Values.plc.port }}"
         - name: ES_HOSTS

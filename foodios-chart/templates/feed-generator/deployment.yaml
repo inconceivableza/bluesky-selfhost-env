@@ -40,7 +40,7 @@ spec:
         - name: FEEDGEN_PLC_URL
           value: "https://{{ .Values.fqdns.plc }}"
         - name: FEEDGEN_SUBSCRIPTION_ENDPOINT
-          value: "wss://{{ .Values.fqdns.bgs }}"
+          value: "wss://{{ .Values.fqdns.relay }}"
         - name: FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY
           value: "3000"
         - name: GOINSECURE
