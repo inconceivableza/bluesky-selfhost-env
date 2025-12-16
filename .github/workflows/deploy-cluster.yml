@@ -53,6 +53,7 @@ jobs:
             "foodios-did-method-plc"
             "foodios-feed-generator"
             "foodios-indigo-bgs"
+            "foodios-indigo-relay"
             "foodios-indigo-palomar"
             "foodios-indigo-opensearch"
             "foodios-social-app"
@@ -132,6 +133,9 @@ jobs:
 
           bgs:
             tag: "${{ env.FOODIOS_INDIGO_BGS_IMAGE_TAG }}"
+
+          relay:
+            tag: "${{ env.FOODIOS_INDIGO_RELAY_IMAGE_TAG }}"
 
           palomar:
             tag: "${{ env.FOODIOS_INDIGO_PALOMAR_IMAGE_TAG }}"
