@@ -204,6 +204,11 @@
           "description": "Public API domain",
           "format": "hostname"
         },
+        "relay": {
+          "type": "string",
+          "description": "Relay (ATP Event Stream) domain",
+          "format": "hostname"
+        },
         "socialapp": {
           "type": "string",
           "description": "Social app web UI domain",
@@ -346,6 +351,60 @@
           "type": "object",
           "description": "BGS (Big Graph Service/Relay) configuration",
           "properties": {
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    },
+    "relay": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/service"
+        },
+        {
+          "type": "object",
+          "description": "Relay (ATP Event Stream Relay) configuration",
+          "properties": {
+            "apiPort": {
+              "type": "integer",
+              "description": "Relay API port",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 2472
+            },
+            "metricsPort": {
+              "type": "integer",
+              "description": "Relay metrics port for Prometheus",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 2473
+            },
+            "defaultRepoLimit": {
+              "type": "integer",
+              "description": "Maximum number of repos to track",
+              "default": 100000
+            },
+            "newHostsPerDayLimit": {
+              "type": "integer",
+              "description": "Maximum new hosts to accept per day",
+              "default": 500
+            },
+            "replayWindow": {
+              "type": "string",
+              "description": "Time window for event replay (e.g., 87600h)",
+              "default": "87600h"
+            },
+            "disableRequestCrawl": {
+              "type": "string",
+              "description": "Disable crawling new repos on request",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "true"
+            },
             "storage": {
               "$ref": "#/definitions/storage"
             }
