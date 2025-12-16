@@ -24,8 +24,6 @@ spec:
         ports:
         - containerPort: {{ .Values.feedGenerator.port }}
           name: http
-        - containerPort: 3000
-          name: health
         env:
         - name: FEEDGEN_HOSTNAME
           value: {{ .Values.fqdns.feedgen }}
@@ -58,16 +56,21 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /data
+        {{- if .Values.global.developmentMode }}
+        - name: ca-cert
+          mountPath: /tmp/ca-cert
+          readOnly: true
+        {{- end }}
         livenessProbe:
           httpGet:
-            path: /xrpc/_health
-            port: health
+            path: /.well-known/did.json
+            port: http
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /xrpc/_health
-            port: health
+            path: /.well-known/did.json
+            port: http
           initialDelaySeconds: 10
           periodSeconds: 5
         {{- if .Values.feedGenerator.resources }}
@@ -82,4 +85,9 @@ spec:
         {{- else }}
         emptyDir: {}
         {{- end }}
+      {{- if .Values.global.developmentMode }}
+      - name: ca-cert
+        configMap:
+          name: local-ca-cert
+      {{- end }}
 {{- end }}
