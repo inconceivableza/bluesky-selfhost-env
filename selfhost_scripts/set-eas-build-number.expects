@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+log_user 1
+
+if {[llength $argv] > 0} {
+    if {[lindex $argv 0] eq "--help"} {
+        send_error "Usage: $argv0 \[--help\] \[build_number \[target_os \[build_profile\]\]\]\n"
+        send_error "  build_number   what to set the build number to - defaults to \$build_number from env, required in env or commandline\n"
+        send_error "  target_os      which os to target (ios or android) - defaults to \$target_os from env, required in env or commandline\n"
+        send_error "  build_profile  which build_profile to use - defaults to \$build_profile from env, defaults to development\n"
+        exit 0
+    }
+}
+
+if {[llength $argv] > 0} {
+    set build_number [lindex $argv 0]
+} elseif {[info exists env(build_number)]} {
+    set build_number $env(build_number)
+} else {
+    send_error "supply build_number as environment variable or on commandline\n"
+    exit 1
+}
+
+if {[llength $argv] > 1} {
+    set target_os [lindex $argv 1]
+} elseif {[info exists env(target_os)]} {
+    set target_os $env(target_os)
+} else {
+    send_error "supply target_os as environment variable or on commandline\n"
+    exit 1
+}
+
+if {[llength $argv] > 2} {
+    set build_profile [lindex $argv 2]
+} elseif {[info exists env(build_profile)]} {
+    set build_profile $env(build_profile)
+} else {
+    set build_profile development
+}
+
+send_user "Setting eas build version for os $target_os and profile $build_profile to $build_number by scripting eas-cli:\n"
+spawn unbuffer -p npx eas-cli build:version:set -p $target_os -e $build_profile
+stty -raw
+expect {
+  "What version would you like to set?" {
+    send "$build_number\r"
+    exp_continue
+  }
+  eof
+}
+send_user "Waiting for process to complete...\n"
+wait
