@@ -60,6 +60,7 @@ ifeq ($(bskyDEBUG), true)
 	@echo "bskyPROXY=http://host.docker.internal:$(shell yq -r .services.bsky.env_override.BSKY_PORT ./debug-services.yaml)" >> $@
 endif
 ifeq ($(ozoneDEBUG), true)
+	@echo "ozone_daemonPROXY=http://host.docker.internal:$(shell yq -r .services.ozone_daemon.env_override.OZONE_PORT ./debug-services.yaml)" >> $@
 	@echo "ozonePROXY=http://host.docker.internal:$(shell yq -r .services.ozone.env_override.OZONE_PORT ./debug-services.yaml)" >> $@
 endif
 ifeq ($(pdsDEBUG), true)

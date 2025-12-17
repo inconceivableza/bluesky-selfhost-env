@@ -260,6 +260,18 @@ yarnstart.{$DOMAIN} {
 	tls {$EMAIL4CERTS} {
 		on_demand
 	}
+	@health {
+		path /robots.txt
+	}
+	@xrpc {
+		path /xrpc/*
+	}
+	@wellknown {
+		path /.well-known/*
+	}
+	import tracing_reverse_proxy @health {$ozone_daemonPROXY:http://ozone:3005} ozone_daemon_health
+	import tracing_reverse_proxy @xrpc {$ozone_daemonPROXY:http://ozone:3005} ozone_daemon_xrpc
+	import tracing_reverse_proxy @wellknown {$ozone_daemonPROXY:http://ozone:3005} ozone_daemon_wellknown
 	reverse_proxy {$ozonePROXY:http://ozone:3005}
 }
 
