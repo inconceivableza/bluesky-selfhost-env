@@ -67,9 +67,11 @@ service_present="$(yq -oj -r ".services | has(\"${service}\")" $debug_config)"
 
 show_heading "Running service $service" "$*"
 
+compose_service_name="$(yq -oj -r ".services.$service.compose_name // \"$service\"" $debug_config)"
+
 (
   . .env
-  debug_service_name=${service/-/}DEBUG
+  debug_service_name=${compose_service_name/-/}DEBUG
   if [ "${!debug_service_name}" != "true" ]; then
     show_warning --oneline "debugging $service" "but ${debug_service_name} not set to true in .env - check if caddy will route to this"
   else
@@ -108,7 +110,7 @@ function adopt_environment() {
 working_dir="$(jq_service .working_dir)"
 cd $script_dir
 
-running_env="$($script_dir/export-service-env.sh "$service" | sed 's#^#export #')"
+running_env="$($script_dir/export-service-env.sh "$compose_service_name" | sed 's#^#export #')"
 build_commands="$(jq_service '.build[]')"
 run_commands="$(jq_service '.run[]')"
 watch_commands="$(jq_service '(.watchers // []) | .[]')"
