@@ -14,6 +14,7 @@ data:
     {{- if .Values.prometheus.enabled }}
     - name: Prometheus
       type: prometheus
+      uid: prometheus
       access: proxy
       url: http://prometheus:{{ .Values.prometheus.port }}
       isDefault: true
@@ -24,6 +25,7 @@ data:
     {{- if .Values.jaeger.enabled }}
     - name: Jaeger
       type: jaeger
+      uid: jaeger
       access: proxy
       url: http://jaeger:16686
       editable: true
