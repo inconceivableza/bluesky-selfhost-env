@@ -20,6 +20,7 @@ function show_help() {
   echo "  -B, --skip-build    skips the build commands"
   echo "  -f, --format-logs   pipes the output through a log formatter"
   echo "  -w, --watch         runs the watcher commands simultaneously after build, rather than the run commands"
+  echo "  -e, --show-env      output the environment variables"
   echo
   echo "Supported services:"
   for service in $(yq -oj -r ".services | keys() []" $debug_config)
@@ -33,6 +34,7 @@ keep_tmp=
 skip_build=
 format_logs=
 do_watch=
+show_env=
 
 while [ "$#" -gt 0 ]
   do
@@ -40,6 +42,7 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "-B" || "$1" == "--skip-build" ]] && { skip_build=1 ; shift 1 ; continue ; }
     [[ "$1" == "-f" || "$1" == "--format-logs" ]] && { format_logs=1 ; shift 1 ; continue ; }
     [[ "$1" == "-w" || "$1" == "--watch" ]] && { do_watch=1 ; shift 1 ; continue ; }
+    [[ "$1" == "-e" || "$1" == "--show-env" ]] && { show_env=1 ; shift 1 ; continue ; }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
     [[ "${1#/}" != "$1" ]] && {
       show_error "Unknown parameter" "$1"
@@ -134,6 +137,7 @@ export local_service_tmp_dir="`mktemp -d -t localdebug-$service$tmpsuffix`"
 adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.env"
 (
   . "$local_service_tmp_dir/local-service-export.env"
+  [ "$show_env" == 1 ] && { show_heading "Local environment" "that will be passed to run/watch commands" ; cat "$local_service_tmp_dir/local-service-export.env" ; }
   rm "$local_service_tmp_dir/local-service-export.env"
   if [ "$do_watch" == 1 ]; then
     PIDS=()
