@@ -237,7 +237,8 @@ trap interrupt_handler SIGINT
 
 show_heading "Running yarn" "to ensure everything is installed"
 nvm use 20
-yarn || { pre_exit --oneline "Error installing" "check yarn output" ; exit 1 ; }
+# we need yarn to install devDependencies even if NODE_ENV=production, to complete the intl steps; the final expo build won't do this
+yarn --production=false --frozen-lockfile || { pre_exit --oneline "Error installing" "check yarn output" ; exit 1 ; }
 
 if [ "$intl_target" == "" ]; then
   show_info --oneline "Skipping intl compilation" "as requested"
