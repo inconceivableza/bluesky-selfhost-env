@@ -7,11 +7,11 @@ script_dir="`dirname "$script_path"`"
 debug_config="$script_dir/debug-services.yaml"
 
 function show_usage() {
-  echo "Syntax $0 [-k|--keep-tmp] [-B|--skip-build] [-f|--format-logs] service"
+  echo "Syntax $0 [-k|--keep-tmp] [-B|--skip-build] [-f|--format-logs] [-w|--watch] [-e|--show-env] [-n|--dry-run] service"
 }
 
 function show_help() {
-  echo "Usage: $0 [-k|--keep-tmp] [-B|--skip-build] [-f|--format-logs] service"
+  echo "Usage: $0 [-k|--keep-tmp] [-B|--skip-build] [-f|--format-logs] [-w|--watch] [-e|--show-env] [-n|--dry-run] service"
   echo
   echo "Runs a service directly on host, for quicker debugging, instead of in the docker container"
   echo
@@ -21,6 +21,7 @@ function show_help() {
   echo "  -f, --format-logs   pipes the output through a log formatter"
   echo "  -w, --watch         runs the watcher commands simultaneously after build, rather than the run commands"
   echo "  -e, --show-env      output the environment variables"
+  echo "  -n, --dry-run       dfn't actually run the watch/run commands but show the commands that would be run"
   echo
   echo "Supported services:"
   for service in $(yq -oj -r ".services | keys() []" $debug_config)
@@ -35,6 +36,7 @@ skip_build=
 format_logs=
 do_watch=
 show_env=
+dry_run=
 
 while [ "$#" -gt 0 ]
   do
@@ -43,6 +45,7 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "-f" || "$1" == "--format-logs" ]] && { format_logs=1 ; shift 1 ; continue ; }
     [[ "$1" == "-w" || "$1" == "--watch" ]] && { do_watch=1 ; shift 1 ; continue ; }
     [[ "$1" == "-e" || "$1" == "--show-env" ]] && { show_env=1 ; shift 1 ; continue ; }
+    [[ "$1" == "-n" || "$1" == "--dry-run" ]] && { dry_run=1 ; shift 1 ; continue ; }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && { show_help >&2 ; exit ; }
     [[ "${1#/}" != "$1" ]] && {
       show_error "Unknown parameter" "$1"
@@ -148,31 +151,43 @@ adopt_environment "$running_env" > "$local_service_tmp_dir/local-service-export.
     while IFS= read -r cmd
       do
         cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
-        show_info --oneline "Running watcher command in background" "$cmd"
-        $cmd &
+        if [ "$dry_run" == 1 ]; then
+          show_info --oneline "Would run watcher command in background" "$cmd"
+          continue
+        else
+          show_info --oneline "Running watcher command in background" "$cmd"
+          $cmd &
+        fi
         PIDS+=($!)
       done <<< "$watch_commands"
-    show_info --oneline "Watcher commands started" "press Ctrl-C to terminate them all"
-    wait
+    if [ "$dry_run" != 1 ]; then
+      show_info --oneline "Watcher commands started" "press Ctrl-C to terminate them all"
+      wait
+    fi
   else
     while IFS= read -r cmd
       do
         cmd="${cmd//\$local_service_tmp_dir/${local_service_tmp_dir/}}"
-        show_info --oneline "Running command" "$cmd in $(pwd)"
-        # cd commands will have no effect if piped as they're run in a subshell. likewise for export etc
-        [ "${cmd#cd }" != "$cmd" ] && {
-          $cmd || { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+        if [ "$dry_run" == 1 ]; then
+          show_info --oneline "Would run command" "$cmd in $(pwd)"
           continue
-        }
-        $cmd | {
-          if [ "$format_logs" == 1 ]
-            then
-              "$script_dir/selfhost_scripts/log_formatter.py" --no-json-prefix --default-service-prefix "$service"
-            else
-              cat
-            fi
-        }
-        [ ${PIPESTATUS[0]} -ne 0 ] && { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+        else
+          show_info --oneline "Running command" "$cmd in $(pwd)"
+          # cd commands will have no effect if piped as they're run in a subshell. likewise for export etc
+          [ "${cmd#cd }" != "$cmd" ] && {
+            $cmd || { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+            continue
+          }
+          $cmd | {
+            if [ "$format_logs" == 1 ]
+              then
+                "$script_dir/selfhost_scripts/log_formatter.py" --no-json-prefix --default-service-prefix "$service"
+              else
+                cat
+              fi
+          }
+          [ ${PIPESTATUS[0]} -ne 0 ] && { show_warning --oneline "Error running command" "please correct and rerun" ; break ; }
+        fi
       done <<< "$run_commands"
   fi
 )
