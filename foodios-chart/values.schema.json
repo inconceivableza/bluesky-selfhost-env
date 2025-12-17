@@ -511,6 +511,41 @@
         }
       ]
     },
+    "opensearchDashboards": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/service"
+        },
+        {
+          "type": "object",
+          "description": "OpenSearch Dashboards (log visualization UI) configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable OpenSearch Dashboards for log visualization",
+              "default": true
+            },
+            "replicas": {
+              "type": "integer",
+              "description": "Number of dashboard replicas",
+              "minimum": 0,
+              "maximum": 3,
+              "default": 1
+            },
+            "image": {
+              "type": "string",
+              "description": "OpenSearch Dashboards image name",
+              "default": "opensearch-dashboards"
+            },
+            "tag": {
+              "type": "string",
+              "description": "OpenSearch Dashboards version tag",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            }
+          }
+        }
+      ]
+    },
     "ipcc": {
       "allOf": [
         { "$ref": "#/definitions/service" },

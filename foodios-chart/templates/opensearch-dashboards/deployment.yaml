@@ -1,0 +1,61 @@
+{{- if .Values.opensearchDashboards.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch-dashboards
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: opensearch-dashboards
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.opensearchDashboards.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: opensearch-dashboards
+  template:
+    metadata:
+      labels:
+        app: opensearch-dashboards
+    spec:
+      containers:
+      - name: opensearch-dashboards
+        image: {{ include "foodios.image" (dict "image" .Values.opensearchDashboards.image "tag" .Values.opensearchDashboards.tag "registry" "opensearchproject") }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: 5601
+          name: http
+          protocol: TCP
+        env:
+        - name: OPENSEARCH_HOSTS
+          value: '["http://opensearch:9200"]'
+        - name: DISABLE_SECURITY_DASHBOARDS_PLUGIN
+          value: "true"
+        - name: SERVER_HOST
+          value: "0.0.0.0"
+        - name: SERVER_NAME
+          value: {{ .Values.fqdns.logs | quote }}
+        - name: SERVER_BASEPATH
+          value: ""
+        - name: SERVER_REWRITEBASEPATH
+          value: "false"
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: 5601
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 5601
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        {{- if .Values.opensearchDashboards.resources }}
+        resources:
+          {{- toYaml .Values.opensearchDashboards.resources | nindent 10 }}
+        {{- end }}
+{{- end }}

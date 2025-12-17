@@ -1,0 +1,3 @@
+{{- if .Values.opensearchDashboards.enabled }}
+{{- include "foodios.ingress" (dict "name" "opensearch-dashboards" "host" .Values.fqdns.logs "port" 5601 "root" .) }}
+{{- end }}

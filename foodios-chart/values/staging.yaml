@@ -322,11 +322,24 @@ opensearch:
     name: opensearch-secrets
   resources:
     limits:
+      cpu: "1000m"
+      memory: 2Gi
+    requests:
       cpu: "500m"
       memory: 1Gi
-    requests:
-      cpu: "200m"
+
+opensearchDashboards:
+  enabled: true
+  replicas: 1
+  image: opensearch-dashboards
+  tag: "2.11.1"
+  resources:
+    limits:
+      cpu: "300m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # IP Location Service
 ipcc:
@@ -426,14 +439,14 @@ otelCollector:
   enabled: true
   replicas: 1
   image: otel-collector
-  tag: latest
+  #tag: latest
   resources:
     limits:
-      cpu: "300m"
-      memory: 512Mi
+      cpu: "500m"
+      memory: 1Gi
     requests:
-      cpu: "100m"
-      memory: 256Mi
+      cpu: "200m"
+      memory: 512Mi
 
 # Backup Service (Resticprofile)
 backup:
