@@ -14,7 +14,8 @@ target_args_usage="-a|--android|-i|--ios "
 [ "$named_target" != "" ] && { argselected_target= ; target_args_usage= ; }
 
 intl_target=build
-build_number_increment=1
+build_number_increment=
+no_set_build_number=
 override_bundle_version=
 
 function show_usage() {
@@ -42,8 +43,9 @@ function show_help() {
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in"
   echo "  --no-build-incr     doesn't increment the current build number before building"
   echo "  --build-incr        increments the current build number before building"
-  echo "  --no-intl           skips yarn intl: preparation"
+  echo "  --no-set-build-number    doesn't update the eas build servers if the build number differs"
   echo "  --override-bundle-version    writes build_number into the main app's Info.plist"
+  echo "  --no-intl           skips yarn intl: preparation"
   echo "  --intl=TARGET       runs yarn intl:build or intl:compile or skips if missing (default build)"
   [ "$argselected_target" == 1 ] && {
     echo "  -a, --android       targets android build"
@@ -67,6 +69,7 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; continue ; }
     [[ "$1" == "--no-build-incr" ]] && { build_number_increment=0 ; shift 1 ; continue ; }
     [[ "$1" == "--build-incr" ]] && { build_number_increment=1 ; shift 1 ; continue ; }
+    [[ "$1" == "--no-set-build-number" ]] && { no_set_build_number=1 ; shift 1 ; continue ; }
     [[ "$1" == "--override-bundle-version" ]] && { override_bundle_version=1 ; shift 1 ; continue ; }
     [[ "$1" == "-a" || "$1" == "--android" ]] && {
       [[ "$target_os" != "" && "$target_os" != "android" ]] && { show_error "Target configured" "but already targetting $target_os - $1 not valid" ; show_usage 1 ; exit ; }
@@ -181,7 +184,7 @@ target_dir="$script_dir/${target_os}-builds/"
 build_file="$build_id.$target_ext"
 build_number=$((current_build_number+build_number_increment))
 show_info --oneline "Build number" "current ${current_build_number}, building ${build_number}"
-[ "$build_number" != "$current_build_number" ] && {
+[ "$build_number" != "$current_build_number" ] && [ "$no_set_build_number" != 1 ] && {
   show_info --oneline "Updating remote build number" "to ${build_number}"
   $script_dir/selfhost_scripts/set-eas-build-number.expects
 }
@@ -275,11 +278,12 @@ if yarn prebuild -p "$target_os"
   app_bundle_version="$(python3 -c 'import plistlib as pl, os
 p = pl.load(open(os.getenv("module_info_filename"), "rb"), fmt=pl.FMT_XML)
 print(p.get("CFBundleVersion"))')"
-  [ "$app_bundle_version" != "$build_number" ] && {
+  [ "$app_bundle_version" != "$current_build_number" ] && {
     if [ "$override_bundle_version" == 1 ]; then
       show_warning "Mismatched build version" "repos/social-app/$module_info_filename has $app_bundle_version but expecting $build_number - overriding"
       cp $module_info_filename $module_info_filename.orig
-      build_number=$build_number python3 -c 'import plistlib as pl, os
+      # write the current_build_number as expo will do an increment
+      build_number=$current_build_number python3 -c 'import plistlib as pl, os
 fn = os.getenv("module_info_filename")
 bn = os.getenv("build_number")
 p = pl.load(open(fn, "rb"), fmt=pl.FMT_XML)
