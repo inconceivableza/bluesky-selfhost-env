@@ -46,6 +46,7 @@ ingress:
 #   palomar: palomar.yourdomain.com
 #   pds: pds.yourdomain.com
 #   plc: plc.yourdomain.com
+#   prometheus: prometheus.yourdomain.com
 #   publicApi: public-api.yourdomain.com
 #   relay: relay.yourdomain.com
 #   socialapp: app.yourdomain.com

@@ -117,6 +117,7 @@ jobs:
             palomar: "${{ vars.PALOMARFQDN }}"
             pds: "${{ vars.PDSFQDN }}"
             plc: "${{ vars.PLCFQDN }}"
+            prometheus: prometheus.${{ vars.DOMAIN }}
             publicApi: "${{ vars.PUBLICAPIFQDN }}"
             relay: "${{ vars.RELAYFQDN }}"
             socialapp: "${{ vars.SOCIALAPPFQDN }}"

@@ -1,0 +1,5 @@
+{{- if .Values.jaeger.enabled }}
+{{- if .Values.fqdns.jaeger }}
+{{- include "foodios.ingress" (dict "name" "jaeger" "host" .Values.fqdns.jaeger "port" .Values.jaeger.uiPort "root" .) }}
+{{- end }}
+{{- end }}

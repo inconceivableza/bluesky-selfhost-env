@@ -199,6 +199,11 @@
           "description": "PLC (DID registry) domain",
           "format": "hostname"
         },
+        "prometheus": {
+          "type": "string",
+          "description": "PLC (DID registry) domain",
+          "format": "hostname"
+        },
         "publicApi": {
           "type": "string",
           "description": "Public API domain",
