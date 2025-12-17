@@ -936,12 +936,13 @@ services:
       - DEBUG_MODE=1
       - LOG_DESTINATION=1
       - LOG_LEVEL=${LOG_LEVEL_DEFAULT}
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=production # otherwise this runs in dev mode which requires all sorts of things
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt # this is what it should read whether it's been updated for custom certificates or not
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
       - GOINSECURE=${GOINSECURE}
       - OZONE_DEV_MODE=true
       - OZONE_PORT=3005
+      - OZONE_SERVER_DID=${OZONE_SERVICE_DID-} # atproto/packages/ozone/ reads this instead of OZONE_SERVICE_DID, go figure...
       - OZONE_SERVICE_DID=${OZONE_SERVICE_DID-}
       - OZONE_PUBLIC_URL=https://${ozoneFQDN}
       - OZONE_ADMIN_HANDLE=${OZONE_ADMIN_HANDLE}
