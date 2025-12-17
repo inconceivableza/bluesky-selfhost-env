@@ -32,6 +32,38 @@ data:
         endpoint: 0.0.0.0:8126
         read_timeout: 60s
 
+      # Filelog receiver - collects Kubernetes container logs
+      filelog:
+        include:
+          - /var/log/pods/{{ .Values.global.namespace }}_*/*/*.log
+        exclude:
+          - /var/log/pods/{{ .Values.global.namespace }}_otel-collector-*/*/*.log
+        include_file_path: true
+        include_file_name: false
+        operators:
+          # Parse CRI-O/containerd log format
+          - type: regex_parser
+            id: parser-containerd
+            regex: '^(?P<time>[^ ]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) (?P<log>.*)$'
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          # Extract JSON from log body if present
+          - type: json_parser
+            id: parser-json
+            parse_from: attributes.log
+            parse_to: attributes
+            on_error: send
+          # Extract k8s metadata from file path
+          - type: regex_parser
+            id: parser-k8s-metadata
+            regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]+)\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$'
+            parse_from: attributes["log.file.path"]
+          # Move parsed log to body
+          - type: move
+            from: attributes.log
+            to: body
+
     processors:
       batch:
         timeout: 1s
@@ -41,6 +73,26 @@ data:
       memory_limiter:
         limit_mib: 512
         check_interval: 5s
+
+      # Transform logs to add environment and standardize fields
+      transform/logs:
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["deployment.environment"], "{{ .Values.global.environment }}")
+              - set(resource.attributes["k8s.namespace"], "{{ .Values.global.namespace }}")
+              - set(attributes["log.level"], attributes["level"]) where attributes["level"] != nil
+              - set(attributes["log.level"], attributes["LOG_LEVEL"]) where attributes["LOG_LEVEL"] != nil
+          # Remove fields that cause OpenSearch mapping conflicts
+          - context: resource
+            statements: []
+          - context: log
+            statements:
+              - delete_key(attributes, "severity")
+              - delete_key(attributes, "severity_number")
+              - delete_key(attributes, "severity_text")
+              - delete_key(attributes, "level") where attributes["level"] != nil
+              - delete_key(attributes, "LOG_LEVEL") where attributes["LOG_LEVEL"] != nil
 
     exporters:
       # Prometheus exporter for metrics
@@ -56,6 +108,22 @@ data:
       # Debug exporter (logging)
       debug:
 
+      # OpenSearch exporter for logs
+      opensearch:
+        http:
+          endpoint: http://opensearch:9200
+          timeout: 30s
+        logs_index: logs-{{ .Values.global.environment }}
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 30s
+          max_elapsed_time: 300s
+        sending_queue:
+          enabled: true
+          num_consumers: 10
+          queue_size: 5000
+
     service:
       pipelines:
         traces:
@@ -67,6 +135,11 @@ data:
           receivers: [otlp, hostmetrics, datadog]
           processors: [memory_limiter, batch]
           exporters: [prometheus]
+
+        logs:
+          receivers: [filelog, otlp]
+          processors: [memory_limiter, transform/logs, batch]
+          exporters: [debug, opensearch]
 
       telemetry:
         metrics:

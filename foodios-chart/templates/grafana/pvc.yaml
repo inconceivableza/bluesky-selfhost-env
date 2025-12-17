@@ -1,0 +1,19 @@
+{{- if and .Values.grafana.enabled .Values.grafana.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: grafana
+    {{- include "foodios.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.grafana.storage.size }}
+  {{- if .Values.grafana.storage.storageClass }}
+  storageClassName: {{ .Values.grafana.storage.storageClass }}
+  {{- end }}
+{{- end }}

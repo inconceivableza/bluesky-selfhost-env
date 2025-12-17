@@ -25,6 +25,7 @@ hostAliases:
   - "{{ .Values.fqdns.pds }}"
   - "{{ .Values.fqdns.plc }}"
   - "{{ .Values.fqdns.publicApi }}"
+  - "{{ .Values.fqdns.relay }}"
   - "{{ .Values.fqdns.socialapp }}"
 {{- end }}
 {{- end }}

@@ -1,0 +1,3 @@
+{{- if .Values.relay.enabled }}
+{{- include "foodios.ingress" (dict "name" "relay" "host" .Values.fqdns.relay "port" .Values.relay.apiPort "root" .) }}
+{{- end }}

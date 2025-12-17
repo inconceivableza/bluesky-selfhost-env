@@ -37,6 +37,7 @@ ingress:
 #   embed: embed.yourdomain.com
 #   feedgen: feedgen.yourdomain.com
 #   ip: ip.yourdomain.com
+#   grafana: grafana.yourdomain.com
 #   jaeger: jaeger.yourdomain.com
 #   jetstream: jetstream.yourdomain.com
 #   link: link.yourdomain.com
@@ -45,7 +46,9 @@ ingress:
 #   palomar: palomar.yourdomain.com
 #   pds: pds.yourdomain.com
 #   plc: plc.yourdomain.com
+#   prometheus: prometheus.yourdomain.com
 #   publicApi: public-api.yourdomain.com
+#   relay: relay.yourdomain.com
 #   socialapp: app.yourdomain.com
 
 # PostgreSQL database
@@ -79,7 +82,7 @@ pds:
   debugMode: false
   replicas: 1
   image: foodios-atproto-pds
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2583
   storage:
     size: 30Gi  # Reduced for staging
@@ -101,7 +104,7 @@ bsky:
   debugMode: false
   replicas: 1
   image: foodios-atproto-bsky
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2584
   storage:
     enabled: true
@@ -123,7 +126,7 @@ plc:
   enabled: true
   replicas: 1
   image: foodios-did-method-plc
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2582
   secrets:
     enabled: true
@@ -138,10 +141,10 @@ plc:
 
 # BGS (Big Graph Service / Relay)
 bgs:
-  enabled: true
+  enabled: false
   replicas: 1
   image: foodios-indigo-bgs
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 2470
   storage:
     size: 40Gi  # Reduced for staging
@@ -157,12 +160,38 @@ bgs:
       cpu: "300m"
       memory: 512Mi
 
+# Relay (ATP Event Stream Relay)
+relay:
+  enabled: true  # Disabled by default in staging
+  replicas: 1
+  image: foodios-indigo-relay
+  # tag: latest  # Will be overridden by workflow
+  apiPort: 2472
+  metricsPort: 2473
+  defaultRepoLimit: 100000
+  newHostsPerDayLimit: 500
+  replayWindow: 87600h
+  disableRequestCrawl: "true"
+  storage:
+    size: 40Gi
+    storageClass: local-path
+  secrets:
+    enabled: true
+    name: relay-secrets
+  resources:
+    limits:
+      cpu: "500m"
+      memory: 1Gi
+    requests:
+      cpu: "300m"
+      memory: 512Mi
+
 # Social App (Web UI)
 socialApp:
   enabled: true
   replicas: 1
   image: foodios-social-app
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 8100
   command: ["/bin/sh", "-c"]
   args: ["echo 'Starting...' && /usr/bin/bskyweb serve"]
@@ -179,7 +208,7 @@ socialCard:
   enabled: true
   replicas: 1
   image: foodios-social-card
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3003
   resources:
     limits:
@@ -194,7 +223,7 @@ socialEmbed:
   enabled: true
   replicas: 1
   image: foodios-social-embed
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 8101
   command: ['sh', '-c']
   args: ['apt-get install -y wget ; dumb-init -- /usr/bin/embedr serve']
@@ -211,7 +240,7 @@ socialLink:
   enabled: true
   replicas: 1
   image: foodios-social-link
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3004
   secrets:
     enabled: true
@@ -229,7 +258,7 @@ palomar:
   enabled: true
   replicas: 1
   image: foodios-indigo-palomar
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   port: 3999
   secrets:
     enabled: true
@@ -247,7 +276,7 @@ ozone:
   enabled: false  # Enable if needed
   replicas: 1
   image: foodios-atproto-ozone
-  tag: latest
+  # tag: latest
   port: 3005
   secrets:
     enabled: true
@@ -282,7 +311,7 @@ redis:
 opensearch:
   enabled: true
   image: foodios-indigo-opensearch
-  tag: latest  # Will be overridden by workflow
+  # tag: latest  # Will be overridden by workflow
   replicas: 1
   port: 9200
   javaOpts: "-Xms512m -Xmx512m"  # Reduced heap for staging
@@ -294,18 +323,31 @@ opensearch:
     name: opensearch-secrets
   resources:
     limits:
+      cpu: "1000m"
+      memory: 2Gi
+    requests:
       cpu: "500m"
       memory: 1Gi
-    requests:
-      cpu: "200m"
+
+opensearchDashboards:
+  enabled: true
+  replicas: 1
+  image: opensearch-dashboards
+  tag: "2.11.1"
+  resources:
+    limits:
+      cpu: "300m"
       memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
 
 # IP Location Service
 ipcc:
   enabled: true
   replicas: 1
   image: ip-location-service-bsky
-  tag: latest
+  # tag: latest
   port: 8080
   storage:
     enabled: true
@@ -321,10 +363,10 @@ ipcc:
 
 # Feed Generator
 feedGenerator:
-  enabled: true
+  enabled: false
   replicas: 1
-  image: bluesky-feed-generator
-  tag: latest
+  image: foodios-feed-generator
+  # tag: latest
   port: 3008
   storage:
     enabled: true
@@ -357,6 +399,27 @@ prometheus:
       cpu: "100m"
       memory: 256Mi
 
+# Grafana (Visualization & Dashboards)
+grafana:
+  enabled: true
+  replicas: 1
+  port: 3000
+  tag: "11.4.0"
+  # adminUser: 
+  # adminPassword:
+  plugins: ""  # Optional: comma-separated list of plugins to install
+  storage:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+  resources:
+    limits:
+      cpu: "200m"
+      memory: 512Mi
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+
 # Jaeger (Distributed Tracing)
 jaeger:
   enabled: true
@@ -377,14 +440,14 @@ otelCollector:
   enabled: true
   replicas: 1
   image: otel-collector
-  tag: latest
+  #tag: latest
   resources:
     limits:
-      cpu: "300m"
-      memory: 512Mi
+      cpu: "500m"
+      memory: 1Gi
     requests:
-      cpu: "100m"
-      memory: 256Mi
+      cpu: "200m"
+      memory: 512Mi
 
 # Backup Service (Resticprofile)
 backup:

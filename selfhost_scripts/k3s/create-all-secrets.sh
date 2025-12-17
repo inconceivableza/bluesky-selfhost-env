@@ -63,6 +63,7 @@ create_secret_from_file "opensearch-secrets" "$CONFIG_DIR/opensearch-secrets.env
 create_secret_from_file "social-link-secrets" "$CONFIG_DIR/social-link-secrets.env"
 create_secret_from_file "ozone-secrets" "$CONFIG_DIR/ozone-secrets.env"
 create_secret_from_file "backup-secrets" "$CONFIG_DIR/backup-secrets.env"
+create_secret_from_file "relay-secrets" "$CONFIG_DIR/relay-secrets.env"
 
 echo "Creating tls secret"
 kubectl create secret tls local-tls \

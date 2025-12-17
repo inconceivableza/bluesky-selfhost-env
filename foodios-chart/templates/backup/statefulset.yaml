@@ -28,7 +28,7 @@ spec:
         - name: TZ
           value: "Etc/UTC"
         - name: BACKUP_PATHS
-          value: "/data/pds/blobs/ /data/bgs/ /data/bsky/ /data/opensearch/"
+          value: "/data/pds/blobs/ /data/bgs/ /data/relay/ /data/bsky/ /data/opensearch/"
         - name: SQLITE_PATHS
           value: "sqlite/pds:/data/pds/*.sqlite sqlite/feed-generator:/data/feed-generator/*.sqlite"
         - name: PGHOST
@@ -104,6 +104,11 @@ spec:
           mountPath: /data/bsky
           readOnly: false
         {{- end }}
+        {{- if .Values.relay.enabled }}
+        - name: relay-data
+          mountPath: /data/relay
+          readOnly: false
+        {{- end }}
         livenessProbe:
           exec:
             command:
@@ -164,6 +169,11 @@ spec:
       - name: bsky-data
         persistentVolumeClaim:
           claimName: bsky-cache
+      {{- end }}
+      {{- if .Values.relay.enabled }}
+      - name: relay-data
+        persistentVolumeClaim:
+          claimName: relay-data-relay-0
       {{- end }}
   # StatefulSet automatically creates PVCs for each pod
   volumeClaimTemplates:

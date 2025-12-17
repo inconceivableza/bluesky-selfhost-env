@@ -37,15 +37,29 @@ data:
         static_configs:
           - targets: ['otel-collector:8888']
         scrape_interval: 5s
+
+      - job_name: 'otel-collector-metrics'
+        static_configs:
+          - targets: ['otel-collector:8889']
+        scrape_interval: 15s 
       {{- end }}
 
-      - job_name: 'bgs-relay'
+      - job_name: 'bgs'
         static_configs:
           - targets: ['bgs:2471']
         scrape_interval: 5s
+
+      {{- if .Values.relay.enabled }}
+      - job_name: 'relay'
+        static_configs:
+          - targets: ['relay:{{ .Values.relay.metricsPort }}']
+        scrape_interval: 5s
+      {{- end }}
 
       - job_name: 'palomar'
         static_configs:
           - targets: ['palomar:3998']
         scrape_interval: 5s
+      
+         
 {{- end }}

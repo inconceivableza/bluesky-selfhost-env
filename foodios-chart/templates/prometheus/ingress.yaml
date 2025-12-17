@@ -1,0 +1,5 @@
+{{- if .Values.prometheus.enabled }}
+{{- if .Values.fqdns.prometheus }}
+{{- include "foodios.ingress" (dict "name" "prometheus" "host" .Values.fqdns.prometheus "port" .Values.prometheus.port "root" .) }}
+{{- end }}
+{{- end }}

@@ -62,7 +62,7 @@ spec:
         - name: BSKY_PUBLIC_URL
           value: "https://{{ .Values.fqdns.bsky }}"
         - name: BSKY_REPO_PROVIDER
-          value: "wss://{{ .Values.fqdns.bgs }}"
+          value: "wss://{{ .Values.fqdns.relay }}"
         - name: BSKY_SEARCH_URL
           value: "https://{{ .Values.fqdns.palomar }}"
         - name: BSKY_SERVER_DID
