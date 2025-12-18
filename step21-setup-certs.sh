@@ -21,13 +21,37 @@ if [ "$EMAIL4CERTS" == "internal" ]
           certs_dir=Download/certs-$DOMAIN
           adb shell mkdir /sdcard/$certs_dir
           adb push $certs /sdcard/$certs_dir
-          show_info "Manually install certificates" "on Android device"
+          show_info "Manually install certificates" "on the Android device"
           adb shell am start -a android.intent.action.VIEW -d content://com.android.externalstorage.documents/root/primary%3ADownload
           # adb shell am start -n com.android.certinstaller/.CertInstallerMain -a android.intent.action.VIEW -t application/x-x509-ca-cert -d file:///sdcard/Download/
+          show_info --oneline "Test in web browser" "by going to https://$socialappFQDN on the device"
+        )
+    elif [ "$1" == "--ios" ]
+      then
+        show_heading "Guiding install to iOS" "for mobile testing"
+        certs="root.crt intermediate.crt"
+        (
+          cd $script_dir/certs
+          show_info "Manually install certificates" "on the iOS device"
+          for cert in $certs; do
+            show_info "Certificate installation" "for $cert"
+            show_info --oneline "Use Airdrop" "to copy $cert from $script_dir/certs onto the iOS device"
+            echo -n Press any key when completed...
+            read
+            show_info --oneline "Open Settings" "tap on Profile Downloaded and then select Install"
+            echo -n Press any key when completed...
+            read
+            [ "$cert" == root.crt ] && {
+              show_info --oneline "Go to Settings → General → About → Certificate Trust Settings" "And for each certificate turn on Enable Full Trust"
+              echo -n Press any key when completed...
+              read
+            }
+          done
+          show_info --oneline "Test in web browser" "by going to https://$socialappFQDN on the device"
         )
       else
         show_heading --oneline "For mobile testing" "you will need to install the certificates into the mobile devices"
-        show_info --oneline "Run this script" "with --android to install into local android device or emulator via adb"
+        show_info --oneline "Run this script" "with --android or --ios to install into local mobile device or emulator via adb"
         echo
       fi
     show_heading "Don't forget to install the certificate" "in $script_dir/certs/root.crt into your local web browser"
