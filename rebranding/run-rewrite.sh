@@ -163,8 +163,13 @@ for branded_repo in $REBRANDED_REPOS
               cd "$repo_dir"
               show_heading --oneline "Applying ${branding_part:-(global)}" "changes to $branded_repo in $(basename "`pwd`") with $(basename ${BRAND_CONFIG_DIR})"
               if [ "$check_only" != 1 ]; then
-                git diff --exit-code --stat || { show_error "Local changes exist" "so aborting; please commit / stash first" ; exit 1 ; }
-                git reset --hard
+                if git diff --ignore-submodules --exit-code --stat; then
+                    show_error "Local changes exist" "so aborting; please commit / stash first"
+                    exit 1
+                else
+                  show_info --oneline "No local changes" "in $repo_dir"
+                  # git reset --hard
+                fi
               fi
               # we no longer do renames of files
               # python ${script_dir}/apply_files.py --config "${BRANDING_PART_RULES}" --env-file "$params_file" --env-file "$BRAND_TMP_ENV_FILE" --git-mv --action rename || { echo error running apply-files >&2 ; exit 1 ; }
@@ -200,15 +205,15 @@ for branded_repo in $REBRANDED_REPOS
               if [ "$commit_parts" == "1" ]
                 then
                   show_info --oneline "Checking for changes" "for ${branding_part:-(global)}"
-                  if ! git diff --exit-code --stat
+                  if ! git diff --ignore-submodules --exit-code --stat
                     then
                       git add -u # staging changes
                       npx lint-staged --concurrent false --allow-empty || { show_warning "Lint error" "will not commit changes" ; exit 1 ; }
-                      if ! git diff --exit-code --stat; then
+                      if ! git diff --ignore-submodules --exit-code --stat; then
                         show_info --oneline "Lint fixups" "will be staged for commit as well"
                         git add -u # staging changes from lint
                       fi
-                      if git diff --exit-code --stat --staged; then
+                      if git diff --ignore-submodules --exit-code --stat --staged; then
                         show_info --oneline "Empty changes" "after lint fixup; will not commit"
                       else
                         show_info --oneline "Committing changes" "for ${branding_part:-(global)}"
@@ -217,7 +222,7 @@ for branded_repo in $REBRANDED_REPOS
                     fi
                 else
                   show_info --oneline "Showing changes" "for ${branding_part:-(global)}"
-                  git diff
+                  git diff --ignore-submodules
                 fi
             ) || {
               if [ "$check_only" == 1 ]; then
