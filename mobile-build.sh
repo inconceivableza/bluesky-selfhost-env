@@ -14,9 +14,10 @@ target_args_usage="-a|--android|-i|--ios "
 [ "$named_target" != "" ] && { argselected_target= ; target_args_usage= ; }
 
 intl_target=build
-build_number_increment=
-no_set_build_number=
-override_bundle_version=
+# default is to increment expected build_number, but this can be overridden by running with build_number_increment=0
+[ "$build_number_increment" == "" ] && build_number_increment=1
+set_build_number=
+set_bundle_version=1
 
 function show_usage() {
   echo "Syntax $0 [-?|-h|--help] ${target_args_usage}[-k|--keep-tmp] [--intl={build|compile|}|--no-intl] [build_profile [env_profile]]"
@@ -41,10 +42,10 @@ function show_help() {
   echo
   echo "Options:"
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in"
-  echo "  --no-build-incr     doesn't increment the current build number before building"
-  echo "  --build-incr        increments the current build number before building"
-  echo "  --no-set-build-number    doesn't update the eas build servers if the build number differs"
-  echo "  --override-bundle-version    writes build_number into the main app's Info.plist"
+  echo "  --set-buildno=N     updates the eas build servers to set build number to N (build will be N+1)"
+  echo "  --set-bundlever     writes build_number into CFBundleVersion in the main app's Info.plist [ios] (default)"
+  echo "  --no-set-bundlever  doesn't write build_number into CFBundleVersion in the main app's Info.plist [ios]"
+  echo "  --ignore-bundlever  ignores mismatch between build_number and CFBundleVersion in the main app's Info.plist [ios]"
   echo "  --no-intl           skips yarn intl: preparation"
   echo "  --intl=TARGET       runs yarn intl:build or intl:compile or skips if missing (default build)"
   [ "$argselected_target" == 1 ] && {
@@ -69,8 +70,11 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; continue ; }
     [[ "$1" == "--no-build-incr" ]] && { build_number_increment=0 ; shift 1 ; continue ; }
     [[ "$1" == "--build-incr" ]] && { build_number_increment=1 ; shift 1 ; continue ; }
-    [[ "$1" == "--no-set-build-number" ]] && { no_set_build_number=1 ; shift 1 ; continue ; }
-    [[ "$1" == "--override-bundle-version" ]] && { override_bundle_version=1 ; shift 1 ; continue ; }
+    [[ "${1#--set-build-no=}" != "$1" ]] && { set_build_number="${1#--set-build-no=}" ; shift 1 ; continue ; }
+    [[ "$1" == "--set-buildno" ]] && { shift 1 ; set_build_number="$1" ; shift 1 ; continue ; }
+    [[ "$1" == "--set-bundlever" ]] && { set_bundle_version=1 ; shift 1 ; continue ; }
+    [[ "$1" == "--no-set-bundlever" ]] && { set_bundle_version=0 ; shift 1 ; continue ; }
+    [[ "$1" == "--ignore-bundlever" ]] && { set_bundle_version=ignore ; shift 1 ; continue ; }
     [[ "$1" == "-a" || "$1" == "--android" ]] && {
       [[ "$target_os" != "" && "$target_os" != "android" ]] && { show_error "Target configured" "but already targetting $target_os - $1 not valid" ; show_usage 1 ; exit ; }
       target_os="android" ; shift 1 ; continue
@@ -173,6 +177,10 @@ show_heading "Determining build info" "to set filename etc"
 build_flavour="${build_profile}"
 build_name="$(jq -r .name package.json)"
 build_version="$(jq -r .version package.json)"
+[ "$set_build_number" != "" ] && {
+  show_info --oneline "Updating remote build number" "to ${set_build_number}"
+  $script_dir/selfhost_scripts/set-eas-build-number.expects "$set_build_number"
+}
 current_build_number=$(npx eas-cli build:version:get -p "$target_os" -e "$build_profile" --non-interactive --json | jq -r '.[]')
 build_date="$(date +%Y%m%d)"
 build_timestamp="$(date +%H%M%S)"
@@ -182,12 +190,9 @@ target_ext=$(get_expected_extension)
 [ "$target_ext" == "" ] && exit 1
 target_dir="$script_dir/${target_os}-builds/"
 build_file="$build_id.$target_ext"
+# build_number contains the expected build number, as the expo build will increment from the current build number
 build_number=$((current_build_number+build_number_increment))
-show_info --oneline "Build number" "current ${current_build_number}, building ${build_number}"
-[ "$build_number" != "$current_build_number" ] && [ "$no_set_build_number" != 1 ] && {
-  show_info --oneline "Updating remote build number" "to ${build_number}"
-  $script_dir/selfhost_scripts/set-eas-build-number.expects
-}
+show_info --oneline "Build number" "current ${current_build_number}, expecting to build ${build_number}"
 [ "$target_os" == android ] && export BSKY_ANDROID_VERSION_CODE=${build_number}
 [ "$target_os" == ios ] && export BSKY_IOS_BUILD_NUMBER=${build_number}
 show_info --oneline "Expected build" "${build_file}"
@@ -279,7 +284,7 @@ if yarn prebuild -p "$target_os"
 p = pl.load(open(os.getenv("module_info_filename"), "rb"), fmt=pl.FMT_XML)
 print(p.get("CFBundleVersion"))')"
   [ "$app_bundle_version" != "$current_build_number" ] && {
-    if [ "$override_bundle_version" == 1 ]; then
+    if [ "$set_bundle_version" == 1 ]; then
       show_warning "Mismatched build version" "repos/social-app/$module_info_filename has $app_bundle_version but expecting $build_number - overriding"
       cp $module_info_filename $module_info_filename.orig
       # write the current_build_number as expo will do an increment
@@ -291,8 +296,10 @@ p["CFBundleVersion"] = bn
 xml = pl.dumps(p, fmt=pl.FMT_XML) # check before trying to write to file
 pl.dump(p, open(fn, "wb"), fmt=pl.FMT_XML)'
       diff -u $module_info_filename.orig $module_info_filename
+    elif [ "$set_bundle_version" == ignore ]; then
+      show_warning "Mismatched build version" "repos/social-app/$module_info_filename has $app_bundle_version but expecting $current_build_number - but ignore flag set so not adjusting"
     else
-      show_error "Mismatched build version" "repos/social-app/$module_info_filename has $app_bundle_version but expecting $build_number - please check and correct before continuing"
+      show_error "Mismatched build version" "repos/social-app/$module_info_filename has $app_bundle_version but expecting $current_build_number - please check and correct before continuing"
       exit 1
     fi
   }
