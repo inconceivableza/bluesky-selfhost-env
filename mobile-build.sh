@@ -41,7 +41,8 @@ function show_help() {
   fi
   echo
   echo "Options:"
-  echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in"
+  echo "  -K, --keep-error    doesn't remove the temporary directory that the expo build runs in, if there's an error"
+  echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in, even on success"
   echo "  --set-buildno=N     updates the eas build servers to set build number to N (build will be N+1)"
   echo "  --set-bundlever     writes build_number into CFBundleVersion in the main app's Info.plist [ios] (default)"
   echo "  --no-set-bundlever  doesn't write build_number into CFBundleVersion in the main app's Info.plist [ios]"
@@ -68,6 +69,7 @@ target_os="$named_target"
 while [ "$#" -gt 0 ]
   do
     [[ "$1" == "-k" || "$1" == "--keep-tmp" ]] && { keep_tmp=1 ; shift 1 ; continue ; }
+    [[ "$1" == "-K" || "$1" == "--keep-error" ]] && { keep_tmp=error ; shift 1 ; continue ; }
     [[ "$1" == "--no-build-incr" ]] && { build_number_increment=0 ; shift 1 ; continue ; }
     [[ "$1" == "--build-incr" ]] && { build_number_increment=1 ; shift 1 ; continue ; }
     [[ "${1#--set-build-no=}" != "$1" ]] && { set_build_number="${1#--set-build-no=}" ; shift 1 ; continue ; }
@@ -213,24 +215,47 @@ export EAS_LOCAL_BUILD_WORKINGDIR="$(get_eas_build_base)/$(uuidgen | tr A-F a-f)
 mkdir "$EAS_LOCAL_BUILD_WORKINGDIR"
 export build_dir="$EAS_LOCAL_BUILD_WORKINGDIR"
 
-if [ "$keep_tmp" == 1 ]
-  then
-    show_info --oneline "Keeping temporary files" "for inspection after build - remove once finished:" "$build_dir"
-    export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
-  else
-    show_info --oneline "Temporary build output directory" "$build_dir"
-  fi
+if [ "$keep_tmp" == 1 ]; then
+  show_info --oneline "Keeping temporary files" "for inspection after build - remove once finished:" "$build_dir"
+  export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
+elif [ "$keep_tmp" == error ]; then
+  show_info --oneline "Will keep temporary files" "for inspection after build if error:" "$build_dir"
+  export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
+else
+  show_info --oneline "Temporary build output directory" "$build_dir"
+fi
 
 function pre_exit {
   [ "$#" -gt 0 ] && show_error "$@"
-  if [ "$keep_tmp" == 1 ]
-    then
-      show_info --oneline "Kept temporary files" "for inspection after build - remove once finished"
-      show_info --oneline "Build directory" "$build_dir"
+  if [ "$keep_tmp" == 1 ]; then
+    show_info --oneline "Kept temporary files" "for inspection after build - remove once finished"
+    show_info --oneline "Build directory" "$build_dir"
+  elif [ "$keep_tmp" == error ]; then
+    if [ "$#" -gt 0 ]; then
+      show_warning --oneline "Keeping temporary files" "for inspection after build error - remove once finished"
     else
-      [ -d "$build_dir" ] && { show_info --oneline "Build directory" "$build_dir" ; du -hs "$build_dir" ; }
+      show_info --oneline "Removing temporary files" "for inspection after successful build"
+      rm -fr "$build_dir" || show_warning --oneline "Error removing temporary files" "check $build_dir"
     fi
-  [ -d "$output_dir" ] && show_info --oneline "Build output directory" "$output_dir"
+  fi
+  [ -d "$build_dir" ] && {
+    if [ -n "$(find "$build_dir" -maxdepth 0 -type d -empty 2>/dev/null)" ]; then
+      show_info --oneline "Build directory" "$build_dir is empty - removing"
+      rmdir "$build_dir"
+    else
+      show_info --oneline "Build directory" "$build_dir"
+      du -hs "$build_dir"
+    fi
+  }
+  [ -d "$output_dir" ] && {
+    if [ -n "$(find "$output_dir" -maxdepth 0 -type d -empty 2>/dev/null)" ]; then
+      show_info --oneline "Build output directory" "$output_dir is empty - removing"
+      rmdir "$output_dir"
+    else
+      show_info --oneline "Build output directory" "$output_dir"
+      du -hs "$output_dir"
+    fi
+  }
 }
 
 function interrupt_handler {
