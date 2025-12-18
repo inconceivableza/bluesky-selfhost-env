@@ -368,8 +368,25 @@ if npx eas-cli build -p "${target_os}" --local -e "${build_profile}" --output="$
         mv universal.apk "${target_dir}/${build_id}.apk"
         touch -r "$build_file" "${target_dir}/${build_id}.apk"
         mv "${build_file}" "${target_dir}/${build_id}.aab"
+      elif [ "$target_ext" == "ipa" ]; then
+        actual_type="$(file -b --mime-type "$build_file")"
+        if [ "$actual_type" == "application/gzip" ]; then
+          show_warning --oneline "gzip archive produced" "but ipa expected; will attempt to extract ipa"
+          build_archive="$build_id.tgz"
+          mv "$build_file" "$build_archive"
+          tar --to-stdout -xzf "$build_archive" 'ios/build/*.ipa' > "$build_file" || {
+            show_warning --oneline "could not extract ipa" "from $build_archive; potential filenames listed below"
+            tar -tzf "$build_archive" | grep '[.]ipa'
+            pre_exit "error extracting ipa" "from tgz archive; please check $output_dir and $build_archive"
+            exit 1
+          }
+          show_info --oneline "Moving build archive" "${build_file} to ${target_dir}"
+          mv "${build_archive}" "${target_dir}/${build_archive}"
+        fi
+        show_info "Moving build file" "${build_file} to ${target_dir}"
+        mv "${build_file}" "${target_dir}/${build_file}"
       else
-        show_info "Moving build file" "${build_file} to ${output_dir}"
+        show_info "Moving build file" "${build_file} to ${target_dir}"
         mv "${build_file}" "${target_dir}/${build_file}"
       fi
     show_info "Cleaning up tmp build output dir" "${output_dir}"
