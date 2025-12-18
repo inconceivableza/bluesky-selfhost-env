@@ -121,7 +121,7 @@ svg_tsx_subst:
       view_box: "0 0 512 512"
       pre_replace:
         - find: '\bfill:[^;]*;'
-          replace: 'fill:{fill || pal.text.color};'
+          replace: 'fill:{fill || pal.text?.color};'
       post_replace:
         - find: 'fill="{([^}]*)}"'
           replace: 'fill={\1}'
@@ -130,10 +130,12 @@ svg_tsx_subst:
       view_box: "0 0 700 190"
       pre_replace:
         - find: '\bfill:[^;]*;'
-          replace: 'fill:{fill || pal.text.color};'
+          replace: 'fill:{fill || pal.text?.color};'
       post_replace:
         - find: 'fill="{([^}]*)}"'
           replace: 'fill={\1}'
+        - find: 'fill="none"'
+          replace: 'fill={fill || pal.text?.color}'
 
 - src_dir: "${BRAND_IMAGES_DIR}/generated/"
   dest_dir: "src/"
