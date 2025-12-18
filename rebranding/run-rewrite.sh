@@ -173,7 +173,7 @@ for branded_repo in $REBRANDED_REPOS
               cd "$repo_dir"
               show_heading --oneline "Applying ${branding_part:-(global)}" "changes to $branded_repo in $(basename "`pwd`") with $(basename ${BRAND_CONFIG_DIR})"
               if [ "$check_only" != 1 ]; then
-                if git diff --ignore-submodules --exit-code --stat; then
+                if ! git diff --ignore-submodules --exit-code --stat; then
                   if [ "$ignore_changes" == 0 ]; then
                     show_error "Local changes exist" "so aborting; please commit / stash first"
                     exit 1
