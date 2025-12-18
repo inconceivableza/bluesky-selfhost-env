@@ -39,20 +39,17 @@ export_images=1
 while [ "$#" -gt 0 ]
   do
     [[ "$1" == "--commit-parts" ]] && {
-      commit_parts=1
-      shift
+      commit_parts=1; shift; continue
+    }
     }
     [[ "$1" == "--check-only" ]] && {
-      check_only=1
-      shift
+      check_only=1; shift; continue
     }
     [[ "$1" == "--keep-going" || "$1" == "-k" ]] && {
-      keep_going=1
-      shift
+      keep_going=1; shift; continue
     }
     [[ "$1" == "--no-export-images" || "$1" == "-I" ]] && {
-      export_images=0
-      shift
+      export_images=0; shift; continue
     }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && {
       usage
