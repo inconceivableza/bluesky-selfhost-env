@@ -102,6 +102,7 @@ function check_android_home {
       return 1
   fi
 }
+
 function setup_python_venv_with_requirements {
   venv_target=venv
   [ -d $venv_target ] || python3 -m venv $venv_target
