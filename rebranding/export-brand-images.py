@@ -307,7 +307,7 @@ def export_images(src, target_dir, force=False, badges={}):
     inkscape_convert(src, 'email_mark_light', target_dir, 'png')
     compactify(join(target_dir, 'safari-pinned-tab.svg'), join(target_dir, 'safari-pinned-tab.compact.svg'))
     compactify(join(target_dir, 'Logotype.svg'), join(target_dir, 'Logotype.compact.svg'))
-    (join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
+    compactify(join(target_dir, 'icon.svg'), join(target_dir, 'icon.compact.svg'))
     compactify(join(target_dir, 'logo.svg'), join(target_dir, 'logo.compact.svg'))
     # app icon themes; aurora is used as the base and the others have their styles copied on before export
     inkscape_convert(src, 'android_icon_core_aurora', target_dir, 'png', id_only=True, badges=badges)
