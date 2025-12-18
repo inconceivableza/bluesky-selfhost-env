@@ -34,6 +34,7 @@ function show_subdirs_with_brand_images() {
 commit_parts=0
 check_only=0
 keep_going=0
+ignore_changes=0
 export_images=1
 
 while [ "$#" -gt 0 ]
@@ -41,6 +42,8 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "--commit-parts" ]] && {
       commit_parts=1; shift; continue
     }
+    [[ "$1" == "--ignore-changes" ]] && {
+      ignore_changes=1; shift; continue
     }
     [[ "$1" == "--check-only" ]] && {
       check_only=1; shift; continue
@@ -75,6 +78,11 @@ REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
 
 [[ "$commit_parts$check_only" == 11 ]] && {
     show_error "Cannot have both flags" "--commit-parts and --check-only"
+    usage
+    exit 1
+}
+[[ "$commit_parts$ignore_changes" == 11 ]] && {
+    show_error "Cannot have both flags" "--commit-parts and --ignore-changes otherwise unintended commits will be made"
     usage
     exit 1
 }
@@ -142,7 +150,12 @@ for branded_repo in $REBRANDED_REPOS
     repo_dir="$script_dir/../repos/${branded_repo}"
     [ -d "$repo_dir" ] || { echo could not find dir for $repo_dir - place at $repo_dir  >&2 ; exit 1 ; }
     if [ "$check_only" != 1 ]; then
-      (cd "$repo_dir" ; git diff --exit-code --stat ) || { show_error "Local changes exist" "in $repo_dir so aborting; please commit / stash first" ; exit 1 ; }
+      (cd "$repo_dir" ; git diff --ignore-submodules --exit-code --stat ) || if [ "$ignore_changes" == 0 ]; then
+        show_error "Local changes exist" "in $repo_dir so aborting; please commit / stash first"
+        exit 1
+      else
+        show_warning "Local changes exist" "in $repo_dir but keep-changes set; take care..."
+      fi
     fi
     branding_part_failures=""
     for branding_plan in "check:hardcoded" "check:verbage" "change:change-ids" "change:styles" "change:images"
@@ -161,8 +174,12 @@ for branded_repo in $REBRANDED_REPOS
               show_heading --oneline "Applying ${branding_part:-(global)}" "changes to $branded_repo in $(basename "`pwd`") with $(basename ${BRAND_CONFIG_DIR})"
               if [ "$check_only" != 1 ]; then
                 if git diff --ignore-submodules --exit-code --stat; then
+                  if [ "$ignore_changes" == 0 ]; then
                     show_error "Local changes exist" "so aborting; please commit / stash first"
                     exit 1
+                  else
+                    show_warning "Local changes exist" "in $repo_dir but continuing as keep-changes set"
+                  fi
                 else
                   show_info --oneline "No local changes" "in $repo_dir"
                   # git reset --hard
