@@ -51,7 +51,9 @@ jobs:
             "foodios-atproto-bsky"
             "foodios-atproto-pds"
             "foodios-did-method-plc"
+            "foodios-feed-generator"
             "foodios-indigo-bgs"
+            "foodios-indigo-relay"
             "foodios-indigo-palomar"
             "foodios-indigo-opensearch"
             "foodios-social-app"
@@ -105,17 +107,20 @@ jobs:
             card: "${{ vars.CARDFQDN }}"
             embed: "${{ vars.EMBEDFQDN }}"
             feedgen: "${{ vars.FEEDGENFQDN }}"
+            grafana: "${{ vars.GRAFANAFQDN }}"
             ip: "${{ vars.IPFQDN }}"
             jaeger: jaeger.${{ vars.DOMAIN }}
             jetstream: "${{ vars.JETSTREAMFQDN }}"
             link: "${{ vars.LINKFQDN }}"
+            logs: "${{ vars.LOGSFQDN }}"
             ozone: "${{ vars.OZONEFQDN }}"
             palomar: "${{ vars.PALOMARFQDN }}"
             pds: "${{ vars.PDSFQDN }}"
             plc: "${{ vars.PLCFQDN }}"
+            prometheus: prometheus.${{ vars.DOMAIN }}
             publicApi: "${{ vars.PUBLICAPIFQDN }}"
+            relay: "${{ vars.RELAYFQDN }}"
             socialapp: "${{ vars.SOCIALAPPFQDN }}"
-            logs: "${{ vars.LOGSFQDN }}"
 
           # Image tags from Docker Hub
           pds:
@@ -129,6 +134,9 @@ jobs:
 
           bgs:
             tag: "${{ env.FOODIOS_INDIGO_BGS_IMAGE_TAG }}"
+
+          relay:
+            tag: "${{ env.FOODIOS_INDIGO_RELAY_IMAGE_TAG }}"
 
           palomar:
             tag: "${{ env.FOODIOS_INDIGO_PALOMAR_IMAGE_TAG }}"
@@ -145,6 +153,9 @@ jobs:
           socialLink:
             tag: "${{ env.FOODIOS_SOCIAL_LINK_IMAGE_TAG }}"
 
+          feedGenerator:
+            tag: "${{ env.FOODIOS_FEED_GENERATOR_IMAGE_TAG }}"
+
           opensearch:
             tag: "${{ env.FOODIOS_INDIGO_OPENSEARCH_IMAGE_TAG }}"
 
@@ -158,6 +169,10 @@ jobs:
             ingress:
               allowedIPs:
                 - ${{ vars.VPN_IP_RANGE }}
+
+          grafana:
+            adminUser: "${{ secrets.GRAFANA_USER }}"
+            adminPassword: "${{ secrets.GRAFANA_PASSWORD }}"
 
           backup:
             restic:
@@ -234,6 +249,11 @@ jobs:
             create_or_update_secret "bgs-secrets" \
               --from-literal=BGS_ADMIN_KEY='${{ secrets.BGS_ADMIN_KEY }}' \
               --from-literal=DATABASE_URL='${{ secrets.BGS_DATABASE_URL }}'
+            
+            # Relay secrets
+            create_or_update_secret "relay-secrets" \
+              --from-literal=RELAY_ADMIN_KEY='${{ secrets.RELAY_ADMIN_KEY }}' \
+              --from-literal=DATABASE_URL=postgres://'${{ secrets.POSTGRES_USER }}':'${{ secrets.POSTGRES_PASSWORD }}'@database/relay
 
             # PDS secrets
             create_or_update_secret "pds-secrets" \

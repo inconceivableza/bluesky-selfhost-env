@@ -1,4 +1,4 @@
-name: Upgrade Service
+name: Upgrade service
 
 on:
   workflow_dispatch:
@@ -15,12 +15,12 @@ on:
         required: true
         type: choice
         options:
-          - bgs
           - bsky          
           - ozone
           - palomar
           - pds
           - plc
+          - relay
           - socialApp
           - socialCard
           - socialEmbed

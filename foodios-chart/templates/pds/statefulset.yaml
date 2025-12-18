@@ -59,7 +59,7 @@ spec:
         - name: PDS_DID_PLC_URL
           value: "https://{{ .Values.fqdns.plc }}"
         - name: PDS_CRAWLERS
-          value: "https://{{ .Values.fqdns.bgs }}"
+          value: "https://{{ .Values.fqdns.relay }}"
         - name: PDS_BLOBSTORE_DISK_LOCATION
           value: /pds/blobs
         - name: PDS_DATA_DIRECTORY

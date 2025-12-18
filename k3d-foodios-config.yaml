@@ -6,8 +6,8 @@ metadata:
 servers: 1
 agents: 1
 
-# Use specific k3s version
-image: rancher/k3s:v1.28.5-k3s1
+# Use specific k3s version (matches production)
+image: rancher/k3s:v1.33.6-k3s1
 
 # Port mappings - expose to localhost
 ports:

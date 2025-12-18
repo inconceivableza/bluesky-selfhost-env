@@ -38,19 +38,19 @@ spec:
         - name: EXPO_PUBLIC_ATP_APPVIEW_DID
           value: "did:web:{{ .Values.fqdns.api }}"
         - name: EXPO_PUBLIC_ATP_APPVIEW_URL
-          value: "http://{{ .Values.fqdns.api }}"
+          value: "https://{{ .Values.fqdns.api }}"
         - name: ATP_APPVIEW_URL
-          value: "http://bsky.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.bsky.port }}"
+          value: "https://bsky.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.bsky.port }}"
         
         # PDS Configuration
         - name: EXPO_PUBLIC_ATP_PDS_DID
           value: "did:web:{{ .Values.fqdns.pds }}"
         - name: EXPO_PUBLIC_ATP_PDS_URL
-          value: "http://{{ .Values.fqdns.pds }}"
+          value: "https://{{ .Values.fqdns.pds }}"
         
         # Public App View
         - name: EXPO_PUBLIC_ATP_PUBLIC_APPVIEW_URL
-          value: "http://{{ .Values.fqdns.publicApi }}"
+          value: "https://{{ .Values.fqdns.publicApi }}"
         
         # Bluesky Proxy
         - name: EXPO_PUBLIC_BLUESKY_PROXY_DID
@@ -58,9 +58,9 @@ spec:
         
         # CORS Configuration
         - name: EXPO_PUBLIC_CORS_ALLOWED_ORIGINS
-          value: "http://{{ .Values.fqdns.socialapp }}"
+          value: "https://{{ .Values.fqdns.socialapp }}"
         - name: CORS_ALLOWED_ORIGINS
-          value: "http://{{ .Values.fqdns.socialapp }}"
+          value: "https://{{ .Values.fqdns.socialapp }}"
         
         # Service URLs
         - name: HTTP_ADDRESS
@@ -70,19 +70,19 @@ spec:
         - name: LINK_HOST
           value: {{ .Values.fqdns.link }}
         - name: EXPO_PUBLIC_OGCARD_URL
-          value: "http://{{ .Values.fqdns.card }}"
+          value: "https://{{ .Values.fqdns.card }}"
         - name: OGCARD_URL
-          value: "http://social-card.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.socialCard.port }}"
+          value: "https://social-card.{{ .Values.global.namespace }}.svc.cluster.local:{{ .Values.socialCard.port }}"
         - name: EXPO_PUBLIC_SOCIAL_EMBED_SERVICE
-          value: "http://{{ .Values.fqdns.embed }}"
+          value: "https://{{ .Values.fqdns.embed }}"
         
         # Social App Configuration
         - name: EXPO_PUBLIC_SOCIAL_APP_HOST
           value: {{ .Values.fqdns.socialapp }}
         - name: EXPO_PUBLIC_SOCIAL_APP_URL
-          value: "http://{{ .Values.fqdns.socialapp }}"
+          value: "https://{{ .Values.fqdns.socialapp }}"
         - name: EXPO_PUBLIC_SOCIAL_APP_ABOUT
-          value: "http://{{ .Values.fqdns.pds }}"
+          value: "https://{{ .Values.fqdns.pds }}"
         
         # Environment
         - name: NODE_ENV

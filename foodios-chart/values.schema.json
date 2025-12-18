@@ -199,14 +199,29 @@
           "description": "PLC (DID registry) domain",
           "format": "hostname"
         },
+        "prometheus": {
+          "type": "string",
+          "description": "PLC (DID registry) domain",
+          "format": "hostname"
+        },
         "publicApi": {
           "type": "string",
           "description": "Public API domain",
           "format": "hostname"
         },
+        "relay": {
+          "type": "string",
+          "description": "Relay (ATP Event Stream) domain",
+          "format": "hostname"
+        },
         "socialapp": {
           "type": "string",
           "description": "Social app web UI domain",
+          "format": "hostname"
+        },
+        "grafana": {
+          "type": "string",
+          "description": "Grafana web UI domain",
           "format": "hostname"
         }
       },
@@ -348,6 +363,60 @@
         }
       ]
     },
+    "relay": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/service"
+        },
+        {
+          "type": "object",
+          "description": "Relay (ATP Event Stream Relay) configuration",
+          "properties": {
+            "apiPort": {
+              "type": "integer",
+              "description": "Relay API port",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 2472
+            },
+            "metricsPort": {
+              "type": "integer",
+              "description": "Relay metrics port for Prometheus",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 2473
+            },
+            "defaultRepoLimit": {
+              "type": "integer",
+              "description": "Maximum number of repos to track",
+              "default": 100000
+            },
+            "newHostsPerDayLimit": {
+              "type": "integer",
+              "description": "Maximum new hosts to accept per day",
+              "default": 500
+            },
+            "replayWindow": {
+              "type": "string",
+              "description": "Time window for event replay (e.g., 87600h)",
+              "default": "87600h"
+            },
+            "disableRequestCrawl": {
+              "type": "string",
+              "description": "Disable crawling new repos on request",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "true"
+            },
+            "storage": {
+              "$ref": "#/definitions/storage"
+            }
+          }
+        }
+      ]
+    },
     "socialApp": {
       "allOf": [
         { "$ref": "#/definitions/service" },
@@ -447,6 +516,41 @@
         }
       ]
     },
+    "opensearchDashboards": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/service"
+        },
+        {
+          "type": "object",
+          "description": "OpenSearch Dashboards (log visualization UI) configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable OpenSearch Dashboards for log visualization",
+              "default": true
+            },
+            "replicas": {
+              "type": "integer",
+              "description": "Number of dashboard replicas",
+              "minimum": 0,
+              "maximum": 3,
+              "default": 1
+            },
+            "image": {
+              "type": "string",
+              "description": "OpenSearch Dashboards image name",
+              "default": "opensearch-dashboards"
+            },
+            "tag": {
+              "type": "string",
+              "description": "OpenSearch Dashboards version tag",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            }
+          }
+        }
+      ]
+    },
     "ipcc": {
       "allOf": [
         { "$ref": "#/definitions/service" },
@@ -519,6 +623,47 @@
               ]
             }
           }
+        }
+      ]
+    },
+    "grafana": {
+      "allOf": [
+        { "$ref": "#/definitions/service" },
+        {
+          "type": "object",
+          "description": "Grafana visualization and dashboards configuration",
+          "properties": {
+            "adminUser": {
+              "type": "string",
+              "description": "Grafana admin username",
+              "default": "admin"
+            },
+            "adminPassword": {
+              "type": "string",
+              "description": "Grafana admin password (change in production!)",
+              "minLength": 5
+            },
+            "plugins": {
+              "type": "string",
+              "description": "Comma-separated list of Grafana plugins to install",
+              "default": ""
+            },
+            "storage": {
+              "allOf": [
+                { "$ref": "#/definitions/storage" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable persistent storage for dashboards and settings"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": ["adminUser", "adminPassword"]
         }
       ]
     },
