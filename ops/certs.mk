@@ -10,6 +10,7 @@ getCAcert: ${wDir}/certs/root.crt ${wDir}/certs/intermediate.crt CAbundles
 
 ${wDir}/certs/root.crt ${wDir}/certs/root.key ${wDir}/certs/intermediate.crt ${wDir}/certs/intermediate.key:
 	mkdir -p ${wDir}/certs
+	chmod go-rwx ${wDir}/certs
 	@echo "start caddy as self-signed CA certificate generator."
 	docker run -it --rm -d --name caddy -v ${wDir}/config/caddy/Caddyfile4cert:/etc/caddy/Caddyfile caddy:2
 	@echo "wait a little for caddy get ready..."
