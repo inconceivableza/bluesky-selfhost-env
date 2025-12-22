@@ -34,10 +34,10 @@ while [ $# -gt 0 ]
     shift 1
   done
 
-if [ "$cmdlineDirs" == "" ]; then
-  BUILD_SERVICE="$CUSTOM_SERVICES $REBRANDED_SERVICES"
+if [ "${cmdlineDirs## }" == "" ]; then
+  BUILD_SERVICES="$CUSTOM_SERVICES $REBRANDED_SERVICES"
 else
-  BUILD_SERVICES="${cmdlineDirs# }"
+  BUILD_SERVICES="${cmdlineDirs## }"
 fi
 show_info --oneline "Will build services" "$BUILD_SERVICES"
 
