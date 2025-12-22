@@ -14,8 +14,6 @@ target_args_usage="-a|--android|-i|--ios "
 [ "$named_target" != "" ] && { argselected_target= ; target_args_usage= ; }
 
 intl_target=build
-# default is to increment expected build_number, but this can be overridden by running with build_number_increment=0
-[ "$build_number_increment" == "" ] && build_number_increment=1
 set_build_number=
 set_bundle_version=1
 
@@ -43,6 +41,8 @@ function show_help() {
   echo "Options:"
   echo "  -K, --keep-error    doesn't remove the temporary directory that the expo build runs in, if there's an error"
   echo "  -k, --keep-tmp      doesn't remove the temporary directory that the expo build runs in, even on success"
+  echo "  --no-build-incr     doesn't increment the current build number before building"
+  echo "  --build-incr        increments the current build number before building"
   echo "  --set-buildno=N     updates the eas build servers to set build number to N (build will be N+1)"
   echo "  --set-bundlever     writes build_number into CFBundleVersion in the main app's Info.plist [ios] (default)"
   echo "  --no-set-bundlever  doesn't write build_number into CFBundleVersion in the main app's Info.plist [ios]"
@@ -192,7 +192,8 @@ target_ext=$(get_expected_extension)
 [ "$target_ext" == "" ] && exit 1
 target_dir="$script_dir/${target_os}-builds/"
 build_file="$build_id.$target_ext"
-# build_number contains the expected build number, as the expo build will increment from the current build number
+# if not specified, this will increment the build number unless current_build_number==1 in which case this may be the first build and expo will not increment
+[ "$build_number_increment" == "" ] && { if [ "$current_build_number" == 1 ]; then build_number_increment=0; else build_number_increment=1 ; fi ; }
 build_number=$((current_build_number+build_number_increment))
 show_info --oneline "Build number" "current ${current_build_number}, expecting to build ${build_number}"
 [ "$target_os" == android ] && export BSKY_ANDROID_VERSION_CODE=${build_number}
