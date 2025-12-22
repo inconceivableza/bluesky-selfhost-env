@@ -5,6 +5,8 @@ script_dir="`dirname "$script_path"`"
 . "$script_dir/utils.sh"
 source_env
 
+chmod go-rwx $script_dir/certs # let's not have others snooping our certs
+
 if [ "$EMAIL4CERTS" == "internal" ]
   then
     show_heading "Setting up CA" "for self-signed certificates"
