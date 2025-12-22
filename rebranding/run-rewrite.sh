@@ -4,10 +4,11 @@ script_path="`realpath "$0"`"
 script_dir="`dirname "$script_path"`"
 
 function usage() {
-    echo syntax "$0" "[--commit-parts|--check-only] [-k|--keep-going] [-I|--no-export-images] brand_config_dir" >&2
+    echo syntax "$0" "[--commit-parts|--check-only|--ignore-changes] [-k|--keep-going] [-I|--no-export-images] [-t|--task task]* brand_config_dir" >&2
     echo defined brand config dirs may include: `ls */*branding.svg 2>/dev/null | sed 's#/.*branding.svg##' | sort -u`
     echo "  "`show_subdirs_with_brand_images "$main_rebranding_rel"`
     [ -d "$main_rebranding_rel" ] && echo "  "`show_subdirs_with_brand_images "$alt_rebranding_rel"`
+    echo "tasks may include: $default_tasks"
     echo to create a new one, copy opensky and adjust for your images
 }
 
@@ -36,6 +37,12 @@ check_only=0
 keep_going=0
 ignore_changes=0
 export_images=1
+default_tasks="check:hardcoded check:verbage change:change-ids change:styles change:images"
+tasks=
+
+function is_valid_task() {
+  [[ "$1" == "check:hardcoded" || "$1" == "check:verbage" || "$1" == "change:change-ids" || "$1" == "change:styles" || "$1" == "change-images" ]]
+}
 
 while [ "$#" -gt 0 ]
   do
@@ -54,6 +61,15 @@ while [ "$#" -gt 0 ]
     [[ "$1" == "--no-export-images" || "$1" == "-I" ]] && {
       export_images=0; shift; continue
     }
+    [[ "$1" == "--task" || "$1" == "-t" ]] && {
+      is_valid_task "$1" || { show_error "Unknown task" "$1" ; usage ; exit 1 ; }
+      shift ; tasks="$tasks $1" ; shift ; continue
+    }
+    [[ "${1#--task=}" != "$1" ]] && {
+      task="${1#--task=}"
+      is_valid_task "$task" || { show_error "Unknown task" "$task" ; usage ; exit 1 ; }
+      tasks="$tasks $task" ; shift ; continue
+    }
     [[ "$1" == "-?" || "$1" == "-h" || "$1" == "--help" ]] && {
       usage
       exit 1
@@ -71,6 +87,8 @@ while [ "$#" -gt 0 ]
     BRAND_CONFIG_DIR="$1"
     shift
   done
+
+[ "$tasks" == "" ] && tasks="$default_tasks"
 
 REBRAND_TEMPLATE_DIR="$script_dir"/repo-rules
 
@@ -158,7 +176,7 @@ for branded_repo in $REBRANDED_REPOS
       fi
     fi
     branding_part_failures=""
-    for branding_plan in "check:hardcoded" "check:verbage" "change:change-ids" "change:styles" "change:images"
+    for branding_plan in $tasks
       do
         branding_action="${branding_plan%%:*}"
         [[ "$branding_action" != "check" && "$check_only" == 1 ]] && { echo skipping $branding_plan as only checking ; continue ; }
