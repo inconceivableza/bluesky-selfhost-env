@@ -360,9 +360,17 @@ if npx eas-cli build -p "${target_os}" --local -e "${build_profile}" --output="$
           ls -l "${backup_file}"
         }
         show_info "Extracting apk" "and renaming to ${app_name}"
-        # FIXME: this requires credentials to have been downloaded
-        echo bundletool build-apks --bundle "$build_file" --output="${app_name}.apks" --mode=universal
-        bundletool build-apks --bundle "$build_file" --output="${app_name}.apks" --mode=universal || { show_error "bundletool failing" "dumping env" ; export ; }
+        cred_filename="$script_dir/certs/${app_name}-${target_os}-${build_profile}.json"
+        cert_name="$script_dir/certs/${app_name}-${target_os}-${build_profile}.jks"
+        if [ -f "$cert_name" && -f "$cred_filename" ]; then
+          show_info --oneline "Using downloaded certificate" "$cert_name to sign apk"
+          function get_android_cred() { jq -r ".android.keystore.$1" $cred_filename ; }
+          cert_flags="--ks=$cert_name --ks-pass=pass:$(get_android_cred keystorePassword) --ks-key-alias=$(get_android_cred keyAlias) --key-pass=pass:$(get_android_cred keyPassword) "
+        else
+          show_warning --oneline "Could not find downloaded certificate" "$cert_name to sign apk; use ./selfhost_scripts/download-app-signing-certs.sh before this tool; current extracted tools will not be signed or installable"
+          cert_flags=
+        fi
+        bundletool build-apks --bundle "$build_file" $cert_flags --output="${app_name}.apks" --mode=universal || { show_error "bundletool failing" "dumping env" ; export ; }
         ls -l "${app_name}.apks"
         unzip "${app_name}.apks" universal.apk
         rm "${app_name}.apks"

@@ -78,19 +78,29 @@ cd "$script_dir/repos/social-app"
 
 expo_project_owner="$(jq -r '.code.expo_project_owner' conf/branding.json | tr '[:upper:]' '[:lower:]')"
 app_name="$(jq -r '.naming.app_name' conf/branding.json | tr '[:upper:]' '[:lower:]')"
+expected_credentials_file="credentials.json"
 expected_name="@${expo_project_owner}__${app_name}.jks"
+target_credentials_file="certs/${app_name}-${target_os}-${build_profile}.json"
 target_name="certs/${app_name}-${target_os}-${build_profile}.jks"
 show_info "Using EAS credentials" "to download the app signing certificate into $target_name"
 
 show_info --oneline "Select profile $build_profile" "when prompted by the app"
-show_info --oneline "Then choose Keystore" "from the menu"
-show_info --oneline "Then choose Download existing keystore" "- you don't have to display sensitive information when prompted"
+show_info --oneline "Then choose credentials.json" "(Upload/Download Credentials between EAS servers and your local json) from the menu"
+show_info --oneline "Then choose Download" "credentials from EAS to credentials.json"
+show_info --oneline "Then exit" "by pressing any key as instructed, then choosing Go back, then choosing Exit"
 
 npx eas-cli credentials -p "$target_os"
 
-show_info "Looking for downloaded keystore" "$expected_name"
-if [ -f "$expected_name" ]; then
-  show_info --oneline "Found keystore" "$expected_name; moving to $target_name"
-  mv "$expected_name" "$script_dir"/"$target_name"
+show_info "Looking for credentials" "in $expected_credentials_file"
+if [ -f "$expected_credentials_file" ]; then
+  expected_name="$(jq -r '.android.keystore.keystorePath' "$expected_credentials_file")"
+  show_info "Looking for downloaded keystore" "$expected_name"
+  if [ -f "$expected_name" ]; then
+    show_info --oneline "Found keystore" "$expected_name; moving to $target_name"
+    mv "$expected_name" "$script_dir"/"$target_name"
+  fi
+  show_info --oneline "Found credentials" "in $expected_credentials_file; moving to $target_credentials_file and adjusting"
+  jq ".android.keystore.keystorePath = \"$script_dir/$target_name\"" "$expected_credentials_file" > "$script_dir"/"$target_credentials_file"
+  rm $expected_credentials_file
 fi
 
