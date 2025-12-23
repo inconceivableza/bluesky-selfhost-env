@@ -1,5 +1,6 @@
 {
   "code": {
+    "android_sha256_cert_fingerprints": {},
     "app_slug_scheme": "bluesky",
     "apple_groups": "group.app.bsky",
     "apple_appstore_path": "bluesky-social/id6444370199",
