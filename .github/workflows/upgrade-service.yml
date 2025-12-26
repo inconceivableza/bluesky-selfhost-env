@@ -66,7 +66,7 @@ jobs:
             exit 1
           fi
 
-          DOCKER_REPO="{{ vars.BRANDED_NAMESPACE }}"
+          DOCKER_REPO="${{ vars.BRANDED_NAMESPACE }}"
           FULL_IMAGE="$DOCKER_REPO/$IMAGE_NAME:$IMAGE_TAG"
 
           echo "🔍 Validating image tag exists: $FULL_IMAGE"
