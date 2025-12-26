@@ -26,9 +26,9 @@ spec:
       - name: bsky
         image: {{ .Values.global.imageRegistry }}/{{ .Values.bsky.image }}:{{ .Values.bsky.tag }}
         {{- if .Values.global.developmentMode }}
-        command: ['sh', '-c', 'node --enable-source-maps api.js']
-        {{- else }}
         command: ['sh', '-c', 'node --inspect=0.0.0.0:9229 --enable-source-maps api.js']
+        {{- else }}
+        command: ['sh', '-c', 'node --enable-source-maps api.js']
         {{- end }}
         imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         ports:
