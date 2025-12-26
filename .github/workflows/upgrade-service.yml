@@ -50,13 +50,13 @@ jobs:
             ["bsky"]="foodios-atproto-bsky"
             ["pds"]="foodios-atproto-pds"
             ["plc"]="foodios-did-method-plc"
-            ["ozone"]="foodios-atproto-ozone"
-            ["palomar"]="foodios-palomar"
+            ["ozone"]="foodios-ozone"
+            ["palomar"]="foodios-indigo-palomar"
             ["relay"]="foodios-indigo-relay"
             ["socialApp"]="foodios-social-app"
-            ["socialCard"]="foodios-social-app"
-            ["socialEmbed"]="foodios-social-app"
-            ["socialLink"]="foodios-social-app"
+            ["socialCard"]="foodios-social-card"
+            ["socialEmbed"]="foodios-social-embed"
+            ["socialLink"]="foodios-social-link"
           )
 
           IMAGE_NAME="${SERVICE_IMAGES[$SERVICE]}"
