@@ -40,6 +40,50 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate image tag exists
+        run: |
+          IMAGE_TAG="${{ inputs.image_tag }}"
+          SERVICE="${{ inputs.service }}"
+
+          # Map services to their Docker Hub image names
+          declare -A SERVICE_IMAGES=(
+            ["bsky"]="foodios-atproto-bsky"
+            ["pds"]="foodios-atproto-pds"
+            ["plc"]="foodios-did-method-plc"
+            ["ozone"]="foodios-ozone"
+            ["palomar"]="foodios-indigo-palomar"
+            ["relay"]="foodios-indigo-relay"
+            ["socialApp"]="foodios-social-app"
+            ["socialCard"]="foodios-social-card"
+            ["socialEmbed"]="foodios-social-embed"
+            ["socialLink"]="foodios-social-link"
+          )
+
+          IMAGE_NAME="${SERVICE_IMAGES[$SERVICE]}"
+
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "❌ Error: Unknown image name for service '$SERVICE'"
+            exit 1
+          fi
+
+          DOCKER_REPO="${{ vars.BRANDED_NAMESPACE }}"
+          FULL_IMAGE="$DOCKER_REPO/$IMAGE_NAME:$IMAGE_TAG"
+
+          echo "🔍 Validating image tag exists: $FULL_IMAGE"
+
+          # Check if the tag exists in Docker Hub
+          if ! docker manifest inspect "$FULL_IMAGE" &> /dev/null; then
+            echo "❌ Error: Image tag '$IMAGE_TAG' does not exist for $DOCKER_REPO/$IMAGE_NAME"
+            echo ""
+            echo "Please verify:"
+            echo "  1. The tag '$IMAGE_TAG' exists at https://hub.docker.com/r/$DOCKER_REPO/$IMAGE_NAME/tags"
+            echo "  2. The image has been built and pushed to Docker Hub"
+            exit 1
+          fi
+
+          echo "✅ Image tag '$IMAGE_TAG' verified in Docker Hub"
+          echo "   Repository: $DOCKER_REPO/$IMAGE_NAME"
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
