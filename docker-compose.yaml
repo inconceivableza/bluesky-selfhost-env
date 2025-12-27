@@ -383,6 +383,11 @@ services:
       - PDS_SOCIAL_APP_EMOJI=${SOCIAL_APP_EMOJI}
       - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
+      # other links; these are used in the sign-up screen
+      - PDS_HOME_URL=https://${pdsFQDN}
+      - PDS_PRIVACY_POLICY_URL=${SOCIAL_POLICY_BASE_URL}/privacy-policy/
+      - PDS_SUPPORT_URL=https://ghost.foodios.social/support/
+      - PDS_TERMS_OF_SERVICE_URL=${SOCIAL_POLICY_BASE_URL}/tos/
       # telemetry settings
       - DD_TRACE_AGENT_URL=http://otel-collector:8126
       - DD_TRACE_OTEL_ENABLED=true
