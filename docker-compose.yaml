@@ -384,6 +384,7 @@ services:
       - PDS_SOCIAL_APP_NAME=${SOCIAL_APP_NAME}
       - PDS_SOCIAL_APP_URL=${SOCIAL_APP_URL}
       # other links; these are used in the sign-up screen
+      - PDS_CONTACT_EMAIL_ADDRESS=${PDS_CONTACT_EMAIL_ADDRESS}
       - PDS_HOME_URL=https://${pdsFQDN}
       - PDS_PRIVACY_POLICY_URL=${SOCIAL_POLICY_BASE_URL}/privacy-policy/
       - PDS_SUPPORT_URL=https://ghost.foodios.social/support/
