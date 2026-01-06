@@ -137,7 +137,15 @@ services:
     environment:
       - GOINSECURE=${GOINSECURE}
       - NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED-}
-    <<: *certificate-volumes
+    # <<: *certificate-volumes
+    volumes:
+      - ./selfhost_scripts/get-http-status.bash:/usr/local/bin/get-http-status.bash:ro
+    healthcheck:
+      test: ["CMD", "bash", "/usr/local/bin/get-http-status.bash", "caddy-sidecar", "80", "/?domain=${DOMAIN}"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: always
 
   test-wss:
     # used in test mode for checking and debugging wss secure web-socket connections
