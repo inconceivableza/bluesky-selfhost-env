@@ -7,25 +7,13 @@ source_env
 
 cd "$script_dir"
 
-branding_file=$REBRANDING_DIR/branding.yml
-package_id=$(yq -r e '.code.web_package_id' $branding_file)
-
 build_profile=
 
 if [ "$#" -gt 0 ]; then
   [[ "${1/-/}" == "$1" ]] && [ "$build_profile" == "" ] && { build_profile="$1" ; shift 1 ; }
 fi
 
-package_suffix=
-if [[ "$build_profile" == "" ]]; then
-  package_suffix=
-elif [[ "$build_profile" == "production" ]]; then
-  package_suffix=
-elif [[ "$build_profile" == "development" ]]; then
-  package_suffix=.dev
-else
-  package_suffix=".$build_profile"
-fi
+package_id="$(EXPO_PUBLIC_ENV=$build_profile $script_dir/selfhost_scripts/get-social-app-config.js | jq -r '.expo.android.package')"
 
 check_adb_device() {
     # Get the output of 'adb devices' and filter for "device" or "emulator" status
@@ -47,10 +35,10 @@ check_adb_device() {
 show_info --oneline "Checking device" "reachable through adb"
 check_adb_device || exit 1
 
-show_info --oneline "Finding pid" "for $package_id$package_suffix"
-pid=$(adb shell pidof $package_id$package_suffix)
+show_info --oneline "Finding pid" "for $package_id"
+pid=$(adb shell pidof $package_id)
 
-[[ "$pid" == "" ]] && { show_error "No process found" "for $package_id$package_suffix" ; exit 1; }
+[[ "$pid" == "" ]] && { show_error "No process found" "for fpackage_id" ; exit 1; }
 
 adb logcat --pid="$pid" ReactNative:V ReactNativeJS:V *:I "$@"
 
